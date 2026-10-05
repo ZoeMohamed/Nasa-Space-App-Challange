@@ -30,7 +30,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="desk-markings text-on-surface antialiased p-3 md:p-6 min-h-screen flex items-center justify-center font-sans select-none">
+      <body className="antialiased min-h-screen font-sans">
         {children}
       </body>
     </html>

@@ -6,13 +6,12 @@ import dynamic from "next/dynamic";
 import WorkstationLayout from "@/components/layout/WorkstationLayout";
 import { HOTSPOT_MARKERS } from "@/lib/data";
 
-// Dynamic import - Leaflet cannot run on server
 const FireMap = dynamic(() => import("@/components/map/FireMap"), {
   ssr: false,
   loading: () => (
-    <div className="h-full w-full flex items-center justify-center bg-[#EDE8D5]">
-      <span className="font-mono text-xs text-on-surface-variant animate-pulse">
-        LOADING SATELLITE MAP…
+    <div className="h-full w-full flex items-center justify-center bg-gray-100">
+      <span className="font-medium text-sm text-gray-500 animate-pulse">
+        Loading Map Explorer…
       </span>
     </div>
   ),
@@ -25,61 +24,63 @@ export default function MapExplorerPage() {
   const [activeLayer, setActiveLayer] = useState<string>("HARMONIZED");
 
   return (
-    <WorkstationLayout activeTab="MAP">
-      <div className="flex-1 flex flex-col overflow-hidden bg-surface-container-lowest">
-        {/* Screen Header */}
-        <div className="border-b border-outline-variant px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shrink-0">
+    <WorkstationLayout activeTab="Map">
+      <div className="max-w-[1400px] mx-auto h-[80vh] flex flex-col space-y-4">
+        
+        {/* Page Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 shrink-0">
           <div>
-            <div className="font-mono text-[10px] text-outline font-semibold">
-              SPATIAL SATELLITE INTELLIGENCE // EPSG:4326
+            <div className="flex items-center gap-2 text-sm text-gray-500 font-medium mb-1">
+              <span>Spatial Satellite Intelligence</span>
             </div>
-            <div className="flex items-baseline gap-2">
-              <h1 className="text-xl font-bold text-on-surface">MAP EXPLORER</h1>
-              <span className="text-xs text-on-surface-variant hidden md:inline">
-                | Harmonized MODIS &amp; VIIRS fire activity spatial distribution
-              </span>
-            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">
+              Map Explorer
+            </h1>
+            <p className="text-sm text-gray-500">
+              Interactive map of harmonized fire activity spatial distribution.
+            </p>
           </div>
-          <div className="bg-surface-container border border-outline-variant px-2 py-1 rounded font-mono text-[10px] text-on-surface-variant flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-secondary text-sm">satellite_alt</span>
-            <span>WGS84 PROJECTION | RECURSIVE CLUSTERING v1.0</span>
+          
+          <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg text-sm font-medium">
+            {LAYERS.map((layer) => (
+              <button
+                key={layer}
+                onClick={() => setActiveLayer(layer)}
+                className={`px-3 py-1.5 rounded-md transition-colors ${
+                  activeLayer === layer
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                {layer}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Filter Toolbar */}
-        <div className="bg-[#F8F7F2] border-b border-outline-variant px-4 py-1.5 flex items-center justify-between gap-2 overflow-x-auto text-xs font-mono shrink-0">
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button className="h-6 px-2 bg-white border border-[#BFC1B7] rounded shadow-xs">DATE: LAST 24H</button>
-            <button className="h-6 px-2 bg-white border border-[#BFC1B7] rounded shadow-xs">REGION: ALL</button>
-            <button className="h-6 px-2 bg-white border border-[#BFC1B7] rounded shadow-xs">CONFIDENCE: &gt;80%</button>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="flex items-center bg-[#EAE8DD] p-0.5 rounded border border-outline-variant text-[11px]">
-              {LAYERS.map((layer) => (
-                <button
-                  key={layer}
-                  onClick={() => setActiveLayer(layer)}
-                  className={`px-2 py-0.5 rounded-xs transition-colors ${
-                    activeLayer === layer
-                      ? "bg-white text-secondary-container font-bold shadow-xs"
-                      : "text-on-surface-variant"
-                  }`}
-                >
-                  {layer}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => router.push("/activities")}
-              className="h-6 px-2 bg-white border border-[#BFC1B7] rounded hover:bg-surface-container"
-            >
-              TABLE VIEW
+        {/* Toolbar */}
+        <div className="flex items-center justify-between gap-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <button className="h-9 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">
+              Last 24 Hours
+            </button>
+            <button className="h-9 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">
+              Region: All
+            </button>
+            <button className="h-9 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">
+              Confidence &gt; 80%
             </button>
           </div>
+          <button
+            onClick={() => router.push("/activities")}
+            className="h-9 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium text-blue-600 shadow-sm hover:bg-gray-50"
+          >
+            Table View
+          </button>
         </div>
 
-        {/* Leaflet Map */}
-        <div className="relative flex-1 overflow-hidden border-b border-outline-variant">
+        {/* Map Container */}
+        <div className="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative">
           <FireMap
             markers={HOTSPOT_MARKERS}
             center={[-1.5, 108]}
@@ -88,21 +89,6 @@ export default function MapExplorerPage() {
           />
         </div>
 
-        {/* Bottom Telemetry Bar */}
-        <div className="bg-[#F8F7F2] border-t border-outline-variant px-4 py-1.5 flex items-center justify-between font-mono text-[10px] text-on-surface-variant overflow-x-auto shrink-0">
-          <div className="flex items-center gap-4">
-            <span className="font-bold text-on-surface">1,248 DETECTIONS</span>
-            <span>•</span>
-            <span>37 ACTIVE CLUSTERS</span>
-            <span>•</span>
-            <span className="text-[#ac3400] font-bold">5 ANOMALIES</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span>ORBIT: SUOMI-NPP / NOAA-20</span>
-            <span>•</span>
-            <span className="text-secondary font-bold">CALIBRATED v1.4</span>
-          </div>
-        </div>
       </div>
     </WorkstationLayout>
   );
