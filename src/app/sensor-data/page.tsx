@@ -1,5 +1,13 @@
 import WorkstationLayout from "@/components/layout/WorkstationLayout";
 
+const STATIONS = [
+  { id: "ST-KAL-01", loc: "Palangka Raya Peat", temp: 35.1, hum: 55, pm: 120, sync: "2 mins ago", status: "online" },
+  { id: "ST-RIA-02", loc: "Pelalawan Forest", temp: 33.8, hum: 68, pm: 45, sync: "5 mins ago", status: "online" },
+  { id: "ST-SUM-12", loc: "Ogan Komering Ilir", temp: 34.0, hum: 61, pm: 38, sync: "1 min ago", status: "online" },
+  { id: "ST-KAL-04", loc: "Sampit Sector", temp: 36.2, hum: 50, pm: 180, sync: "12 mins ago", status: "online" },
+  { id: "ST-JAM-01", loc: "Muaro Jambi", temp: null, hum: null, pm: null, sync: "Offline", status: "offline" },
+];
+
 export const metadata = {
   title: "FireWatch — Sensor Data",
 };
@@ -104,22 +112,16 @@ export default function SensorDataPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {[
-                  { id: "ST-KAL-01", loc: "Palangka Raya Peat", temp: 35.1, hum: 55, pm: 120, sync: "2 mins ago", status: "online" },
-                  { id: "ST-RIA-02", loc: "Pelalawan Forest", temp: 33.8, hum: 68, pm: 45, sync: "5 mins ago", status: "online" },
-                  { id: "ST-SUM-12", loc: "Ogan Komering Ilir", temp: 34.0, hum: 61, pm: 38, sync: "1 min ago", status: "online" },
-                  { id: "ST-KAL-04", loc: "Sampit Sector", temp: 36.2, hum: 50, pm: 180, sync: "12 mins ago", status: "online" },
-                  { id: "ST-JAM-01", loc: "Muaro Jambi", temp: "-", hum: "-", pm: "-", sync: "Offline", status: "offline" },
-                ].map(station => (
+                {STATIONS.map(station => (
                   <tr key={station.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 font-medium text-gray-900 flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full ${station.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`}></span>
                       {station.id}
                     </td>
                     <td className="px-6 py-4">{station.loc}</td>
-                    <td className={`px-6 py-4 font-medium ${station.temp > 35 ? 'text-red-600' : ''}`}>{station.temp}</td>
-                    <td className={`px-6 py-4 font-medium ${station.hum !== '-' && station.hum < 60 ? 'text-red-600' : ''}`}>{station.hum}</td>
-                    <td className={`px-6 py-4 font-medium ${station.pm > 100 ? 'text-orange-600' : ''}`}>{station.pm}</td>
+                    <td className={`px-6 py-4 font-medium ${station.temp !== null && station.temp > 35 ? 'text-red-600' : ''}`}>{station.temp ?? "—"}</td>
+                    <td className={`px-6 py-4 font-medium ${station.hum !== null && station.hum < 60 ? 'text-red-600' : ''}`}>{station.hum ?? "—"}</td>
+                    <td className={`px-6 py-4 font-medium ${station.pm !== null && station.pm > 100 ? 'text-orange-600' : ''}`}>{station.pm ?? "—"}</td>
                     <td className="px-6 py-4 text-xs">{station.sync}</td>
                     <td className="px-6 py-4 text-right">
                       <button className="text-blue-600 font-semibold hover:underline text-xs">Details</button>

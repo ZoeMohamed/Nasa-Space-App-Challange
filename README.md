@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FireWatch
+
+FireWatch displays high-confidence NASA FIRMS observations for Indonesia. Live MODIS and VIIRS data is cleaned, matched, grouped, and prioritized by the Python service before it reaches the Next.js map.
 
 ## Getting Started
 
-First, run the development server:
+Configure the server-only NASA key:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
+# Set NASA_FIRMS_MAP_KEY in .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Start the Python processor:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+python3.12 -m venv python-service/.venv
+python-service/.venv/bin/pip install -r python-service/requirements.txt
+python-service/.venv/bin/python -m uvicorn main:app --app-dir python-service --host 127.0.0.1 --port 8000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+In another terminal, start Next.js:
 
-## Learn More
+```bash
+npm install
+npm run dev -- --hostname 127.0.0.1 --port 3000
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open [http://127.0.0.1:3000/map](http://127.0.0.1:3000/map). Python API documentation is available at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Data flow
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```text
+NASA FIRMS → Python clean → sensor match → area grid → attention/priority → Next.js
+```
 
-## Deploy on Vercel
+The browser never receives the NASA API key. The Python result is cached for five minutes, and the map refreshes every five minutes.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Test
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+python-service/.venv/bin/python -m pytest -c python-service/pytest.ini
+npm run lint
+npm run build
+```

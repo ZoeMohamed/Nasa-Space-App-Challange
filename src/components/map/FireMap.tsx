@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import type { HotspotMarker } from "@/types";
 
 interface FireMapProps {
@@ -25,8 +24,10 @@ export default function FireMap({
 }: FireMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
+  const markerLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
   const [ready, setReady] = useState(false);
-  const router = useRouter();
+  const centerLat = center[0];
+  const centerLng = center[1];
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -36,23 +37,12 @@ export default function FireMap({
     import("leaflet").then((L) => {
       if (!isMounted || !containerRef.current || mapRef.current) return;
 
-      if ((containerRef.current as any)._leaflet_id) return;
-
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl:
-          "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-        iconUrl:
-          "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-        shadowUrl:
-          "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-      });
-
       const map = L.map(containerRef.current, {
-        center,
+        center: [centerLat, centerLng],
         zoom,
         zoomControl: true,
         attributionControl: false,
+        preferCanvas: true,
       });
 
       L.tileLayer(
@@ -67,66 +57,7 @@ export default function FireMap({
         .attribution({ prefix: "FireWatch | © Esri | NASA FIRMS" })
         .addTo(map);
 
-      markers.forEach((m) => {
-        const color = SEVERITY_COLOR[m.severity] ?? "#9ca3af";
-        const radius = m.severity === "HIGH" ? 14 : m.severity === "MEDIUM" ? 10 : 6;
-
-        L.circleMarker([m.lat, m.lng], {
-          radius: radius + 8,
-          color,
-          weight: 1,
-          fillColor: color,
-          fillOpacity: 0.15,
-          className: "animate-ping",
-        }).addTo(map);
-
-        const inner = L.circleMarker([m.lat, m.lng], {
-          radius,
-          color: "#fff",
-          weight: 2,
-          fillColor: color,
-          fillOpacity: 0.9,
-        }).addTo(map);
-
-        const popupHtml = `
-          <div style="font-family:'Inter',sans-serif;width:240px;">
-            <div style="border-bottom:1px solid #f3f4f6;padding:12px;display:flex;align-items:center;justify-content:space-between;">
-              <div style="display:flex;align-items:center;gap:6px;">
-                <span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block;"></span>
-                <span style="font-size:12px;font-weight:700;color:#111827;">${m.label}</span>
-              </div>
-            </div>
-            <div style="padding:12px;display:flex;flex-direction:column;gap:8px;">
-              <div style="display:flex;justify-content:space-between;font-size:11px;">
-                <span style="color:#6b7280;">Power</span>
-                <span style="font-weight:600;color:#111827;">${m.frp} MW</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;font-size:11px;">
-                <span style="color:#6b7280;">Confidence</span>
-                <span style="font-weight:600;color:#111827;">${m.id === "FA-001" ? "94%" : m.id === "FA-002" ? "89%" : "78%"}</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;font-size:11px;">
-                <span style="color:#6b7280;">Coordinates</span>
-                <span style="font-weight:600;color:#111827;">${m.lat.toFixed(2)}, ${m.lng.toFixed(2)}</span>
-              </div>
-            </div>
-            <div style="padding:12px;border-top:1px solid #f3f4f6;display:flex;gap:8px;">
-              <a href="/activity/${m.id}" style="flex:1;background:#2563eb;color:#fff;text-align:center;padding:6px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;">
-                Inspect
-              </a>
-            </div>
-          </div>`;
-
-        inner.bindPopup(popupHtml, {
-          maxWidth: 280,
-          className: "firesight-popup",
-        });
-
-        inner.bindTooltip(
-          `<span style="font-family:'Inter',sans-serif;font-size:11px;font-weight:600">${m.label}</span>`,
-          { direction: "top", className: "firesight-tooltip" }
-        );
-      });
+      markerLayerRef.current = L.layerGroup().addTo(map);
 
       mapRef.current = map;
       setReady(true);
@@ -137,9 +68,78 @@ export default function FireMap({
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
+        markerLayerRef.current = null;
       }
     };
-  }, []);
+  }, [centerLat, centerLng, zoom]);
+
+  useEffect(() => {
+    if (!ready || !markerLayerRef.current) return;
+
+    let isMounted = true;
+
+    import("leaflet").then((L) => {
+      if (!isMounted || !markerLayerRef.current) return;
+
+      const layer = markerLayerRef.current;
+      layer.clearLayers();
+
+      for (const marker of markers) {
+        const color = SEVERITY_COLOR[marker.severity] ?? "#9ca3af";
+        const radius = marker.severity === "HIGH" ? 7 : marker.severity === "MEDIUM" ? 5 : 4;
+        const point = L.circleMarker([marker.lat, marker.lng], {
+          radius,
+          color: "#fff",
+          weight: 1,
+          fillColor: color,
+          fillOpacity: 0.85,
+        }).addTo(layer);
+
+        const label = escapeHtml(marker.label);
+        const satellite = escapeHtml(marker.satellite ?? "Unknown");
+        const confidence = escapeHtml(marker.confidenceLabel ?? "High");
+        const source = escapeHtml(marker.source ?? marker.sensor ?? "NASA FIRMS");
+        const priority = escapeHtml(marker.priorityTier ?? "Unknown");
+        const matchStatus = escapeHtml((marker.matchStatus ?? "UNMATCHED").replaceAll("_", " "));
+        const observedAt = marker.acquiredAt
+          ? new Date(marker.acquiredAt).toLocaleString([], {
+              dateStyle: "medium",
+              timeStyle: "short",
+              timeZone: "UTC",
+            }) + " UTC"
+          : "Unknown";
+
+        point.bindPopup(
+          `<div style="font-family:Inter,sans-serif;width:240px">
+            <div style="border-bottom:1px solid #f3f4f6;padding:12px;display:flex;align-items:center;gap:6px">
+              <span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block"></span>
+              <strong style="font-size:12px;color:#111827">${label}</strong>
+            </div>
+            <div style="padding:12px;display:grid;grid-template-columns:1fr auto;gap:8px;font-size:11px">
+              <span style="color:#6b7280">Power</span><strong>${marker.frp.toFixed(1)} MW</strong>
+              <span style="color:#6b7280">Confidence</span><strong>${confidence}</strong>
+              <span style="color:#6b7280">Satellite</span><strong>${satellite}</strong>
+              <span style="color:#6b7280">Source</span><strong>${source}</strong>
+              <span style="color:#6b7280">Python priority</span><strong>${priority}${marker.priorityScore === undefined ? "" : ` (${marker.priorityScore.toFixed(2)})`}</strong>
+              <span style="color:#6b7280">Sensor match</span><strong>${matchStatus}</strong>
+              <span style="color:#6b7280">Observed</span><strong>${escapeHtml(observedAt)}</strong>
+              <span style="color:#6b7280">Coordinates</span><strong>${marker.lat.toFixed(4)}, ${marker.lng.toFixed(4)}</strong>
+            </div>
+          </div>`,
+          { maxWidth: 280, className: "firesight-popup" }
+        );
+
+        point.bindTooltip(label, {
+          direction: "top",
+          className: "firesight-tooltip",
+        });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [markers, ready]);
 
   return (
     <div className={`relative ${className}`}>
@@ -170,5 +170,19 @@ export default function FireMap({
         </div>
       </div>
     </div>
+  );
+}
+
+function escapeHtml(value: string) {
+  return value.replace(
+    /[&<>'"]/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        '"': "&quot;",
+      })[character] ?? character
   );
 }
