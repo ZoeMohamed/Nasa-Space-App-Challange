@@ -2,6 +2,8 @@
 
 FireWatch displays high-confidence NASA FIRMS observations for Indonesia. Live MODIS and VIIRS data is cleaned, matched, grouped, and prioritized by the Python service before it reaches the Next.js map.
 
+Live production: [https://firewatch-nasa.vercel.app/map](https://firewatch-nasa.vercel.app/map)
+
 ## Getting Started
 
 Configure the server-only NASA key:
