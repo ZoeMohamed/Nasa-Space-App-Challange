@@ -36,6 +36,18 @@ NASA FIRMS → Python clean → sensor match → area grid → attention/priorit
 
 The browser never receives the NASA API key. The Python result is cached for five minutes, and the map refreshes every five minutes.
 
+## Deploy to Vercel
+
+The repository uses Vercel Services so the Next.js frontend and FastAPI processor deploy together under one domain. Add `NASA_FIRMS_MAP_KEY` as a sensitive Vercel environment variable for Production and Preview, then deploy:
+
+```bash
+vercel link
+vercel env add NASA_FIRMS_MAP_KEY production,preview --sensitive
+vercel deploy --prod
+```
+
+Production requests to `/api/*` are handled directly by the Python service. The API key stays server-side and is never included in frontend JavaScript.
+
 ## Test
 
 ```bash

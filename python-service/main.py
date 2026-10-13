@@ -10,6 +10,7 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/hotspots")
 @app.get("/api/live/hotspots")
 def live_hotspots(
     map_key: str | None = Header(default=None, alias="X-FIRMS-Map-Key"),
