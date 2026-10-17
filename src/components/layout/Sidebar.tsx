@@ -12,7 +12,9 @@ import { usePathname } from "next/navigation";
  *   2. "DATABASE" section: Analytics, Historical Insights, Areas of Attention, About data
  *
  * Figma routes are mapped onto the routes that already exist in this repo:
- *  - Dashboard        -> "/"              (the existing Overview page is this app's dashboard/home)
+ *  - Dashboard        -> "/operator"      (moved off "/" so the root route can be a public
+ *                                           landing page instead of the Operator dashboard;
+ *                                           see src/app/page.tsx / src/app/operator/page.tsx)
  *  - Explore Map      -> "/map"
  *  - Analytics        -> "/analytics"
  *  - Historical Insights -> "/calendar"   (the Calendar page's own subtitle is literally
@@ -33,7 +35,7 @@ import { usePathname } from "next/navigation";
  * Explore Map, not a reference/database screen.
  */
 const PRIMARY_LINKS = [
-  { label: "Dashboard", icon: "dashboard", href: "/" },
+  { label: "Dashboard", icon: "dashboard", href: "/operator" },
   { label: "Explore Map", icon: "map", href: "/map" },
   { label: "Citizen Reports", icon: "forum", href: "/citizen-reports" },
 ];
@@ -102,8 +104,8 @@ export default function Sidebar() {
       </div>
 
       {/* Footer — Figma's shipped sidebar shows a "Back to main page" link here (an exit back to
-          a parent site outside this component's scope); kept presentational/pointing at the
-          dashboard route since there is no separate parent site in this app. */}
+          a parent site outside this component's scope). Now that "/" is the public AGNIBHUMI
+          landing page (not the Operator dashboard), this literally is that exit link. */}
       <div className="flex items-center justify-center border-t border-white/[0.12] px-4 py-5">
         <Link
           href="/"

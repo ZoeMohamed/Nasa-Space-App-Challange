@@ -135,3 +135,50 @@ export interface HistoricalCalendarResponse {
   months: HistoricalMonth[];
   cells: HistoricalCell[];
 }
+
+/**
+ * Community-submitted fire report, from the Python `/api/reports` store
+ * (see python-service/fire_pipeline/reports.py). `status` is one of the
+ * backend's ALLOWED_STATUSES. `satelliteLinks` is only populated on the
+ * single-report detail fetch (`GET /api/reports/{id}`) — the list endpoint
+ * (`GET /api/reports`) omits it entirely, so it's optional here.
+ */
+export type ReportStatus =
+  | "submitted"
+  | "under_review"
+  | "satellite_matched"
+  | "verified"
+  | "rejected";
+
+export interface SatelliteLink {
+  markerId: string;
+  distanceKm: number | null;
+  timeDiffMin: number | null;
+  createdAt: string;
+}
+
+export interface CommunityReport {
+  id: string;
+  createdAt: string;
+  observedAt: string;
+  lat: number;
+  lon: number;
+  description: string;
+  status: ReportStatus;
+  submitterToken: string;
+  photoFilename: string | null;
+  reviewNote: string | null;
+  reviewedAt: string | null;
+  satelliteLinks?: SatelliteLink[];
+}
+
+export interface ReportsListResponse {
+  reports: CommunityReport[];
+}
+
+/** Response body from POST /api/reports — a full report detail, plus an
+ * optional warning if satellite correlation couldn't run (submission still
+ * succeeds in that case; see main.py submit_report docstring). */
+export interface ReportCreateResponse extends CommunityReport {
+  correlationWarning?: string;
+}
