@@ -1,4 +1,8 @@
+import os
+import sqlite3
+
 import numpy as np
+import pandas as pd
 
 
 def deterministic_priority(df):
@@ -14,13 +18,65 @@ def deterministic_priority(df):
     return result.sort_values("priority_score", ascending=False)
 
 
-def historical_baseline(df):
+def _load_historical_cell_stats(sqlite_path):
+    """Per-(grid_lat, grid_lon) baseline of daily frp_sum from the offline
+    historical SQLite store (see scripts/build_historical_store.py).
+
+    Returns None if the store is missing or empty -- callers fall back to
+    same-batch statistics in that case, since there is nothing real to use
+    yet (e.g. the store hasn't been built, or this cell has no history).
+    """
+    if not sqlite_path or not os.path.exists(sqlite_path):
+        return None
+    try:
+        connection = sqlite3.connect(sqlite_path)
+        try:
+            history = pd.read_sql_query("SELECT grid_lat, grid_lon, frp_sum FROM daily_area_activity", connection)
+        finally:
+            connection.close()
+    except sqlite3.Error:
+        return None
+    if history.empty:
+        return None
+    return history.groupby(["grid_lat", "grid_lon"], as_index=False).frp_sum.agg(baseline_mean="mean", baseline_std="std")
+
+
+def historical_baseline(df, sqlite_path=None):
+    """Attach baseline_mean/baseline_std/z_score/anomaly to each area row.
+
+    When `sqlite_path` points at a built historical store (see
+    scripts/build_historical_store.py) and it has data for a given
+    (grid_lat, grid_lon) cell, the baseline is real multi-year history for
+    that cell. Otherwise -- store missing, not yet built, or this specific
+    cell not yet covered -- this falls back to the previous behavior:
+    mean/std of frp_sum computed across the SAME live batch being
+    processed (not a real historical baseline, just same-batch stats).
+    Each row's `baseline_source` column records which mode was used
+    ("historical" or "same-batch-fallback") so callers can report it
+    honestly instead of implying real history where there is none.
+    """
     result = df.copy()
     if result.empty:
         return result
     keys = [column for column in ["grid_lat", "grid_lon"] if column in result]
-    stats = result.groupby(keys).frp_sum.agg(baseline_mean="mean", baseline_std="std").reset_index()
-    result = result.merge(stats, on=keys, how="left")
+
+    same_batch_stats = result.groupby(keys).frp_sum.agg(baseline_mean="mean", baseline_std="std").reset_index()
+    historical_stats = _load_historical_cell_stats(sqlite_path)
+
+    if historical_stats is not None and not historical_stats.empty:
+        result = result.merge(historical_stats, on=keys, how="left")
+        result["baseline_source"] = np.where(result["baseline_mean"].notna(), "historical", "same-batch-fallback")
+        missing = result["baseline_mean"].isna()
+        if missing.any():
+            fallback = same_batch_stats.rename(columns={"baseline_mean": "fallback_mean", "baseline_std": "fallback_std"})
+            result = result.merge(fallback, on=keys, how="left")
+            result.loc[missing, "baseline_mean"] = result.loc[missing, "fallback_mean"]
+            result.loc[missing, "baseline_std"] = result.loc[missing, "fallback_std"]
+            result = result.drop(columns=["fallback_mean", "fallback_std"])
+    else:
+        result = result.merge(same_batch_stats, on=keys, how="left")
+        result["baseline_source"] = "same-batch-fallback"
+
     result["z_score"] = (result.frp_sum - result.baseline_mean) / result.baseline_std.replace(0, np.nan)
     result["anomaly"] = result.z_score.ge(2).fillna(False)
     return result

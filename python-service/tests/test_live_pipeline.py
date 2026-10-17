@@ -1,10 +1,15 @@
+import sqlite3
+
 import pandas as pd
 
 from fire_pipeline.features import temporal_features
 from fire_pipeline.live import process_live_frames
 
 
-def test_live_frames_run_python_pipeline():
+def test_live_frames_run_python_pipeline(monkeypatch, tmp_path):
+    # Force the same-batch fallback path regardless of whether a real
+    # historical store happens to exist on disk in this environment.
+    monkeypatch.setenv("FIRE_HISTORICAL_DB_PATH", str(tmp_path / "no_such_store.sqlite"))
     frame = pd.DataFrame(
         [
             {"latitude": -2.1, "longitude": 104.8, "brightness": 330, "acq_date": "2026-10-12", "acq_time": 300, "satellite": "Terra", "confidence": 92, "frp": 80, "sensor": "MODIS", "source": "MODIS_NRT", "source_file": "MODIS_NRT"},
@@ -23,6 +28,26 @@ def test_live_frames_run_python_pipeline():
     assert result["meta"]["processing"]["areasAnalyzed"] == 1
     assert result["meta"]["processing"]["matchedDetections"] == 2
 
+    # Both markers are the MATCHED pair, and each points back at its partner's
+    # detection id (traceability added alongside the harmonized-events fix).
+    markers_by_sensor = {marker["sensor"]: marker for marker in result["markers"]}
+    assert markers_by_sensor["MODIS"]["matchStatus"] == "MATCHED"
+    assert markers_by_sensor["VIIRS"]["matchStatus"] == "MATCHED"
+    assert markers_by_sensor["MODIS"]["matchedDetectionId"] is not None
+    assert markers_by_sensor["VIIRS"]["matchedDetectionId"] is not None
+
+    assert len(result["areas"]) == 1
+    area = result["areas"][0]
+    assert area["priorityRank"] == 1
+    assert 0 <= area["attentionScore"] <= 1
+    # This single-batch test has no historical SQLite store configured, so
+    # the baseline must honestly report the same-batch fallback mode.
+    assert area["baselineSource"] == "same-batch-fallback"
+    # Not valid yet (see summarize_areas docstring) — must not leak into the API.
+    assert "confidenceMean" not in area
+    assert "zScore" not in area
+    assert "anomaly" not in area
+
 
 def test_persistence_is_inclusive_and_never_above_one():
     areas = pd.DataFrame(
@@ -30,6 +55,53 @@ def test_persistence_is_inclusive_and_never_above_one():
     )
     result = temporal_features(areas)
     assert result.iloc[0].persistence == 1
+
+
+def test_unmatched_detection_has_no_matched_detection_id(monkeypatch, tmp_path):
+    # Regression test: when every detection is MODIS_ONLY/VIIRS_ONLY (no
+    # MATCHED pair at all), match_modis_viirs() never adds a
+    # "matched_detection_id" column, which previously crashed
+    # process_live_frames with a KeyError when building the marker lookup.
+    monkeypatch.setenv("FIRE_HISTORICAL_DB_PATH", str(tmp_path / "no_such_store.sqlite"))
+    frame = pd.DataFrame(
+        [
+            {"latitude": -2.1, "longitude": 104.8, "brightness": 330, "acq_date": "2026-10-12", "acq_time": 300, "satellite": "Terra", "confidence": 92, "frp": 80, "sensor": "MODIS", "source": "MODIS_NRT", "source_file": "MODIS_NRT"},
+        ]
+    )
+    summaries = [{"id": "MODIS_NRT", "sensor": "MODIS", "rawCount": 1, "highConfidenceCount": 1, "available": True}]
+
+    result = process_live_frames([frame], summaries)
+
+    assert len(result["markers"]) == 1
+    assert result["markers"][0]["matchStatus"] == "MODIS_ONLY"
+    assert result["markers"][0]["matchedDetectionId"] is None
+
+
+def test_historical_baseline_source_is_honestly_reported(monkeypatch, tmp_path):
+    db_path = tmp_path / "historical.sqlite"
+    connection = sqlite3.connect(db_path)
+    history = pd.DataFrame(
+        [
+            {"date": "2020-01-01", "area_id": "-2.25_104.75", "grid_lat": -2.25, "grid_lon": 104.75, "detections": 2, "modis_detections": 2, "viirs_detections": 0, "frp_sum": 50.0, "frp_max": 30.0, "source": "archive"},
+            {"date": "2020-01-02", "area_id": "-2.25_104.75", "grid_lat": -2.25, "grid_lon": 104.75, "detections": 1, "modis_detections": 1, "viirs_detections": 0, "frp_sum": 10.0, "frp_max": 10.0, "source": "archive"},
+        ]
+    )
+    history.to_sql("daily_area_activity", connection, index=False, if_exists="replace")
+    connection.close()
+    monkeypatch.setenv("FIRE_HISTORICAL_DB_PATH", str(db_path))
+
+    frame = pd.DataFrame(
+        [
+            {"latitude": -2.1, "longitude": 104.8, "brightness": 330, "acq_date": "2026-10-12", "acq_time": 300, "satellite": "Terra", "confidence": 92, "frp": 80, "sensor": "MODIS", "source": "MODIS_NRT", "source_file": "MODIS_NRT"},
+        ]
+    )
+    summaries = [{"id": "MODIS_NRT", "sensor": "MODIS", "rawCount": 1, "highConfidenceCount": 1, "available": True}]
+
+    result = process_live_frames([frame], summaries)
+
+    # -2.1/104.8 falls in grid cell -2.25_104.75, which the fixture store has
+    # history for -> baseline must come from that history, not same-batch.
+    assert result["areas"][0]["baselineSource"] == "historical"
 
 
 def test_empty_live_result_is_valid():

@@ -29,6 +29,30 @@ def harmonize(df):
     return out.reset_index(drop=True)
 
 
+def high_confidence_mask(frame, column="confidence"):
+    """High-confidence row mask, shared by the live request path and the
+    offline historical ingestion script so both apply the exact same filter.
+
+    Deliberately unchanged threshold: numeric confidence > 80, OR
+    categorical confidence == "h" (high). The audit behind this pipeline
+    found this filter is strict -- especially for VIIRS, where only ~3.4%
+    of rows are categorical "h" -- but the threshold itself is out of scope
+    here and must not be loosened or tightened without a separate review.
+    """
+    text = frame[column].astype(str).str.strip().str.lower()
+    number = pd.to_numeric(frame[column], errors="coerce")
+    return number.gt(80) | text.eq("h")
+
+
+def deduplicate_detections(df):
+    """Remove identical sensor observations repeated across source files."""
+    if df.empty:
+        return df.copy()
+    keys = ["sensor", "latitude", "longitude", "acq_datetime", "frp"]
+    available_keys = [key for key in keys if key in df.columns]
+    return df.drop_duplicates(subset=available_keys, keep="first").reset_index(drop=True)
+
+
 def add_quality_flags(df):
     out = df.copy()
     out["quality_ok"] = True

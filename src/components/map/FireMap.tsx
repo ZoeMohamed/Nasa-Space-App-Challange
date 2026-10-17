@@ -8,6 +8,9 @@ interface FireMapProps {
   center?: [number, number];
   zoom?: number;
   className?: string;
+  showSeverityLegend?: boolean;
+  /** Called with the full marker record when its map point is clicked — drives an external detail panel. */
+  onMarkerSelect?: (marker: HotspotMarker) => void;
 }
 
 const SEVERITY_COLOR: Record<string, string> = {
@@ -21,6 +24,8 @@ export default function FireMap({
   center = [-1.5, 108],
   zoom = 6,
   className = "h-[420px] w-full",
+  showSeverityLegend = true,
+  onMarkerSelect,
 }: FireMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
@@ -96,50 +101,24 @@ export default function FireMap({
         }).addTo(layer);
 
         const label = escapeHtml(marker.label);
-        const satellite = escapeHtml(marker.satellite ?? "Unknown");
-        const confidence = escapeHtml(marker.confidenceLabel ?? "High");
-        const source = escapeHtml(marker.source ?? marker.sensor ?? "NASA FIRMS");
-        const priority = escapeHtml(marker.priorityTier ?? "Unknown");
-        const matchStatus = escapeHtml((marker.matchStatus ?? "UNMATCHED").replaceAll("_", " "));
-        const observedAt = marker.acquiredAt
-          ? new Date(marker.acquiredAt).toLocaleString([], {
-              dateStyle: "medium",
-              timeStyle: "short",
-              timeZone: "UTC",
-            }) + " UTC"
-          : "Unknown";
 
-        point.bindPopup(
-          `<div style="font-family:Inter,sans-serif;width:240px">
-            <div style="border-bottom:1px solid #f3f4f6;padding:12px;display:flex;align-items:center;gap:6px">
-              <span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block"></span>
-              <strong style="font-size:12px;color:#111827">${label}</strong>
-            </div>
-            <div style="padding:12px;display:grid;grid-template-columns:1fr auto;gap:8px;font-size:11px">
-              <span style="color:#6b7280">Power</span><strong>${marker.frp.toFixed(1)} MW</strong>
-              <span style="color:#6b7280">Confidence</span><strong>${confidence}</strong>
-              <span style="color:#6b7280">Satellite</span><strong>${satellite}</strong>
-              <span style="color:#6b7280">Source</span><strong>${source}</strong>
-              <span style="color:#6b7280">Python priority</span><strong>${priority}${marker.priorityScore === undefined ? "" : ` (${marker.priorityScore.toFixed(2)})`}</strong>
-              <span style="color:#6b7280">Sensor match</span><strong>${matchStatus}</strong>
-              <span style="color:#6b7280">Observed</span><strong>${escapeHtml(observedAt)}</strong>
-              <span style="color:#6b7280">Coordinates</span><strong>${marker.lat.toFixed(4)}, ${marker.lng.toFixed(4)}</strong>
-            </div>
-          </div>`,
-          { maxWidth: 280, className: "firesight-popup" }
-        );
-
+        // Detailed attributes are surfaced in the page's own detail panel (see onMarkerSelect)
+        // rather than a Leaflet popup, so the hover tooltip here only needs the short label.
         point.bindTooltip(label, {
           direction: "top",
           className: "firesight-tooltip",
         });
+
+        if (onMarkerSelect) {
+          point.on("click", () => onMarkerSelect(marker));
+        }
       }
     });
 
     return () => {
       isMounted = false;
     };
-  }, [markers, ready]);
+  }, [markers, ready, onMarkerSelect]);
 
   return (
     <div className={`relative ${className}`}>
@@ -155,20 +134,22 @@ export default function FireMap({
         className="h-full w-full z-[100]"
       />
 
-      <div className="absolute bottom-4 left-4 z-[1000] bg-white border border-gray-200 p-3 rounded-lg shadow-md text-[11px] font-medium space-y-2 pointer-events-none">
-        <div className="font-bold text-gray-900 border-b border-gray-100 pb-1 mb-2">
-          Severity Legend
+      {showSeverityLegend && (
+        <div className="absolute bottom-4 left-4 z-[1000] bg-white border border-gray-200 p-3 rounded-lg shadow-md text-[11px] font-medium space-y-2 pointer-events-none">
+          <div className="font-bold text-gray-900 border-b border-gray-100 pb-1 mb-2">
+            Severity Legend
+          </div>
+          <div className="flex items-center gap-2 text-gray-700">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-600" /> High (&gt;70MW)
+          </div>
+          <div className="flex items-center gap-2 text-gray-700">
+            <span className="w-2.5 h-2.5 rounded-full bg-orange-400" /> Medium (25–70MW)
+          </div>
+          <div className="flex items-center gap-2 text-gray-700">
+            <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" /> Low (&lt;25MW)
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-gray-700">
-          <span className="w-2.5 h-2.5 rounded-full bg-red-600" /> High (&gt;70MW)
-        </div>
-        <div className="flex items-center gap-2 text-gray-700">
-          <span className="w-2.5 h-2.5 rounded-full bg-orange-400" /> Medium (25–70MW)
-        </div>
-        <div className="flex items-center gap-2 text-gray-700">
-          <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" /> Low (&lt;25MW)
-        </div>
-      </div>
+      )}
     </div>
   );
 }

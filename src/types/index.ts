@@ -42,6 +42,8 @@ export interface HotspotMarker {
   attentionScore?: number;
   priorityScore?: number;
   priorityTier?: "HIGH" | "MEDIUM" | "LOW";
+  /** Links this live marker to a historical archive detection row, when the pipeline matched one. */
+  matchedDetectionId?: number | null;
 }
 
 export interface HotspotSourceSummary {
@@ -53,8 +55,37 @@ export interface HotspotSourceSummary {
   error?: string;
 }
 
+/**
+ * Per-grid-cell (0.25°) summary from the Python pipeline's attention/priority
+ * scoring. Deliberately has no confidence/baseline/anomaly fields — those
+ * aren't valid yet (see python-service/fire_pipeline/live.py:summarize_areas).
+ */
+export interface AreaSummary {
+  areaId: string;
+  gridLat: number;
+  gridLon: number;
+  detections: number | null;
+  modisDetections: number | null;
+  viirsDetections: number | null;
+  activeDays: number | null;
+  consecutiveActiveDays: number | null;
+  firstDate: string;
+  lastDate: string;
+  peakDate: string;
+  frpSum: number | null;
+  frpMax: number | null;
+  frpMean: number | null;
+  growth: number | null;
+  attentionScore: number | null;
+  attentionCriteria: string;
+  priorityScore: number | null;
+  priorityRank: number | null;
+  priorityTier: "high" | "medium" | "low";
+}
+
 export interface HotspotApiResponse {
   markers: HotspotMarker[];
+  areas: AreaSummary[];
   meta: {
     provider: "NASA FIRMS";
     area: "Indonesia";
@@ -70,4 +101,37 @@ export interface HotspotApiResponse {
       steps: string[];
     };
   };
+}
+
+/**
+ * One calendar month's aggregate across the whole real NASA FIRMS archive store (not a single
+ * grid cell) — from the Python `/api/historical/calendar` endpoint, backed by a real multi-year
+ * ingest (2000-2026) of NASA FIRMS archive + NRT files. See src/app/api/historical/route.ts.
+ */
+export interface HistoricalMonth {
+  year: number;
+  month: number;
+  detections: number;
+  modisDetections: number;
+  viirsDetections: number;
+  frpSum: number;
+}
+
+/**
+ * Per-0.25°-grid-cell historical baseline: mean/std of monthly detection counts for that cell
+ * across however many months of the archive actually had data for it (`sampleMonths`).
+ * `monthlyStdDetections` is `null` when the cell only has a single sampled month (std of one
+ * value is undefined, not zero).
+ */
+export interface HistoricalCell {
+  gridLat: number;
+  gridLon: number;
+  monthlyMeanDetections: number;
+  monthlyStdDetections: number | null;
+  sampleMonths: number;
+}
+
+export interface HistoricalCalendarResponse {
+  months: HistoricalMonth[];
+  cells: HistoricalCell[];
 }

@@ -1,173 +1,552 @@
-import Link from "next/link";
-import WorkstationLayout from "@/components/layout/WorkstationLayout";
+"use client";
 
-export const metadata = {
-  title: "FIRESIGHT — Analytics",
+import { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import WorkstationLayout from "@/components/layout/WorkstationLayout";
+import Card from "@/components/ui/Card";
+import Badge from "@/components/ui/Badge";
+import StatTile from "@/components/ui/StatTile";
+import { getRegionOption, getRangeOption, isWithinBounds } from "@/lib/filters";
+import type { AreaSummary, HistoricalCalendarResponse, HotspotApiResponse } from "@/types";
+
+/**
+ * Figma source: file wasTTtlmYfsjK1ZkH1Kzim, node 169:7795 ("Desktop - 9"), the loose group of
+ * sections starting at node 169:11780 (sidebar instance + "Historical Burning Activity" header,
+ * 169:11800 "Section - 4 Metric Cards Grid", 169:11865 "Section - Monthly Comparison & Yearly
+ * Overview" / "Grafik Trend", 169:12022 "Activity Insights & Recommendations", 169:12044
+ * "Cluster Analysis & Deep Table Section" / "Identified Spatial Fire Clusters").
+ *
+ * This screen is deliberately NOT a 1:1 port of the Figma copy — the mock shows a multi-year
+ * monthly time series (Jan 2023 – Dec 2024, "Total Hotspots 2,482 ↓18%", "Aug–Sep" peak period,
+ * DBSCAN clustering at ε=1.2km, a "Land Cover Type" column, "ALGORITHM REFRESH RATE: 15 MIN")
+ * that this backend does not produce. `GET /api/hotspots` only returns a live NASA FIRMS snapshot
+ * (meta.windowHours === 24) plus `areas: AreaSummary[]`, a per-0.25°-grid-cell summary with no
+ * historical baseline (see src/types/index.ts and python-service/fire_pipeline/live.py). So:
+ *  - The 3 stat cards keep the Figma layout (icon + label + bold value + caption) via StatTile,
+ *    but are re-derived from real markers/areas counts instead of fabricated 2023–2024 numbers.
+ *  - "Grafik Trend" keeps its card shell/title but shows an honest empty state instead of drawn
+ *    bars — there is no monthly series to plot.
+ *  - "Identified Spatial Fire Clusters" maps 1:1 onto `areas`: detections → Hotspots,
+ *    frpMean/frpMax → Avg/Peak FRP, priorityTier → Risk Classification (only high/medium/low —
+ *    Figma's 4th "CRITICAL" tier does not exist in the data), modisDetections/viirsDetections →
+ *    a sensor coverage bar (NOT a confidence/agreement percentage), attentionCriteria shown
+ *    verbatim. There is no "Land Cover Type" column (no data source — omitted, not invented) and
+ *    no DBSCAN/ε=1.2km claim (the real backend groups by a simple 0.25° grid cell, see
+ *    python-service/fire_pipeline/features.py aggregate_grid(cell_size=0.25)).
+ */
+
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const MAX_CLUSTERS_SHOWN = 20;
+
+type ClusterFilter = "all" | "highFrp";
+
+const TIER_STYLE: Record<AreaSummary["priorityTier"], { label: string; tone: "high" | "medium" | "low"; dot: string }> = {
+  high: { label: "HIGH RISK", tone: "high", dot: "bg-[#f04438]" },
+  medium: { label: "MEDIUM", tone: "medium", dot: "bg-orange-500" },
+  low: { label: "LOW / WATCH", tone: "low", dot: "bg-gray-400" },
 };
 
-export default function AnalyticsPage() {
+async function requestHotspots(signal?: AbortSignal) {
+  const response = await fetch("/api/hotspots", { signal, cache: "no-store" });
+  const body = (await response.json()) as HotspotApiResponse & { error?: string };
+
+  if (!response.ok) {
+    throw new Error(body.error ?? "Unable to load NASA FIRMS data.");
+  }
+
+  return body;
+}
+
+function requestErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Unable to load NASA FIRMS data.";
+}
+
+async function requestHistorical(bounds: ReturnType<typeof getRegionOption>["bounds"], signal?: AbortSignal) {
+  const params = new URLSearchParams();
+  if (bounds) {
+    params.set("min_lat", String(bounds.minLat));
+    params.set("max_lat", String(bounds.maxLat));
+    params.set("min_lon", String(bounds.minLon));
+    params.set("max_lon", String(bounds.maxLon));
+  }
+  const query = params.toString();
+  const response = await fetch(`/api/historical${query ? `?${query}` : ""}`, { signal, cache: "no-store" });
+  const body = (await response.json()) as HistoricalCalendarResponse & { error?: string };
+  if (!response.ok) throw new Error(body.error ?? "Unable to load historical NASA FIRMS data.");
+  return { months: body.months ?? [], cells: body.cells ?? [] };
+}
+
+function SensorCoverageBar({ modis, viirs }: { modis: number; viirs: number }) {
+  const total = modis + viirs;
+  const modisPct = total > 0 ? Math.round((modis / total) * 100) : 0;
+
   return (
-    <WorkstationLayout activeTab="ANALYTICS">
-      <div className="flex-1 flex flex-col min-w-0 bg-[#FBFBFA] overflow-y-auto custom-scroll">
-        {/* Header Banner */}
-        <div className="p-4 md:p-6 pb-3 border-b border-[#BFC1B7] bg-surface-container-lowest shrink-0">
-          <div className="flex flex-col space-y-1">
-            <div className="flex items-center gap-2 font-mono text-[10px] text-on-surface-variant">
-              <span className="bg-surface-container px-1 rounded font-bold">MULTI-SENSOR ANALYTICS</span>
-              <span>•</span>
-              <span className="text-tertiary font-bold">CONFIDENCE: HIGH (KLHK VERIFIED)</span>
+    <div className="w-36">
+      <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden flex">
+        {total > 0 ? (
+          <>
+            <div className="h-full bg-blue-400" style={{ width: `${modisPct}%` }} />
+            <div className="h-full bg-amber-400" style={{ width: `${100 - modisPct}%` }} />
+          </>
+        ) : (
+          <div className="h-full w-full bg-gray-200" />
+        )}
+      </div>
+      <div className="text-[10px] text-gray-400 mt-1 font-medium">
+        MODIS {modis} &middot; VIIRS {viirs}
+      </div>
+    </div>
+  );
+}
+
+function ClusterRow({ area, rank }: { area: AreaSummary; rank: number }) {
+  const [expanded, setExpanded] = useState(false);
+  const tier = TIER_STYLE[area.priorityTier] ?? TIER_STYLE.low;
+  const modis = area.modisDetections ?? 0;
+  const viirs = area.viirsDetections ?? 0;
+
+  return (
+    <>
+      <tr className="border-b border-gray-100 last:border-0 align-top">
+        <td className="py-3 pr-3 w-[220px]">
+          <div className="flex items-start gap-2">
+            <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${tier.dot}`} />
+            <div>
+              <div className="font-bold text-gray-900 text-[11px]">
+                CL-{String(rank).padStart(2, "0")} &middot; Grid {area.gridLat.toFixed(2)}, {area.gridLon.toFixed(2)}
+              </div>
+              <div className="text-gray-400 text-[11px] mt-0.5">{area.areaId}</div>
             </div>
-            <h1 className="text-2xl font-bold text-on-surface tracking-tight">
-              ANALYTICS / FIRE ACTIVITY INTELLIGENCE
-            </h1>
-            <p className="text-xs text-on-surface-variant max-w-3xl">
-              Harmonized spatial-temporal trends, sensor observation variance, and ML anomaly detection across Sumatra &amp; Kalimantan.
+          </div>
+        </td>
+        <td className="py-3 pr-3 whitespace-nowrap">
+          <span className="text-lg font-bold text-gray-900">{area.detections ?? "—"}</span>
+          <span className="text-[10px] text-gray-400 ml-1">pts</span>
+        </td>
+        <td className="py-3 pr-3 whitespace-nowrap">
+          <div className="text-[12px] font-bold text-gray-900">
+            {area.frpMean !== null ? `${area.frpMean.toFixed(1)} MW` : "—"}
+            <span className="text-gray-400 font-normal"> / {area.frpMax !== null ? `${area.frpMax.toFixed(1)} MW` : "—"}</span>
+          </div>
+        </td>
+        <td className="py-3 pr-3">
+          <Badge tone={tier.tone}>{tier.label}</Badge>
+        </td>
+        <td className="py-3 pr-3">
+          <SensorCoverageBar modis={modis} viirs={viirs} />
+        </td>
+        <td className="py-3 pl-3 text-right">
+          <div className="flex items-center justify-end gap-1.5">
+            <Link
+              href="/map"
+              className="px-2.5 py-1 rounded-md bg-gray-900 text-white text-[10px] font-semibold hover:bg-gray-700 whitespace-nowrap"
+            >
+              Peta
+            </Link>
+            <button
+              type="button"
+              onClick={() => setExpanded((value) => !value)}
+              className="px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-semibold hover:bg-emerald-100 whitespace-nowrap"
+            >
+              {expanded ? "Tutup" : "Detail"}
+            </button>
+          </div>
+        </td>
+      </tr>
+      {expanded && (
+        <tr className="bg-gray-50/70 border-b border-gray-100">
+          <td colSpan={6} className="px-3 py-3">
+            <dl className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[11px]">
+              <div className="col-span-2 md:col-span-4">
+                <dt className="text-gray-400">Kriteria prioritas</dt>
+                <dd className="font-medium text-gray-800 font-mono mt-0.5">{area.attentionCriteria}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-400">Deteksi pertama</dt>
+                <dd className="font-medium text-gray-800 mt-0.5">{area.firstDate}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-400">Deteksi puncak</dt>
+                <dd className="font-medium text-gray-800 mt-0.5">{area.peakDate}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-400">Deteksi terakhir</dt>
+                <dd className="font-medium text-gray-800 mt-0.5">{area.lastDate}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-400">Hari aktif berturut-turut</dt>
+                <dd className="font-medium text-gray-800 mt-0.5">{area.consecutiveActiveDays ?? "—"}</dd>
+              </div>
+            </dl>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function AnalyticsPageContent() {
+  const searchParams = useSearchParams();
+  const activeRegion = getRegionOption(searchParams.get("region"));
+  const activeRange = getRangeOption(searchParams.get("range"));
+
+  const [allMarkers, setAllMarkers] = useState<HotspotApiResponse["markers"]>([]);
+  const [allAreas, setAllAreas] = useState<AreaSummary[]>([]);
+  const [meta, setMeta] = useState<HotspotApiResponse["meta"] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [clusterFilter, setClusterFilter] = useState<ClusterFilter>("all");
+  const [historical, setHistorical] = useState<HistoricalCalendarResponse | null>(null);
+  const [historicalLoadedKey, setHistoricalLoadedKey] = useState<string | null>(null);
+  const [historicalErrorState, setHistoricalErrorState] = useState<{ key: string; message: string } | null>(null);
+
+  // Region filter — client-side bbox check against the already-fetched live markers/areas.
+  // Bounding boxes are approximate (see src/lib/filters.ts), "Seluruh Indonesia" is a no-op.
+  const markers = useMemo(
+    () => allMarkers.filter((marker) => isWithinBounds(marker.lat, marker.lng, activeRegion.bounds)),
+    [allMarkers, activeRegion]
+  );
+  const areas = useMemo(
+    () => allAreas.filter((area) => isWithinBounds(area.gridLat, area.gridLon, activeRegion.bounds)),
+    [allAreas, activeRegion]
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const load = () => {
+      requestHotspots(controller.signal)
+        .then((body) => {
+          setAllMarkers(body.markers);
+          setAllAreas(body.areas);
+          setMeta(body.meta);
+          setError(null);
+        })
+        .catch((requestError: unknown) => {
+          if (requestError instanceof DOMException && requestError.name === "AbortError") return;
+          setError(requestErrorMessage(requestError));
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setLoading(false);
+        });
+    };
+
+    load();
+    const interval = window.setInterval(load, REFRESH_INTERVAL_MS);
+
+    return () => {
+      controller.abort();
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const regionKey = activeRegion.bounds
+      ? `${activeRegion.bounds.minLat},${activeRegion.bounds.maxLat},${activeRegion.bounds.minLon},${activeRegion.bounds.maxLon}`
+      : "all";
+
+    requestHistorical(activeRegion.bounds, controller.signal)
+      .then((body) => {
+        setHistorical(body);
+        setHistoricalLoadedKey(regionKey);
+        setHistoricalErrorState(null);
+      })
+      .catch((requestError: unknown) => {
+        if (requestError instanceof DOMException && requestError.name === "AbortError") return;
+        setHistorical(null);
+        setHistoricalLoadedKey(regionKey);
+        setHistoricalErrorState({ key: regionKey, message: requestErrorMessage(requestError) });
+      });
+
+    return () => controller.abort();
+  }, [activeRegion.bounds]);
+
+  async function refresh() {
+    setLoading(true);
+    setError(null);
+    try {
+      const body = await requestHotspots();
+      setAllMarkers(body.markers);
+      setAllAreas(body.areas);
+      setMeta(body.meta);
+    } catch (requestError) {
+      setError(requestErrorMessage(requestError));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const sortedAreas = useMemo(
+    () => [...areas].sort((a, b) => (a.priorityRank ?? Number.MAX_SAFE_INTEGER) - (b.priorityRank ?? Number.MAX_SAFE_INTEGER)),
+    [areas],
+  );
+
+  const filteredAreas = useMemo(
+    () => (clusterFilter === "highFrp" ? sortedAreas.filter((area) => (area.frpMax ?? 0) > 50) : sortedAreas),
+    [sortedAreas, clusterFilter],
+  );
+
+  const shownAreas = filteredAreas.slice(0, MAX_CLUSTERS_SHOWN);
+  const topArea = sortedAreas[0] ?? null;
+  const highTierCount = areas.filter((area) => area.priorityTier === "high").length;
+  const avgPerGrid = areas.length > 0 ? markers.length / areas.length : null;
+  const sourcesAvailable = meta?.sources.filter((source) => source.available).length ?? 0;
+  const historicalKey = activeRegion.bounds
+    ? `${activeRegion.bounds.minLat},${activeRegion.bounds.maxLat},${activeRegion.bounds.minLon},${activeRegion.bounds.maxLon}`
+    : "all";
+  const historicalError = historicalErrorState?.key === historicalKey ? historicalErrorState.message : null;
+  const historicalLoading = historicalLoadedKey !== historicalKey && historicalError === null;
+  const historicalMonths = historical?.months ?? [];
+  const historicalHasData = historicalMonths.length > 0;
+  const historicalMax = historicalHasData ? Math.max(...historicalMonths.map((month) => month.detections), 1) : 1;
+
+  return (
+    <WorkstationLayout activeTab="Analytics">
+      <div className="max-w-[1400px] mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-sm text-gray-500 font-medium mb-1">
+              <span>Fire Activity Intelligence</span>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Analytics</h1>
+            <p className="text-sm text-gray-500 max-w-2xl">
+              Statistik dan klaster spasial dari snapshot NASA FIRMS 24 jam terakhir. Belum ada riwayat historis
+              multi-bulan/tahun, jadi tren bulanan di bawah ini sengaja ditampilkan kosong sampai data itu tersedia —
+              bukan dikosongkan karena kesalahan.
             </p>
           </div>
-          <div className="flex items-center gap-4 mt-3 pt-2 border-t border-[#F4F3ED] font-mono text-xs">
-            <span className="pb-1 border-b-2 border-secondary-container text-secondary-container font-bold">01 HISTORICAL (2026 NRT)</span>
-            <span className="text-outline cursor-pointer hover:text-on-surface">02 MODIS / VIIRS RATIO</span>
-            <span className="text-outline cursor-pointer hover:text-on-surface">03 ANOMALIES</span>
-          </div>
-        </div>
-
-        {/* Filter Strip */}
-        <div className="px-4 md:px-6 py-2 bg-surface-container-low border-b border-[#BFC1B7] flex flex-wrap items-center justify-between gap-2 text-xs font-mono shrink-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="bg-white border border-[#BFC1B7] px-2 py-0.5 rounded">YEAR: 2026</span>
-            <span className="bg-white border border-[#BFC1B7] px-2 py-0.5 rounded">REGION: SUMATRA &amp; KALIMANTAN</span>
-            <span className="bg-white border border-[#BFC1B7] px-2 py-0.5 rounded">RESOLUTION: 10-DAY COMPOSITE</span>
-          </div>
-          <button className="bg-white border border-[#BFC1B7] hover:bg-surface px-3 py-1 rounded font-semibold flex items-center gap-1 shadow-xs">
-            <span className="material-symbols-outlined text-xs">download</span>
-            <span>EXPORT CSV</span>
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            disabled={loading}
+            className="h-9 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium text-blue-600 shadow-sm hover:bg-gray-50 disabled:text-gray-400"
+          >
+            Refresh
           </button>
         </div>
 
-        {/* Grid Body */}
-        <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-          {/* Left Column */}
-          <div className="lg:col-span-8 space-y-4">
-            {/* Historical Chart */}
-            <div className="bg-white border border-[#BFC1B7] rounded p-4 shadow-sm space-y-3">
-              <div className="flex justify-between items-center border-b border-[#BFC1B7] pb-2 font-mono">
-                <span className="text-xs font-bold uppercase text-on-surface">HISTORICAL FIRE ACTIVITY OVER TIME (FRP MW)</span>
-                <div className="flex items-center gap-3 text-[10px]">
-                  <span className="text-[#2F80FA] font-bold">Harmonized</span>
-                  <span className="text-[#F0A000]">VIIRS 375m</span>
-                  <span className="text-[#65675E]">MODIS 1km</span>
-                </div>
-              </div>
-              <div className="relative w-full h-56">
-                <svg className="w-full h-full" viewBox="0 0 700 200">
-                  <line x1="0" y1="40" x2="700" y2="40" stroke="#f4f3ed"/>
-                  <line x1="0" y1="90" x2="700" y2="90" stroke="#f4f3ed"/>
-                  <line x1="0" y1="140" x2="700" y2="140" stroke="#f4f3ed"/>
-                  <rect x="450" y="0" width="220" height="170" fill="#F0A000" fillOpacity="0.06"/>
-                  <text x="460" y="20" fill="#825500" fontSize="9" fontFamily="JetBrains Mono" fontWeight="bold">PEAK PEAT FIRE SEASON</text>
-                  <path d="M 20 160 L 120 155 L 220 145 L 320 135 L 420 110 L 520 60 L 620 75" fill="none" stroke="#65675E" strokeDasharray="3 3" strokeWidth="1.5"/>
-                  <path d="M 20 150 L 120 145 L 220 130 L 320 115 L 420 80 L 520 30 L 620 50" fill="none" stroke="#F0A000" strokeDasharray="4 4" strokeWidth="2"/>
-                  <path d="M 20 155 L 120 148 L 220 135 L 320 122 L 420 90 L 520 40 L 620 60" fill="none" stroke="#2F80FA" strokeWidth="2.5"/>
-                  <circle cx="520" cy="40" r="5" fill="#2F80FA" stroke="#fff" strokeWidth="2"/>
-                </svg>
-              </div>
-              <div className="flex justify-between font-mono text-[10px] text-outline pt-1 border-t border-[#F4F3ED]">
-                <span>JAN</span><span>MAR</span><span>MAY</span><span>JUL</span>
-                <span className="text-[#2F80FA] font-bold">SEP (PEAK)</span><span>NOV</span>
-              </div>
-            </div>
+        {/* Info pills — now reflect the TopBar's region/range selection (?region=, ?range=) */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="h-8 px-3 inline-flex items-center bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 shadow-sm">
+            Window: {activeRange.label}
+          </span>
+          <span className="h-8 px-3 inline-flex items-center bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 shadow-sm">
+            Wilayah: {activeRegion.label}
+          </span>
+          <span className="h-8 px-3 inline-flex items-center bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 shadow-sm">
+            Sumber: NASA FIRMS (MODIS + VIIRS)
+          </span>
+        </div>
 
-            {/* Sub-deck */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-white border border-[#BFC1B7] rounded p-3 shadow-sm space-y-2">
-                <span className="text-xs font-bold uppercase text-on-surface block border-b border-[#BFC1B7] pb-1">TOP ACTIVE REGIONS (DAOPS RANK)</span>
-                <div className="divide-y divide-[#F4F3ED] text-xs font-mono">
-                  {[
-                    { rank: "01", name: "CENTRAL KALIMANTAN", count: "4,820", level: "CRITICAL", color: "#F54E00" },
-                    { rank: "02", name: "SOUTH SUMATRA", count: "3,140", level: "ELEVATED", color: "#F0A000" },
-                    { rank: "03", name: "RIAU", count: "2,290", level: "ELEVATED", color: "#F0A000" },
-                  ].map((r) => (
-                    <div key={r.rank} className="py-1.5 flex justify-between">
-                      <span>{r.rank} {r.name}</span>
-                      <span className="font-bold" style={{ color: r.color }}>{r.count} [{r.level}]</span>
+        {/* Status line */}
+        <div className="min-h-6 flex items-center gap-2 text-xs" aria-live="polite">
+          <span
+            className={`h-2 w-2 rounded-full ${error ? "bg-red-500" : loading ? "bg-amber-400 animate-pulse" : "bg-emerald-500"}`}
+          />
+          <span className={error ? "text-red-600" : "text-gray-500"}>
+            {error
+              ? error
+              : loading
+                ? "NASA live → Python processing…"
+                : meta
+                  ? `${meta.processing.areasAnalyzed.toLocaleString()} area dianalisis • ${sourcesAvailable}/4 feed NASA FIRMS aktif • diperbarui ${new Date(meta.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                  : ""}
+          </span>
+        </div>
+
+        {/* Stat cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <StatTile
+            icon="priority_high"
+            iconTone="red"
+            label="Area Prioritas Tertinggi"
+            value={topArea ? `${topArea.gridLat.toFixed(2)}, ${topArea.gridLon.toFixed(2)}` : "—"}
+            caption={
+              topArea
+                ? `${topArea.detections ?? 0} deteksi · ${TIER_STYLE[topArea.priorityTier].label}`
+                : "Belum ada area dengan deteksi"
+            }
+          />
+          <StatTile
+            icon="local_fire_department"
+            iconTone="amber"
+            label="Total Hotspot (24 Jam)"
+            value={markers.length.toLocaleString()}
+            caption={meta ? `${sourcesAvailable}/4 feed NASA FIRMS aktif` : "Memuat sumber data…"}
+          />
+          <StatTile
+            icon="grid_view"
+            iconTone="blue"
+            label="Rata-rata Deteksi / Grid Area"
+            value={avgPerGrid !== null ? avgPerGrid.toFixed(1) : "—"}
+            caption={`dari ${areas.length} grid 0.25° (~27km) terdeteksi`}
+          />
+        </div>
+
+        {/* Grafik Trend + Insight */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-stretch">
+          <Card className="p-6 flex flex-col gap-4 lg:col-span-3">
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-gray-900">Grafik Trend</h2>
+            </div>
+            <p className="text-xs text-gray-400 -mt-2">Total hotspot per bulan dari arsip NASA FIRMS untuk wilayah terpilih.</p>
+            {historicalLoading ? (
+              <div className="flex-1 min-h-[200px] rounded-lg border border-dashed border-gray-200 bg-gray-50 flex items-center justify-center text-sm text-gray-500">
+                Memuat data historis…
+              </div>
+            ) : historicalError ? (
+              <div className="flex-1 min-h-[200px] rounded-lg border border-dashed border-red-200 bg-red-50 flex items-center justify-center text-sm text-red-700 text-center px-6">
+                {historicalError}
+              </div>
+            ) : historicalHasData ? (
+              <div className="flex-1 min-h-[200px] rounded-lg border border-gray-200 bg-gray-50 px-4 py-4">
+                <div className="h-[170px] flex items-end gap-1.5">
+                  {historicalMonths.map((month) => (
+                    <div
+                      key={`${month.year}-${month.month}`}
+                      className="flex-1 h-full flex flex-col justify-end gap-1"
+                      title={`${month.year}-${String(month.month).padStart(2, "0")}: ${month.detections.toLocaleString()} deteksi`}
+                    >
+                      <div
+                        className="w-full rounded-t bg-emerald-400"
+                        style={{ height: `${Math.max((month.detections / historicalMax) * 100, 2)}%` }}
+                      />
+                      <span className="text-[9px] text-gray-400 text-center truncate">
+                        {String(month.year).slice(2)}-{String(month.month).padStart(2, "0")}
+                      </span>
                     </div>
                   ))}
                 </div>
+                <p className="mt-3 text-[11px] text-gray-500">
+                  {historicalMonths.length} bulan tersedia · filter wilayah: {activeRegion.label}
+                </p>
               </div>
+            ) : (
+              <div className="flex-1 min-h-[200px] rounded-lg border border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-2 text-center px-6 py-8">
+                <span className="material-symbols-outlined text-3xl text-gray-300">bar_chart</span>
+                <p className="text-sm font-semibold text-gray-500 max-w-xs">
+                  Belum ada data historis untuk wilayah ini.
+                </p>
+                <p className="text-xs text-gray-400 max-w-sm">
+                  Nilai kosong berarti database historis tidak memiliki baris yang cocok, bukan nol deteksi.
+                </p>
+              </div>
+            )}
+          </Card>
 
-              <div className="bg-white border border-[#BFC1B7] rounded p-3 shadow-sm space-y-2">
-                <span className="text-xs font-bold uppercase text-on-surface block border-b border-[#BFC1B7] pb-1">DEDUPLICATION EFFICIENCY</span>
-                <div className="grid grid-cols-3 gap-2 font-mono text-center">
-                  {[
-                    { label: "MODIS", value: "1,842", color: "#2F80FA" },
-                    { label: "VIIRS", value: "2,421", color: "#F0A000" },
-                    { label: "DEDUPED", value: "-73%", color: "#6AA84F" },
-                  ].map((d) => (
-                    <div key={d.label} className="p-1 bg-surface-container rounded">
-                      <div className="text-[9px] text-outline">{d.label}</div>
-                      <div className="text-sm font-bold" style={{ color: d.color }}>{d.value}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="text-[10px] text-outline font-mono text-center pt-1">
-                  Merged into 1,129 non-redundant episode clusters
-                </div>
-              </div>
+          <div className="lg:col-span-2 rounded-xl border border-emerald-200 bg-emerald-50/80 p-5 flex gap-3 shadow-sm">
+            <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-white text-lg">insights</span>
             </div>
-          </div>
-
-          {/* Right Column */}
-          <div className="lg:col-span-4 space-y-4">
-            {/* Pattern & Climate */}
-            <div className="bg-white border border-[#BFC1B7] rounded p-4 shadow-sm space-y-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-on-surface block border-b border-[#BFC1B7] pb-1">PATTERN &amp; CLIMATE SUMMARY</span>
-              <div className="space-y-2 font-mono text-xs">
-                <div>
-                  <div className="text-[10px] text-outline">PEAK WINDOW</div>
-                  <div className="font-bold text-on-surface">SEPTEMBER–OCTOBER</div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-outline">CURRENT TREND</div>
-                  <div className="font-bold text-tertiary flex items-center gap-1">
-                    <span>INCREASING</span>
-                    <span className="text-[10px] bg-tertiary/10 px-1 rounded">+12.4% vs 24h</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-outline">PEAT SOIL MOISTURE DEFICIT</div>
-                  <div className="font-bold text-on-surface">HIGH (ENSO-DRIVEN)</div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-outline">FIRE WEATHER INDEX</div>
-                  <div className="font-bold text-[#F54E00]">EXTREME (FWI &gt; 30)</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Model Anomalies */}
-            <div className="bg-white border border-[#BFC1B7] rounded p-4 shadow-sm space-y-3">
-              <div className="flex justify-between items-center border-b border-[#BFC1B7] pb-1 font-mono">
-                <span className="text-xs font-bold text-on-surface">MODEL ANOMALIES</span>
-                <span className="w-2 h-2 rounded-full bg-tertiary animate-pulse" />
-              </div>
-              <div className="p-2.5 bg-surface-container-low border border-[#F54E00] rounded space-y-1">
-                <div className="flex justify-between text-[10px] font-mono">
-                  <span className="bg-[#F54E00] text-white px-1 font-bold rounded">HIGH ANOMALY</span>
-                  <span className="text-outline">18m ago</span>
-                </div>
-                <div className="text-xs font-bold text-on-surface">CENTRAL KALIMANTAN (CAL-04)</div>
-                <p className="text-[11px] text-on-surface-variant">Sub-surface peat burn. Above diurnal cycle.</p>
-                <Link
-                  href="/activity/FA-001"
-                  className="text-xs font-bold text-secondary-container hover:underline block pt-1"
-                >
-                  INSPECT #FA-001 →
-                </Link>
-              </div>
+            <div className="flex-1 space-y-4 min-w-0">
+              <h2 className="text-base font-bold text-emerald-950">Insight Aktivitas &amp; Rekomendasi</h2>
+              <p className="text-xs text-emerald-900 leading-relaxed">
+                {loading
+                  ? "Memuat data NASA FIRMS…"
+                  : markers.length > 0
+                    ? `Dalam 24 jam terakhir, terdeteksi ${markers.length} hotspot tersebar di ${areas.length} grid area 0.25°. ${highTierCount} area berada pada klasifikasi risiko tinggi dan memerlukan perhatian segera.`
+                    : "Tidak ada hotspot terdeteksi pada window 24 jam terakhir."}
+              </p>
+              <ul className="space-y-3">
+                <li className="flex gap-3 items-start text-[13px] text-emerald-900">
+                  <span className="material-symbols-outlined text-emerald-600 text-base shrink-0">check_circle</span>
+                  <span>Prioritaskan verifikasi lapangan untuk area berklasifikasi risiko tinggi lebih dulu.</span>
+                </li>
+                <li className="flex gap-3 items-start text-[13px] text-emerald-900">
+                  <span className="material-symbols-outlined text-emerald-600 text-base shrink-0">verified</span>
+                  <span>Area dengan FRP puncak jauh di atas rata-ratanya berpotensi memerlukan pemantauan lebih intensif.</span>
+                </li>
+                <li className="flex gap-3 items-start text-[13px] text-emerald-900">
+                  <span className="material-symbols-outlined text-emerald-600 text-base shrink-0">arrow_forward</span>
+                  <span>Area yang hanya tercakup satu sensor (MODIS saja atau VIIRS saja) sebaiknya dikonfirmasi ulang sebelum tindak lanjut.</span>
+                </li>
+              </ul>
             </div>
           </div>
         </div>
+
+        {/* Identified Spatial Fire Clusters */}
+        <Card className="p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-gray-900">Identified Spatial Fire Clusters</h2>
+                <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
+                  {areas.length} AREA AKTIF
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1 max-w-xl">
+                Setiap baris mewakili satu sel grid 0.25° (~27km) dari agregasi python fire_pipeline, bukan hasil
+                klasterisasi spasial DBSCAN.
+              </p>
+            </div>
+            <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
+              <button
+                type="button"
+                onClick={() => setClusterFilter("all")}
+                className={`px-3 py-1 rounded-md text-[11px] font-bold transition-colors ${
+                  clusterFilter === "all" ? "bg-blue-50 text-gray-900 border border-blue-200" : "text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                Semua Area
+              </button>
+              <button
+                type="button"
+                onClick={() => setClusterFilter("highFrp")}
+                className={`px-3 py-1 rounded-md text-[11px] font-bold transition-colors ${
+                  clusterFilter === "highFrp" ? "bg-blue-50 text-gray-900 border border-blue-200" : "text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                FRP Puncak &gt; 50MW
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs min-w-[880px]">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200 text-left">
+                  <th className="py-3 pr-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase">Cluster ID &amp; Lokasi</th>
+                  <th className="py-3 pr-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase">Hotspots</th>
+                  <th className="py-3 pr-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase">Avg / Peak FRP</th>
+                  <th className="py-3 pr-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase">Risk Classification</th>
+                  <th className="py-3 pr-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase">Cakupan Sensor</th>
+                  <th className="py-3 pl-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shownAreas.map((area, index) => (
+                  <ClusterRow key={area.areaId} area={area} rank={index + 1} />
+                ))}
+                {!loading && !error && shownAreas.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-sm text-gray-500">
+                      Tidak ada area dengan deteksi pada filter ini.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex items-center justify-between pt-3 mt-2 border-t border-gray-100 text-[10px] text-gray-400 font-semibold">
+            <span>
+              MENAMPILKAN {shownAreas.length} DARI {filteredAreas.length} AREA AKTIF · REFRESH OTOMATIS SETIAP 5 MENIT
+            </span>
+          </div>
+        </Card>
       </div>
     </WorkstationLayout>
+  );
+}
+
+export default function AnalyticsPage() {
+  return (
+    <Suspense fallback={null}>
+      <AnalyticsPageContent />
+    </Suspense>
   );
 }

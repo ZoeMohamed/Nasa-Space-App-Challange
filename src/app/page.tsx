@@ -1,483 +1,446 @@
+"use client";
+
+import { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 import WorkstationLayout from "@/components/layout/WorkstationLayout";
+import Card from "@/components/ui/Card";
+import Badge from "@/components/ui/Badge";
+import StatTile from "@/components/ui/StatTile";
+import { getRegionOption, isDemoRange, isWithinBounds } from "@/lib/filters";
+import type { AreaSummary, HotspotApiResponse, HotspotMarker } from "@/types";
 
-export const metadata = {
-  title: "FireWatch — Overview",
-};
+/**
+ * Dashboard / Overview — rebuilt from Figma file wasTTtlmYfsjK1ZkH1Kzim, node 169:3496
+ * ("Desktop - 7"), specifically the flat sibling node group starting at 169:7480
+ * (Sidebar instance) through 169:7783 (Ground Patrol Dispatch Card), which is the
+ * shipped Dashboard content on that canvas (confirmed against the local screenshot
+ * "Desktop - 7.png" and the provenance notes already in globals.css referencing the
+ * same node IDs for the sidebar/top bar/card tokens).
+ *
+ * Two kinds of content from the Figma source were deliberately NOT ported verbatim:
+ *  - The "1. Time Series Chart" panel (node 169:7699) is a fabricated 7-day line chart
+ *    ("1 Sep – 7 Sep 2026"). The live pipeline only has a rolling 24h NRT window with no
+ *    stored history (see python-service/fire_pipeline/live.py), so this panel keeps the
+ *    Figma shell (title, sensor legend swatches) but shows an honest empty state instead
+ *    of inventing a trend line.
+ *  - The "Sensor Confidence Harmonization Summary Note" (node 169:7770, "Harmonisasi
+ *    Aktif") in Figma reads "...Keyakinan lapangan: 89,4%..." — an invented confidence
+ *    number with no backing computation. It is replaced with a sentence built from real
+ *    matchStatus counts on the current markers.
+ * The "Ground Patrol Dispatch Card" (node 169:7783, "Tanah Laut: Prioritas Verifikasi")
+ * is replaced with the actual #1 priorityRank area from the live /api/hotspots response.
+ */
 
-export default function OverviewPage() {
+const FireMap = dynamic(() => import("@/components/map/FireMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full flex items-center justify-center bg-gray-100">
+      <span className="font-medium text-sm text-gray-500 animate-pulse">
+        Loading map…
+      </span>
+    </div>
+  ),
+});
+
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+
+// Illustrative-only bar heights for the Time Series demo state (non-24h ranges). A real
+// implementation would source this from the NASA FIRMS Archive Download API (historical,
+// not NRT) — not built here. Not derived from any real detection counts.
+const DEMO_TREND_BARS = [38, 52, 44, 61, 70, 58, 66, 74, 60, 48, 55, 69, 72, 64];
+
+async function requestHotspots(signal?: AbortSignal) {
+  const response = await fetch("/api/hotspots", { signal, cache: "no-store" });
+  const body = (await response.json()) as HotspotApiResponse & { error?: string };
+
+  if (!response.ok) {
+    throw new Error(body.error ?? "Unable to load NASA FIRMS data.");
+  }
+
+  return body;
+}
+
+function requestErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Unable to load NASA FIRMS data.";
+}
+
+function countByMatchStatus(markers: HotspotMarker[]) {
+  const counts = { MATCHED: 0, MODIS_ONLY: 0, VIIRS_ONLY: 0, UNMATCHED: 0 };
+  for (const marker of markers) {
+    const key = marker.matchStatus ?? "UNMATCHED";
+    if (key in counts) counts[key as keyof typeof counts] += 1;
+  }
+  return counts;
+}
+
+function countBySeverity(markers: HotspotMarker[]) {
+  const counts = { HIGH: 0, MEDIUM: 0, LOW: 0 };
+  for (const marker of markers) {
+    counts[marker.severity] += 1;
+  }
+  return counts;
+}
+
+function DashboardPageContent() {
+  const searchParams = useSearchParams();
+  const activeRegion = getRegionOption(searchParams.get("region"));
+  const demoRange = isDemoRange(searchParams.get("range"));
+
+  const [allMarkers, setAllMarkers] = useState<HotspotMarker[]>([]);
+  const [allAreas, setAllAreas] = useState<AreaSummary[]>([]);
+  const [meta, setMeta] = useState<HotspotApiResponse["meta"] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Region filter — client-side bbox check against the already-fetched live markers/areas.
+  // Bounding boxes are approximate (see src/lib/filters.ts), "Seluruh Indonesia" is a no-op.
+  const markers = useMemo(
+    () => allMarkers.filter((marker) => isWithinBounds(marker.lat, marker.lng, activeRegion.bounds)),
+    [allMarkers, activeRegion]
+  );
+  const areas = useMemo(
+    () => allAreas.filter((area) => isWithinBounds(area.gridLat, area.gridLon, activeRegion.bounds)),
+    [allAreas, activeRegion]
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const load = () => {
+      requestHotspots(controller.signal)
+        .then((body) => {
+          setAllMarkers(body.markers);
+          setAllAreas(body.areas);
+          setMeta(body.meta);
+          setError(null);
+        })
+        .catch((requestError: unknown) => {
+          if (requestError instanceof DOMException && requestError.name === "AbortError") return;
+          setError(requestErrorMessage(requestError));
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setLoading(false);
+        });
+    };
+
+    load();
+    const interval = window.setInterval(load, REFRESH_INTERVAL_MS);
+
+    return () => {
+      controller.abort();
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  async function refreshHotspots() {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const body = await requestHotspots();
+      setAllMarkers(body.markers);
+      setAllAreas(body.areas);
+      setMeta(body.meta);
+    } catch (requestError) {
+      setError(requestErrorMessage(requestError));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const matchCounts = useMemo(() => countByMatchStatus(markers), [markers]);
+  const severityCounts = useMemo(() => countBySeverity(markers), [markers]);
+  const highPriorityAreaCount = useMemo(
+    () => areas.filter((area) => area.priorityTier === "high").length,
+    [areas]
+  );
+  const topArea = useMemo(() => {
+    const ranked = areas.filter((area) => area.priorityRank !== null);
+    if (ranked.length === 0) return null;
+    return ranked.reduce((best, area) =>
+      (area.priorityRank ?? Infinity) < (best.priorityRank ?? Infinity) ? area : best
+    );
+  }, [areas]);
+
+  const harmonizationSentence = useMemo(() => {
+    const total = markers.length;
+    if (total === 0) return null;
+    const { MATCHED, MODIS_ONLY, VIIRS_ONLY, UNMATCHED } = matchCounts;
+    return `Dari ${total.toLocaleString()} deteksi pada jendela 24 jam terakhir, ${MATCHED.toLocaleString()} cocok di dua sensor (MODIS + VIIRS), ${MODIS_ONLY.toLocaleString()} hanya terdeteksi MODIS, ${VIIRS_ONLY.toLocaleString()} hanya terdeteksi VIIRS, dan ${UNMATCHED.toLocaleString()} belum tertandai. Harmonisasi mengurangi penghitungan ganda, bukan mengonfirmasi kejadian kebakaran.`;
+  }, [markers, matchCounts]);
+
   return (
-    <WorkstationLayout activeTab="Overview">
+    <WorkstationLayout activeTab="Dashboard">
       <div className="max-w-[1400px] mx-auto space-y-6">
-        
+
+        {/* Field verification notice — consistent wording with src/app/priority-areas/page.tsx */}
+        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-900">
+          <span className="material-symbols-outlined text-amber-600 text-base shrink-0">info</span>
+          <p>
+            Deteksi satelit adalah indikasi, bukan konfirmasi kebakaran. Perlu verifikasi lapangan sebelum tindak lanjut.
+          </p>
+        </div>
+
         {/* Page Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div>
-            <div className="flex items-center gap-2 text-sm text-gray-500 font-medium mb-1">
-              <span>Good morning, Magnala Adi</span>
-              <span role="img" aria-label="wave">👋</span>
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Monitor. Understand. Take Action.
-            </h1>
-            <p className="text-sm text-gray-500 max-w-2xl">
-              Explore burning activity, sensor data, and historical patterns to identify areas that need closer attention.
+            <h1 className="text-3xl font-bold text-[var(--color-text-main)] mb-2">Dashboard</h1>
+            <p className="text-sm text-[var(--color-text-muted)] max-w-2xl">
+              Pantau aktivitas kebakaran terkini, data sensor yang diharmonisasi, dan area yang memerlukan perhatian lebih lanjut.
             </p>
           </div>
-          
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors">
-              <span className="material-symbols-outlined text-[18px] text-gray-400">calendar_today</span>
-              Jan 1, 2023 - Dec 31, 2024
-            </button>
-            <button className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors">
-              Last 2 years
-              <span className="material-symbols-outlined text-[18px] text-gray-400">expand_more</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => void refreshHotspots()}
+            disabled={loading}
+            className="h-9 px-4 bg-white border border-[var(--color-border)] rounded-lg text-sm font-medium text-blue-600 shadow-sm hover:bg-gray-50 disabled:text-gray-400 shrink-0"
+          >
+            Refresh
+          </button>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
-            <div className="flex items-start gap-3 mb-2">
-              <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-[#f04438] shrink-0">
-                <span className="material-symbols-outlined text-lg">local_fire_department</span>
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-gray-500 mb-1">Total Hotspots</div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold text-gray-900">2,482</span>
-                  <span className="text-xs font-semibold text-green-600 flex items-center">
-                    <span className="material-symbols-outlined text-[14px]">arrow_downward</span>
-                    18%
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="text-[11px] text-gray-400 mt-2">vs. previous 2 years</div>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
-            <div className="flex items-start gap-3 mb-2">
-              <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-                <span className="material-symbols-outlined text-lg">location_on</span>
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-gray-500 mb-1">Areas Affected</div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold text-gray-900">124</span>
-                  <span className="text-xs font-semibold text-green-600 flex items-center">
-                    <span className="material-symbols-outlined text-[14px]">arrow_downward</span>
-                    12%
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="text-[11px] text-gray-400 mt-2">vs. previous 2 years</div>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
-            <div className="flex items-start gap-3 mb-2">
-              <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
-                <span className="material-symbols-outlined text-lg">calendar_month</span>
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-gray-500 mb-1">Peak Period</div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xl font-bold text-gray-900">Aug - Sep</span>
-                </div>
-              </div>
-            </div>
-            <div className="text-[11px] text-gray-400 mt-2">Highest activity in 2 years</div>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
-            <div className="flex items-start gap-3 mb-2">
-              <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-[#f04438] shrink-0">
-                <span className="material-symbols-outlined text-lg">warning</span>
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-gray-500 mb-1">Priority Areas</div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold text-gray-900">8</span>
-                </div>
-              </div>
-            </div>
-            <div className="text-[11px] text-gray-400 mt-2">Require closer monitoring</div>
-          </div>
+        <div className="min-h-6 flex items-center gap-2 text-xs" aria-live="polite">
+          <span
+            className={`h-2 w-2 rounded-full ${error ? "bg-red-500" : loading ? "bg-amber-400 animate-pulse" : "bg-emerald-500"}`}
+          />
+          <span className={error ? "text-red-600" : "text-[var(--color-text-muted)]"}>
+            {error
+              ? error
+              : loading
+                ? "NASA live → Python processing…"
+                : meta
+                  ? `Wilayah: ${meta.area} • Jendela: ${meta.windowHours} jam terakhir • Diperbarui ${new Date(meta.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                  : ""}
+          </span>
+          {!loading && !error && meta && (
+            <span className={meta.degraded ? "text-amber-600" : "text-gray-400"}>
+              • {meta.sources.filter((source) => source.available).length}/{meta.sources.length} NASA FIRMS feeds live
+            </span>
+          )}
         </div>
 
-        {/* Map & Activity Status */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Map */}
-          <div className="lg:col-span-8 bg-white border border-gray-200 rounded-xl shadow-sm p-4 flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-bold text-gray-900">Fire Hotspot Map</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Active fire hotspots across the selected area.</p>
-              </div>
-              <div className="flex items-center gap-3 text-xs font-medium text-gray-600">
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-600" /> High</span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-orange-400" /> Medium</span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-yellow-400" /> Low</span>
-              </div>
-            </div>
-            {/* Map Placeholder */}
-            <div className="flex-1 bg-[#a3c9e9] rounded-lg min-h-[360px] relative overflow-hidden">
-              <img 
-                src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/export?bbox=95,-6,120,6&bboxSR=4326&layers=&size=900,380&imageSR=&format=jpg&transparent=false&dpi=96&f=image" 
-                className="w-full h-full object-cover opacity-90"
-                alt="Map View"
-              />
-              
-              {/* Fake Map UI / Tooltip */}
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-                <div className="bg-white rounded-lg shadow-xl p-3 w-64 mb-2 z-10">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-sm text-gray-900">Kalimantan Tengah</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 mb-3">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-                    <span className="text-[10px] font-semibold text-gray-600">High activity</span>
-                  </div>
-                  <div className="space-y-1 mb-3">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="text-gray-500">Lat / Long</span>
-                      <span className="text-gray-900 font-medium">-2.1, 113.9</span>
-                    </div>
-                    <div className="flex justify-between text-[11px]">
-                      <span className="text-gray-500">Last detected</span>
-                      <span className="text-gray-900 font-medium">Aug 14, 2024 · 14:32</span>
-                    </div>
-                  </div>
-                  <button className="text-blue-600 text-xs font-semibold flex items-center gap-1 hover:underline">
-                    View details <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                  </button>
-                </div>
-                <div className="relative flex items-center justify-center">
-                  <div className="w-10 h-10 rounded-full bg-red-500/20 absolute animate-ping" />
-                  <div className="w-4 h-4 rounded-full bg-red-600 border-2 border-white shadow-sm z-10" />
-                </div>
-              </div>
-              
-              {/* Map Controls */}
-              <div className="absolute top-4 left-4 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-                <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-50 border-b border-gray-200">
-                  <span className="material-symbols-outlined text-sm">add</span>
-                </button>
-                <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-50 border-b border-gray-200">
-                  <span className="material-symbols-outlined text-sm">remove</span>
-                </button>
-                <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-50">
-                  <span className="material-symbols-outlined text-sm">my_location</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Fire Activity Status */}
-          <div className="lg:col-span-4 bg-white border border-gray-200 rounded-xl shadow-sm p-5 flex flex-col">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                <span className="material-symbols-outlined text-gray-400">local_fire_department</span>
-                Fire Activity Status
-              </h3>
-              <span className="px-2 py-0.5 bg-red-50 text-[#f04438] text-[10px] font-bold rounded flex items-center gap-1 border border-red-100">
-                <span className="material-symbols-outlined text-[12px]">target</span>
-                Critical
-              </span>
-            </div>
-
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-16 h-16 rounded-full border-[6px] border-red-100 flex items-center justify-center relative">
-                <div className="absolute inset-0 border-[6px] border-red-500 rounded-full border-r-transparent border-b-transparent transform rotate-45" />
-                <span className="material-symbols-outlined text-2xl text-[#f04438]">local_fire_department</span>
-              </div>
-              <p className="text-sm font-medium text-gray-900 flex-1 leading-snug">
-                Activity is higher than the historical pattern for this area.
+        {/* Map panel */}
+        <Card className="overflow-hidden">
+          <div className="flex items-center justify-between p-4 pb-0">
+            <div>
+              <h3 className="font-bold text-[var(--color-text-main)]">Peta Deteksi</h3>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Titik panas langsung dari NASA FIRMS, diproses oleh Python fire pipeline.
               </p>
             </div>
-
-            <div className="space-y-4 mb-6">
-              <div className="flex justify-between items-center text-sm">
-                <span className="flex items-center gap-2 text-gray-600">
-                  <span className="w-2 h-2 rounded-full bg-red-500" />
-                  Current Activity
-                </span>
-                <span className="font-semibold text-gray-900">High</span>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="flex items-center gap-2 text-gray-600">
-                  <span className="w-2 h-2 rounded-full bg-orange-400" />
-                  Historical Pattern
-                </span>
-                <span className="font-semibold text-gray-900">High</span>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="flex items-center gap-2 text-gray-600">
-                  <span className="w-2 h-2 rounded-full bg-yellow-400" />
-                  Trend (vs. last 2 weeks)
-                </span>
-                <span className="font-semibold text-[#f04438] flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[14px]">arrow_upward</span>
-                  Increasing
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-auto bg-red-50 rounded-lg p-4 border border-red-100">
-              <div className="flex items-start gap-2">
-                <span className="material-symbols-outlined text-[#f04438] text-lg shrink-0 mt-0.5">warning</span>
-                <div>
-                  <h4 className="text-xs font-semibold text-[#f04438] mb-1">Recommended Action</h4>
-                  <p className="text-xs text-red-900/80 leading-relaxed">
-                    Focus monitoring on high-priority areas, especially in Kalimantan Tengah and surrounding regions.
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
-        </div>
+          <div className="relative h-[420px] m-4 rounded-lg overflow-hidden border border-[var(--color-border)]">
+            <FireMap markers={markers} center={[-2.2, 118]} zoom={5} className="h-full w-full" />
 
-        {/* Third Row: Sensor, Calendar, Priority */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          
-          {/* Sensor Data */}
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-gray-400">sensors</span>
-                  Sensor Data
-                </h3>
-                <p className="text-[11px] text-gray-500 mt-0.5">Latest readings from nearby sensors.</p>
+            {/* Detection legend — real matchStatus counts, mirrors Figma's floating
+                "Bottom-Right Floating Quick Legend" (node 169:7619) panel layout */}
+            <div className="absolute top-3 right-3 z-[1000] w-64 bg-white border border-[var(--color-border)] rounded-lg shadow-lg p-4 text-xs">
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-bold text-[var(--color-text-main)] tracking-wide text-[11px]">
+                  DETECTION LEGEND
+                </span>
+                <Badge tone="neutral">EPSG:4326</Badge>
               </div>
-              <button className="text-blue-600 text-xs font-semibold hover:underline flex items-center">
-                View all <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-medium mb-2">
-                  <span className="material-symbols-outlined text-sm text-blue-500">device_thermostat</span>
-                  Temperature
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[var(--color-text-muted)]">Harmonized (MODIS + VIIRS)</span>
+                  <span className="font-semibold text-[var(--color-text-main)]">{matchCounts.MATCHED}</span>
                 </div>
-                <div className="text-xl font-bold text-gray-900 mb-1">34.2 <span className="text-sm font-medium text-gray-500">°C</span></div>
-                <div className="text-[10px] font-semibold text-red-600 flex items-center">
-                  <span className="material-symbols-outlined text-[12px]">arrow_upward</span> 2.1°C
+                <div className="flex items-center justify-between">
+                  <span className="text-[var(--color-text-muted)]">MODIS only</span>
+                  <span className="font-semibold text-[var(--color-text-main)]">{matchCounts.MODIS_ONLY}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[var(--color-text-muted)]">VIIRS only</span>
+                  <span className="font-semibold text-[var(--color-text-main)]">{matchCounts.VIIRS_ONLY}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[var(--color-text-muted)]">Unmatched telemetry</span>
+                  <span className="font-semibold text-[var(--color-text-main)]">{matchCounts.UNMATCHED}</span>
                 </div>
               </div>
-              
-              <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-medium mb-2">
-                  <span className="material-symbols-outlined text-sm text-blue-500">water_drop</span>
-                  Humidity
-                </div>
-                <div className="text-xl font-bold text-gray-900 mb-1">62<span className="text-sm font-medium text-gray-500">%</span></div>
-                <div className="text-[10px] font-semibold text-green-600 flex items-center">
-                  <span className="material-symbols-outlined text-[12px]">arrow_downward</span> 8%
-                </div>
-              </div>
-              
-              <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-medium mb-2">
-                  <span className="material-symbols-outlined text-sm text-blue-500">air</span>
-                  Wind Speed
-                </div>
-                <div className="text-xl font-bold text-gray-900 mb-1">3.6 <span className="text-sm font-medium text-gray-500">m/s</span></div>
-                <div className="text-[10px] font-semibold text-red-600 flex items-center">
-                  <span className="material-symbols-outlined text-[12px]">arrow_upward</span> 0.8 m/s
-                </div>
-              </div>
-              
-              <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                <div className="flex items-center gap-1.5 text-gray-500 text-xs font-medium mb-2">
-                  <span className="material-symbols-outlined text-sm text-green-500">eco</span>
-                  Air Quality (PM2.5)
-                </div>
-                <div className="text-xl font-bold text-gray-900 mb-1">42 <span className="text-sm font-medium text-gray-500">μg/m³</span></div>
-                <div className="text-[10px] font-semibold text-green-600 flex items-center">
-                  <span className="material-symbols-outlined text-[12px]">arrow_downward</span> 12%
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Burning Activity Calendar */}
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
-            <div className="mb-4">
-              <h3 className="font-bold text-gray-900">Burning Activity Calendar</h3>
-              <p className="text-[11px] text-gray-500 mt-0.5">Historical pattern of fire activity in this area.</p>
-            </div>
-            
-            <div className="mb-4">
-              <div className="flex text-[10px] text-gray-400 font-medium mb-1 ml-8 space-x-3">
-                <span className="w-4">Jan</span><span className="w-4">Feb</span><span className="w-4">Mar</span>
-                <span className="w-4">Apr</span><span className="w-4">May</span><span className="w-4">Jun</span>
-                <span className="w-4">Jul</span><span className="w-4">Aug</span><span className="w-4">Sep</span>
-                <span className="w-4">Oct</span><span className="w-4">Nov</span><span className="w-4">Dec</span>
-              </div>
-              
-              {/* 2023 */}
-              <div className="flex items-center mb-2">
-                <span className="text-[10px] text-gray-500 w-8 font-medium">2023</span>
-                <div className="flex gap-1 flex-1 ml-1">
-                  {/* Fake heatmap blocks */}
-                  <div className="flex-1 h-5 bg-gray-100 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-gray-100 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-yellow-100 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-yellow-100 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-orange-200 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-gray-100 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-gray-100 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-red-500 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-red-500 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-orange-300 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-gray-100 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-gray-100 rounded-sm"></div>
-                </div>
-              </div>
-              
-              {/* 2024 */}
-              <div className="flex items-center">
-                <span className="text-[10px] text-gray-500 w-8 font-medium">2024</span>
-                <div className="flex gap-1 flex-1 ml-1">
-                  <div className="flex-1 h-5 bg-gray-100 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-gray-100 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-gray-100 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-yellow-100 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-orange-300 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-orange-400 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-orange-200 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-red-600 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-red-500 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-orange-300 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-yellow-100 rounded-sm"></div>
-                  <div className="flex-1 h-5 bg-yellow-100 rounded-sm"></div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-4 text-[10px] font-medium text-gray-500 mb-6">
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-gray-100"></span> Low</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-orange-300"></span> Moderate</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-red-600"></span> High</span>
-            </div>
-
-            <div className="bg-red-50 rounded-lg p-3 border border-red-100">
-              <div className="flex items-start gap-2">
-                <span className="material-symbols-outlined text-[#f04438] text-sm shrink-0 mt-0.5">warning</span>
-                <div className="flex-1">
-                  <h4 className="text-[11px] font-bold text-gray-900">Critical period: August - September</h4>
-                  <p className="text-[11px] text-gray-600 mt-0.5 mb-1">
-                    Historically, this period has the highest frequency of fire activity in this area.
-                  </p>
-                  <div className="flex justify-end">
-                    <button className="text-blue-600 text-[11px] font-semibold flex items-center gap-0.5 hover:underline">
-                      View details <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Priority Areas List */}
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-900">Priority Areas</h3>
-              <button className="text-blue-600 text-xs font-semibold hover:underline flex items-center">
-                View all <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              {[
-                { id: 1, name: "Kalimantan Tengah", desc: "High current activity + historical pattern", status: "Critical", statusColor: "text-[#f04438] bg-red-50 border-red-100" },
-                { id: 2, name: "Riau", desc: "Increasing trend", status: "High", statusColor: "text-red-600 bg-red-50 border-red-100" },
-                { id: 3, name: "Jambi", desc: "Above historical average", status: "High", statusColor: "text-red-600 bg-red-50 border-red-100" },
-                { id: 4, name: "Sumatra Selatan", desc: "Recent hotspots detected", status: "Medium", statusColor: "text-orange-600 bg-orange-50 border-orange-100" },
-                { id: 5, name: "Kalimantan Barat", desc: "Historical pattern (Aug-Sep)", status: "Medium", statusColor: "text-orange-600 bg-orange-50 border-orange-100" },
-              ].map((item) => (
-                <div key={item.id} className="flex items-center justify-between">
-                  <div className="flex items-start gap-3">
-                    <span className="font-bold text-gray-900 w-3">{item.id}</span>
-                    <div>
-                      <div className="text-sm font-semibold text-gray-900">{item.name}</div>
-                      <div className="text-[11px] text-gray-500">{item.desc}</div>
-                    </div>
-                  </div>
-                  <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${item.statusColor}`}>
-                    {item.status}
+              <div className="h-px bg-[var(--color-border)] my-3" />
+              <div className="font-bold text-[11px] tracking-wide text-[var(--color-text-main)] mb-2">SEVERITY</div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-[var(--color-text-muted)]">
+                    <span className="w-2 h-2 rounded-full bg-red-600" /> High
                   </span>
+                  <span className="font-semibold text-[var(--color-text-main)]">{severityCounts.HIGH}</span>
                 </div>
-              ))}
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-[var(--color-text-muted)]">
+                    <span className="w-2 h-2 rounded-full bg-orange-400" /> Medium
+                  </span>
+                  <span className="font-semibold text-[var(--color-text-main)]">{severityCounts.MEDIUM}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-[var(--color-text-muted)]">
+                    <span className="w-2 h-2 rounded-full bg-yellow-400" /> Low
+                  </span>
+                  <span className="font-semibold text-[var(--color-text-main)]">{severityCounts.LOW}</span>
+                </div>
+              </div>
             </div>
           </div>
+        </Card>
 
-        </div>
-
-        {/* Historical Fire Insights */}
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="material-symbols-outlined text-blue-600 text-xl bg-blue-50 p-1.5 rounded-lg">analytics</span>
-            <div>
-              <h3 className="font-bold text-gray-900">Historical Fire Insights</h3>
-              <p className="text-xs text-gray-500">Key patterns and unusual conditions from historical data.</p>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
-            
-            <div className="flex gap-3 bg-gray-50 p-4 rounded-xl border border-gray-100">
-              <span className="material-symbols-outlined text-blue-600 shrink-0 mt-0.5">calendar_month</span>
-              <div>
-                <div className="text-xs font-semibold text-gray-500 mb-1">August - September</div>
-                <div className="text-sm font-bold text-gray-900 mb-1">Most active period</div>
-                <div className="text-xs text-gray-600 leading-relaxed">
-                  Fire activity is 2.4x higher than the annual average.
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-3 bg-gray-50 p-4 rounded-xl border border-gray-100">
-              <span className="material-symbols-outlined text-blue-600 shrink-0 mt-0.5">location_on</span>
-              <div>
-                <div className="text-xs font-semibold text-gray-500 mb-1">Kalimantan Tengah</div>
-                <div className="text-sm font-bold text-gray-900 mb-1">Highest frequency</div>
-                <div className="text-xs text-gray-600 leading-relaxed">
-                  Recorded 38% of total hotspots in the last 2 years.
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-3 bg-gray-50 p-4 rounded-xl border border-gray-100">
-              <span className="material-symbols-outlined text-blue-600 shrink-0 mt-0.5">trending_up</span>
-              <div>
-                <div className="text-xs font-semibold text-gray-500 mb-1">2023 vs 2024</div>
-                <div className="text-sm font-bold text-gray-900 mb-1">Increasing trend</div>
-                <div className="text-xs text-gray-600 leading-relaxed">
-                  Overall activity increased by 16% compared to the previous year.
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-3 bg-red-50 p-4 rounded-xl border border-red-100">
-              <span className="material-symbols-outlined text-[#f04438] shrink-0 mt-0.5">warning</span>
-              <div>
-                <div className="text-xs font-semibold text-red-600 mb-1">Unusual condition</div>
-                <div className="text-sm font-bold text-red-900 mb-1">High temperature + low humidity</div>
-                <div className="text-xs text-red-800/80 leading-relaxed">
-                  Detected in 3 areas in the last 7 days, which is higher than usual.
-                </div>
-              </div>
-            </div>
-
+        {/* Map Summary */}
+        <div>
+          <h2 className="text-xl font-bold text-[var(--color-text-main)] mb-4">Map Summary</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatTile
+              icon="local_fire_department"
+              iconTone="red"
+              label="Total Hotspots"
+              value={markers.length.toLocaleString()}
+              caption={`Jendela ${meta?.windowHours ?? 24} jam terakhir`}
+            />
+            <StatTile
+              icon="location_on"
+              iconTone="blue"
+              label="Areas Affected"
+              value={areas.length.toLocaleString()}
+              caption="Grid 0.25° dengan deteksi aktif"
+            />
+            <StatTile
+              icon="warning"
+              iconTone="amber"
+              label="High-Priority Areas"
+              value={highPriorityAreaCount.toLocaleString()}
+              caption="Menyarankan verifikasi lapangan segera"
+            />
+            <StatTile
+              icon="verified"
+              iconTone="green"
+              label="Sensor Harmonization"
+              value={`${matchCounts.MATCHED.toLocaleString()} / ${markers.length.toLocaleString()}`}
+              caption="Terverifikasi dua sensor (MODIS + VIIRS)"
+            />
           </div>
         </div>
-        
+
+        {/* Analytic Insights */}
+        <div>
+          <h2 className="text-xl font-bold text-[var(--color-text-main)] mb-4">Analytic Insights</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+            {/* Time Series — honest empty state when range=24h (the only live-backed range);
+                demo-labeled illustrative bars for any other range selection. A real implementation
+                of the non-24h ranges would source this from NASA FIRMS Archive Download API
+                (historical, not NRT) — not built here, see python-service/fire_pipeline/live.py. */}
+            <Card className="p-5 flex flex-col">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">show_chart</span>
+                  Time Series
+                  {demoRange && (
+                    <span className="text-[9px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 border border-amber-200 rounded px-1.5 py-0.5">
+                      Contoh data
+                    </span>
+                  )}
+                </h3>
+                <div className="flex items-center gap-3 text-[11px] font-medium text-[var(--color-text-muted)]">
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-emerald-600 inline-block" /> Harmonized</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-blue-500 inline-block" /> MODIS</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-0.5 bg-orange-500 inline-block" /> VIIRS</span>
+                </div>
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mb-4">
+                Tren deteksi harian terharmonisasi (MODIS + VIIRS)
+              </p>
+              {demoRange ? (
+                <div className="flex-1 min-h-[176px] flex flex-col gap-3 rounded-lg border border-dashed border-amber-200 bg-amber-50/50 p-4">
+                  <p className="text-xs text-amber-800">
+                    Rentang waktu ini memerlukan data historis — menampilkan contoh ilustratif, bukan data langsung.
+                  </p>
+                  <div className="flex-1 flex items-end gap-1.5 px-1">
+                    {DEMO_TREND_BARS.map((height, index) => (
+                      <div
+                        key={index}
+                        className="flex-1 rounded-t bg-emerald-300/70"
+                        style={{ height: `${height}%` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 min-h-[176px] flex items-center justify-center rounded-lg border border-dashed border-[var(--color-border)] bg-gray-50 p-6 text-center">
+                  <p className="text-xs text-[var(--color-text-muted)] max-w-xs">
+                    Grafik tren memerlukan data historis multi-hari yang belum tersedia. Pipeline saat ini hanya menyediakan jendela NRT 24 jam terakhir, tanpa penyimpanan riwayat.
+                  </p>
+                </div>
+              )}
+            </Card>
+
+            {/* Harmonisasi Aktif — replaces Figma's fabricated "Keyakinan lapangan: 89,4%" copy
+                with a sentence computed from real matchStatus counts. */}
+            <Card className="p-5 bg-emerald-50/60 border-emerald-100 flex flex-col">
+              <div className="flex items-start gap-3">
+                <span className="material-symbols-outlined text-emerald-600 bg-white rounded-lg p-2 text-xl shrink-0">verified</span>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-bold text-[var(--color-text-main)]">Harmonisasi Aktif</h3>
+                  </div>
+                  <p className="text-xs leading-relaxed text-[var(--color-text-main)]/80">
+                    {harmonizationSentence ?? "Belum ada deteksi pada jendela saat ini untuk dihitung harmonisasinya."}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        {/* Priority area teaser — replaces Figma's fabricated "Tanah Laut: Prioritas
+            Verifikasi" example with the real #1 priorityRank area, or an honest empty state. */}
+        {topArea ? (
+          <Card className="p-5 bg-red-50 border-red-100">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <span className="material-symbols-outlined text-[#f04438] bg-white rounded-lg p-2 text-xl shrink-0">crisis_alert</span>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-bold text-[var(--color-text-main)]">
+                      Grid {topArea.gridLat.toFixed(2)}, {topArea.gridLon.toFixed(2)} — Prioritas Verifikasi
+                    </h3>
+                    <Badge tone="high">#{topArea.priorityRank}</Badge>
+                  </div>
+                  <p className="text-xs text-[var(--color-text-main)]/70">
+                    {topArea.consecutiveActiveDays !== null && topArea.consecutiveActiveDays > 0
+                      ? `${topArea.consecutiveActiveDays} hari berturut-turut aktif`
+                      : "Baru terdeteksi pada jendela ini"}
+                    {topArea.frpSum !== null ? ` • FRP ${topArea.frpSum.toFixed(1)} MW` : ""}
+                    {" — rekomendasi: prioritaskan verifikasi lapangan."}
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/priority-areas"
+                className="shrink-0 px-5 py-2 bg-[#f04438] text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-red-600 transition-colors"
+              >
+                Tinjau
+              </Link>
+            </div>
+          </Card>
+        ) : (
+          <Card className="p-5 text-center text-sm text-[var(--color-text-muted)]">
+            {loading
+              ? "Memuat area prioritas…"
+              : "Tidak ada area prioritas pada jendela ini — belum ada deteksi yang memenuhi kriteria penilaian, atau sumber data belum dikonfigurasi."}
+          </Card>
+        )}
+
       </div>
     </WorkstationLayout>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardPageContent />
+    </Suspense>
   );
 }

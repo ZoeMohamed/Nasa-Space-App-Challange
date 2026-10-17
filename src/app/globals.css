@@ -2,13 +2,41 @@
 
 @import "tailwindcss";
 
+/*
+ * AGNIBHUMI design tokens.
+ * Sourced from Figma file wasTTtlmYfsjK1ZkH1Kzim, node 169:3496 ("Desktop - 7" / Dashboard),
+ * via get_design_context on the real sidebar instance (node 169:7480) and top bar (node 169:7481),
+ * plus get_variable_defs on the same file for bound design-system variables.
+ *  - --color-primary / --color-sidebar: #032b20 is the literal `bg-[#032b20]` fill used by both
+ *    the sidebar component instance and the top bar container in the shipped Dashboard screen.
+ *  - --color-sidebar-foreground: #f1f5f9 is the literal `text-[#f1f5f9]` used for all sidebar nav text.
+ *  - --color-text-main: #0f172a and --color-text-muted: #64748b are the literal heading/label
+ *    colors used on the dashboard's stat cards (e.g. "Total Hotspots" card, node 169:7496).
+ *  - --color-border: #e2e8f0 is the literal card/pill border color used throughout the dashboard
+ *    (stat cards, search pill, filter dropdown pills).
+ *  - --color-bg-main: #ffffff — the sparse get_design_context response has no fill data for the
+ *    page canvas itself, so this was confirmed by sampling the reference screenshot
+ *    (Desktop - 7.png) at multiple empty content-area coordinates (all sampled #ffffff), which
+ *    matches every explicit `bg-white` card/pill fill returned by get_design_context. Content
+ *    cards and the page background are both plain white, distinguished only by border + shadow —
+ *    there is no separate "cream" page fill in this Figma file.
+ *  - --color-primary-light: #ecfdf5 is an approximation — it is NOT a literal token from
+ *    get_design_context or get_variable_defs. It was picked to match a light mint-green tint
+ *    (~#f0fdf7) sampled from a chart panel in the reference screenshot, rounded to the nearest
+ *    Tailwind stop (emerald-50) since no exact design-system variable exposed it.
+ * Severity colors (red/orange/amber/gray) are intentionally left as plain Tailwind utility
+ * classes at each call site (see Badge.tsx) rather than new tokens here, per the existing
+ * ad hoc pattern in src/app/priority-areas/page.tsx, which already matches the Figma screenshots.
+ */
 @theme inline {
-  --color-primary: #f04438;
-  --color-primary-light: #fef0ef;
-  --color-text-main: #101828;
-  --color-text-muted: #667085;
-  --color-bg-main: #f9fafb;
-  --color-border: #eaecf0;
+  --color-primary: #032b20;
+  --color-primary-light: #ecfdf5;
+  --color-sidebar: #032b20;
+  --color-sidebar-foreground: #f1f5f9;
+  --color-text-main: #0f172a;
+  --color-text-muted: #64748b;
+  --color-bg-main: #ffffff;
+  --color-border: #e2e8f0;
 
   --font-sans: "Inter", sans-serif;
 }

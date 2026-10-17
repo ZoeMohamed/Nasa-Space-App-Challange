@@ -14,7 +14,18 @@ def haversine_km(lat1, lon1, lat2, lon2):
 
 
 def match_modis_viirs(df, radius_km=10, time_minutes=60):
-    """Match one MODIS detection to at most one nearby VIIRS detection."""
+    """Match one MODIS detection to at most one nearby VIIRS detection.
+
+    This is a greedy, deterministic one-to-one matcher: MODIS detections are
+    sorted (by time, lat, lon, id) and matched in that fixed order to the
+    nearest unused VIIRS candidate within `radius_km` and `time_minutes`, so
+    the same input always produces the same output. It is NOT a globally
+    optimal assignment (e.g. not a min-cost bipartite matching) -- a
+    different, still-valid greedy visiting order could in principle pick a
+    different pairing for an ambiguous cluster of nearby detections. Treat
+    `match_status`/`matched_detection_id` as a reasonable, reproducible
+    heuristic pairing, not a guaranteed-optimal one.
+    """
     data = df.reset_index(drop=True).copy()
     data["detection_id"] = np.arange(len(data))
     order = ["acq_datetime", "latitude", "longitude", "detection_id"]
