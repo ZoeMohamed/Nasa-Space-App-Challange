@@ -121,6 +121,29 @@ def test_historical_baseline_source_is_honestly_reported(monkeypatch, tmp_path):
     assert result["areas"][0]["baselineSource"] == "historical"
 
 
+def test_historical_baseline_no_longer_computes_dead_zscore_fields():
+    # Regression: z_score/anomaly were removed from historical_baseline()'s
+    # output 2026-10-19 because nothing ever consumed them (confirmed by
+    # repo-wide grep before removal -- summarize_areas() in live.py only
+    # ever serialized baseline_source). This locks the removal in so the
+    # same dead, unvalidated-sparsity-prone columns aren't silently
+    # reintroduced without the minimum-sample gating they'd need.
+    from fire_pipeline.model import historical_baseline
+
+    areas = pd.DataFrame(
+        [{"grid_lat": -2.25, "grid_lon": 104.75, "frp_sum": 100.0}]
+    )
+    result = historical_baseline(areas, sqlite_path=None)
+
+    assert "z_score" not in result.columns
+    assert "anomaly" not in result.columns
+    # baseline_mean/baseline_std/baseline_source must still be present --
+    # baseline_source is tested/consumed (see the test above).
+    assert "baseline_mean" in result.columns
+    assert "baseline_std" in result.columns
+    assert "baseline_source" in result.columns
+
+
 def test_empty_live_result_is_valid():
     empty = pd.DataFrame(columns=["latitude", "longitude", "acq_date", "acq_time", "satellite", "confidence", "frp", "sensor", "source_file"])
     summaries = [{"id": "MODIS_NRT", "sensor": "MODIS", "rawCount": 0, "highConfidenceCount": 0, "available": True}]

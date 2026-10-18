@@ -40,16 +40,30 @@ def load_calendar_summary(sqlite_path, bounds=None):
           "cells": [
             {"gridLat": -2.0, "gridLon": 104.75,
              "monthlyMeanDetections": 12.3, "monthlyStdDetections": 4.5,
-             "sampleMonths": 48},
+             "sampleMonths": 48,
+             "dailyMeanDetections": 2.1, "dailyStdDetections": 1.8,
+             "sampleDays": 103},
             ...
           ]
         }
 
     `months` are totals across ALL grid cells for that calendar month
-    (for a calendar heatmap). `cells` are per-grid-cell monthly baseline
-    stats (mean/std of monthly detection counts, and how many distinct
-    months contributed) usable by the frontend to compare a live cell's
-    current activity against its own history.
+    (for a calendar heatmap). `cells` are per-grid-cell baseline stats, at
+    two granularities:
+    - monthly (mean/std of monthly detection SUMS, `sampleMonths` distinct
+      months contributing) -- kept for callers that want a month-scale
+      baseline;
+    - daily (mean/std of single-day detection counts, `sampleDays` distinct
+      days contributing) -- the ONE a caller must use when comparing
+      against a live snapshot's count, since that count is also a
+      single-day quantity. Comparing a live day-count against the MONTHLY
+      stats mixes units (a day's count vs. a month's sum) and was a real
+      bug in the first consumer of this endpoint -- see
+      `src/app/calendar/page.tsx`'s `unusualAreas`, now fixed to use the
+      daily fields here instead.
+    `*StdDetections` is null when fewer than 2 samples exist at that
+    granularity (std of 0/1 samples is undefined) -- callers must treat
+    null as "not enough history," not as zero variance.
     """
     data = _read_table(sqlite_path)
     if data.empty:
@@ -88,9 +102,19 @@ def load_calendar_summary(sqlite_path, bounds=None):
     ]
 
     cell_monthly = data.groupby(["grid_lat", "grid_lon", "year", "month"], as_index=False).detections.sum()
-    cells_df = cell_monthly.groupby(["grid_lat", "grid_lon"], as_index=False).detections.agg(
+    monthly_stats = cell_monthly.groupby(["grid_lat", "grid_lon"], as_index=False).detections.agg(
         monthly_mean="mean", monthly_std="std", sample_months="count"
     )
+
+    # Daily stats: `data` is already one row per (date, cell) with its own
+    # `detections` count (that's the table's native granularity), so this is
+    # a direct groupby -- no intermediate per-period sum needed, unlike the
+    # monthly case above which has to sum-within-month first.
+    daily_stats = data.groupby(["grid_lat", "grid_lon"], as_index=False).detections.agg(
+        daily_mean="mean", daily_std="std", sample_days="count"
+    )
+
+    cells_df = monthly_stats.merge(daily_stats, on=["grid_lat", "grid_lon"], how="inner")
     cells = [
         {
             "gridLat": float(row.grid_lat),
@@ -98,6 +122,9 @@ def load_calendar_summary(sqlite_path, bounds=None):
             "monthlyMeanDetections": float(row.monthly_mean),
             "monthlyStdDetections": float(row.monthly_std) if pd.notna(row.monthly_std) else None,
             "sampleMonths": int(row.sample_months),
+            "dailyMeanDetections": float(row.daily_mean),
+            "dailyStdDetections": float(row.daily_std) if pd.notna(row.daily_std) else None,
+            "sampleDays": int(row.sample_days),
         }
         for row in cells_df.itertuples()
     ]

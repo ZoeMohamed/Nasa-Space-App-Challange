@@ -1,6 +1,7 @@
 import sqlite3
 
 import pandas as pd
+import pytest
 from fastapi.testclient import TestClient
 
 import main
@@ -11,6 +12,14 @@ def _write_fixture_db(path):
         {"date": "2025-01-05", "area_id": "-2.25_104.75", "grid_lat": -2.25, "grid_lon": 104.75, "detections": 3, "modis_detections": 2, "viirs_detections": 1, "frp_sum": 150.0, "frp_max": 80.0, "source": "archive"},
         {"date": "2025-02-10", "area_id": "-2.25_104.75", "grid_lat": -2.25, "grid_lon": 104.75, "detections": 1, "modis_detections": 1, "viirs_detections": 0, "frp_sum": 40.0, "frp_max": 40.0, "source": "archive"},
         {"date": "2025-01-20", "area_id": "0.0_110.0", "grid_lat": 0.0, "grid_lon": 110.0, "detections": 5, "modis_detections": 3, "viirs_detections": 2, "frp_sum": 300.0, "frp_max": 90.0, "source": "archive"},
+        # Cell C: 3 days within January (1, 2, 3 detections) + 1 day in February (10
+        # detections) -- deliberately shaped so monthly-summed stats and daily stats
+        # diverge (daily_mean=4.0 vs monthly_mean=8.0), to prove the two are genuinely
+        # different quantities, not just the same number computed two ways.
+        {"date": "2025-01-02", "area_id": "5.0_120.0", "grid_lat": 5.0, "grid_lon": 120.0, "detections": 1, "modis_detections": 1, "viirs_detections": 0, "frp_sum": 10.0, "frp_max": 10.0, "source": "archive"},
+        {"date": "2025-01-08", "area_id": "5.0_120.0", "grid_lat": 5.0, "grid_lon": 120.0, "detections": 2, "modis_detections": 2, "viirs_detections": 0, "frp_sum": 20.0, "frp_max": 15.0, "source": "archive"},
+        {"date": "2025-01-15", "area_id": "5.0_120.0", "grid_lat": 5.0, "grid_lon": 120.0, "detections": 3, "modis_detections": 3, "viirs_detections": 0, "frp_sum": 30.0, "frp_max": 20.0, "source": "archive"},
+        {"date": "2025-02-20", "area_id": "5.0_120.0", "grid_lat": 5.0, "grid_lon": 120.0, "detections": 10, "modis_detections": 10, "viirs_detections": 0, "frp_sum": 100.0, "frp_max": 70.0, "source": "archive"},
     ]
     connection = sqlite3.connect(path)
     pd.DataFrame(rows).to_sql("daily_area_activity", connection, index=False, if_exists="replace")
@@ -32,19 +41,33 @@ def test_historical_calendar_endpoint_returns_expected_shape(tmp_path, monkeypat
     months_by_key = {(month["year"], month["month"]): month for month in body["months"]}
     assert (2025, 1) in months_by_key
     jan = months_by_key[(2025, 1)]
-    assert jan["detections"] == 8  # 3 (cell A) + 5 (cell B)
-    assert jan["modisDetections"] == 5
+    assert jan["detections"] == 14  # 3 (cell A) + 5 (cell B) + 1+2+3 (cell C)
+    assert jan["modisDetections"] == 11
     assert jan["viirsDetections"] == 3
-    assert jan["frpSum"] == 450.0
+    assert jan["frpSum"] == 510.0
 
     assert (2025, 2) in months_by_key
-    assert months_by_key[(2025, 2)]["detections"] == 1
+    assert months_by_key[(2025, 2)]["detections"] == 11  # 1 (cell A) + 10 (cell C)
 
     cells_by_key = {(cell["gridLat"], cell["gridLon"]): cell for cell in body["cells"]}
     assert (-2.25, 104.75) in cells_by_key
     cell_a = cells_by_key[(-2.25, 104.75)]
     assert cell_a["sampleMonths"] == 2
     assert cell_a["monthlyMeanDetections"] == 2.0  # (3 + 1) / 2 months
+
+    # Regression (day-vs-month unit mismatch fix): cell C has 3 days within January
+    # (1, 2, 3 detections) and 1 day in February (10 detections). The monthly-summed
+    # stats and the daily stats must be genuinely different numbers here -- if a caller
+    # swapped one for the other, this would catch it.
+    assert (5.0, 120.0) in cells_by_key
+    cell_c = cells_by_key[(5.0, 120.0)]
+    assert cell_c["sampleDays"] == 4
+    assert cell_c["dailyMeanDetections"] == 4.0  # (1+2+3+10) / 4 days
+    assert cell_c["dailyStdDetections"] == pytest.approx(4.0825, rel=1e-3)
+    assert cell_c["sampleMonths"] == 2
+    assert cell_c["monthlyMeanDetections"] == 8.0  # (6 [Jan sum] + 10 [Feb sum]) / 2 months
+    assert cell_c["monthlyStdDetections"] == pytest.approx(2.8284, rel=1e-3)
+    assert cell_c["dailyMeanDetections"] != cell_c["monthlyMeanDetections"]
 
 
 def test_historical_calendar_endpoint_filters_by_bounding_box(tmp_path, monkeypatch):

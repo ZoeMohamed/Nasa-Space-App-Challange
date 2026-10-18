@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import WorkstationLayout from "@/components/layout/WorkstationLayout";
@@ -225,6 +225,11 @@ function CalendarPageContent() {
   // "no real data yet" and rendered the demo fallback for that whole window).
   const [historical, setHistorical] = useState<HistoricalCalendarResponse | null>(null);
   const [historicalLoading, setHistoricalLoading] = useState(true);
+  // The one cell a user has clicked to inspect its exact underlying numbers — lets insights
+  // ("September ini 20% di atas rata-rata") link to the real data that produced them, instead
+  // of ending at a sentence with no way to verify it.
+  const [selectedCell, setSelectedCell] = useState<{ year: number; month: number } | null>(null);
+  const heatmapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -282,6 +287,7 @@ function CalendarPageContent() {
 
     return {
       monthLabel: DEMO_MONTH_LABELS[latest.month - 1],
+      month: latest.month,
       year: latest.year,
       current: latest.detections,
       baseline: Math.round(baselineValue),
@@ -315,9 +321,14 @@ function CalendarPageContent() {
     let unusualCells = 0;
     for (const [key, count] of liveCountByKey) {
       const cell = cellByKey.get(key);
-      if (!cell || cell.monthlyStdDetections === null) continue;
+      // Compare like-with-like: `count` is a single day's detections (live
+      // snapshot, windowHours=24), so it must be measured against the
+      // cell's DAILY baseline, not its monthly one — comparing against
+      // monthlyMeanDetections/monthlyStdDetections mixed day vs. month
+      // units and was a real bug (see historical.py's docstring).
+      if (!cell || cell.dailyStdDetections === null) continue;
       matchedCells += 1;
-      if (count > cell.monthlyMeanDetections + 2 * cell.monthlyStdDetections) unusualCells += 1;
+      if (count > cell.dailyMeanDetections + 2 * cell.dailyStdDetections) unusualCells += 1;
     }
 
     return { matchedCells, unusualCells };
@@ -349,18 +360,29 @@ function CalendarPageContent() {
   // before/during the fire season: where's the current month, is next month likely to stay high,
   // which year was the worst for this month historically, and is anything live right now already
   // outside the historical envelope for its grid cell.
+  type InsightTarget = { kind: "cell"; year: number; month: number } | { kind: "map" };
+
   const historicalInsights = useMemo(() => {
     if (!hasRealMonths || !historical || historical.months.length === 0) return [];
-    const insights: { icon: string; text: string }[] = [];
+    const insights: { icon: string; text: string; target?: InsightTarget }[] = [];
     const sorted = [...historical.months].sort((a, b) => a.year * 12 + a.month - (b.year * 12 + b.month));
     const latest = sorted[sorted.length - 1];
     const latestMonthLabel = DEMO_MONTH_LABELS[latest.month - 1];
 
-    // 1) Peak month overall across the whole archive.
+    // 1) Peak month overall across the whole archive. Links to the single real year that had
+    // the highest value for that peak month, as one concrete example contributing to the claim
+    // (the claim itself is an aggregate across all years, not any one cell).
     if (realPeakMonthLabel) {
+      const peakMonthIndex = DEMO_MONTH_LABELS.indexOf(realPeakMonthLabel) + 1;
+      const peakMonthEntries = sorted.filter((entry) => entry.month === peakMonthIndex);
+      const peakMonthBestEntry =
+        peakMonthEntries.length > 0
+          ? peakMonthEntries.reduce((max, entry) => (entry.detections > max.detections ? entry : max))
+          : null;
       insights.push({
         icon: "insights",
         text: `${realPeakMonthLabel} secara historis adalah bulan paling aktif, dihitung dari total deteksi seluruh arsip ${activeYears[0]}–${activeYears[activeYears.length - 1]}.`,
+        target: peakMonthBestEntry ? { kind: "cell", year: peakMonthBestEntry.year, month: peakMonthBestEntry.month } : undefined,
       });
     }
 
@@ -370,6 +392,7 @@ function CalendarPageContent() {
       insights.push({
         icon: realBaseline.deviationPct > 0 ? "trending_up" : "trending_down",
         text: `${realBaseline.monthLabel} ${realBaseline.year}: ${realBaseline.current.toLocaleString("id-ID")} deteksi, ${Math.abs(realBaseline.deviationPct)}% ${direction} dari rata-rata ${realBaseline.monthLabel} ${realBaseline.firstYear}–${realBaseline.lastYear} (${realBaseline.baseline.toLocaleString("id-ID")} deteksi).`,
+        target: { kind: "cell", year: realBaseline.year, month: realBaseline.month },
       });
     }
 
@@ -380,6 +403,7 @@ function CalendarPageContent() {
       insights.push({
         icon: "history",
         text: `Fase tertinggi untuk bulan ${latestMonthLabel} dalam arsip terjadi di tahun ${peakEntry.year}, dengan ${peakEntry.detections.toLocaleString("id-ID")} deteksi.`,
+        target: { kind: "cell", year: peakEntry.year, month: peakEntry.month },
       });
     }
 
@@ -393,6 +417,7 @@ function CalendarPageContent() {
       const nextAvg = nextMonthEntries.reduce((sum, e) => sum + e.detections, 0) / nextMonthEntries.length;
       const thisAvg = thisMonthEntries.reduce((sum, e) => sum + e.detections, 0) / thisMonthEntries.length;
       const pct = thisAvg > 0 ? Math.round(((nextAvg - thisAvg) / thisAvg) * 100) : 0;
+      const mostRecentNextMonthEntry = nextMonthEntries[nextMonthEntries.length - 1];
       insights.push({
         icon: pct >= 0 ? "warning" : "south",
         text:
@@ -401,22 +426,37 @@ function CalendarPageContent() {
             : pct <= -10
               ? `Secara historis, aktivitas cenderung turun ${Math.abs(Math.round(pct))}% memasuki ${nextMonthLabel} dibanding ${latestMonthLabel} (dari ${nextMonthEntries.length} tahun data).`
               : `Secara historis, ${nextMonthLabel} berada pada tingkat yang mirip dengan ${latestMonthLabel} (selisih rata-rata ${Math.abs(Math.round(pct))}%, dari ${nextMonthEntries.length} tahun data) — belum ada tanda penurunan signifikan.`,
+        target: { kind: "cell", year: mostRecentNextMonthEntry.year, month: mostRecentNextMonthEntry.month },
       });
     }
 
     // 5) Live anomaly cells today, same arithmetic as the "Area dengan Aktivitas Tidak Biasa" stat tile.
+    // Underlying data for THIS insight is the live feed (not the archive), so it links to /map.
     if (unusualAreas && unusualAreas.matchedCells > 0) {
       insights.push({
         icon: "travel_explore",
         text:
           unusualAreas.unusualCells > 0
-            ? `${unusualAreas.unusualCells} dari ${unusualAreas.matchedCells} sel grid dengan deteksi live hari ini sudah berada di atas baseline historisnya (>2×std bulanan) — prioritaskan verifikasi di sel tersebut.`
+            ? `${unusualAreas.unusualCells} dari ${unusualAreas.matchedCells} sel grid dengan deteksi live hari ini sudah berada di atas baseline historisnya (>2×std harian) — prioritaskan verifikasi di sel tersebut.`
             : `Tidak ada sel grid dengan deteksi live hari ini yang melebihi baseline historisnya saat ini (dari ${unusualAreas.matchedCells} sel yang punya riwayat arsip).`,
+        target: { kind: "map" },
       });
     }
 
     return insights;
   }, [hasRealMonths, historical, realPeakMonthLabel, realBaseline, unusualAreas, activeYears]);
+
+  function jumpToCell(year: number, month: number) {
+    setSelectedCell({ year, month });
+    heatmapRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  // Exact numbers for the currently-selected heatmap cell, looked up from the same
+  // `historical.months` data the heatmap/insights are built from — not recomputed or guessed.
+  const selectedCellDetail = useMemo(() => {
+    if (!selectedCell || !historical) return null;
+    return historical.months.find((m) => m.year === selectedCell.year && m.month === selectedCell.month) ?? null;
+  }, [selectedCell, historical]);
 
   const sourcesAvailable = meta?.sources.filter((source) => source.available).length ?? 0;
 
@@ -543,7 +583,7 @@ function CalendarPageContent() {
               historicalLoading
                 ? "Memuat arsip historis…"
                 : unusualAreas
-                  ? `dari ${unusualAreas.matchedCells.toLocaleString("id-ID")} sel 0.25° dengan deteksi live hari ini • deteksi hari ini > rata-rata bulanan + 2×std sel (baseline arsip nyata)`
+                  ? `dari ${unusualAreas.matchedCells.toLocaleString("id-ID")} sel 0.25° dengan deteksi live hari ini • deteksi hari ini > rata-rata harian + 2×std sel (baseline arsip nyata)`
                   : "Data baseline per-sel belum tersedia"
             }
           />
@@ -646,7 +686,23 @@ function CalendarPageContent() {
                       {historicalInsights.map((insight, index) => (
                         <li key={index} className="flex items-start gap-2.5 text-[13px] leading-[18px] text-red-900/80">
                           <span className="material-symbols-outlined text-red-600 text-base shrink-0 leading-5">{insight.icon}</span>
-                          <span>{insight.text}</span>
+                          <span>
+                            {insight.text}{" "}
+                            {insight.target?.kind === "cell" && (
+                              <button
+                                type="button"
+                                onClick={() => jumpToCell((insight.target as { kind: "cell"; year: number; month: number }).year, (insight.target as { kind: "cell"; year: number; month: number }).month)}
+                                className="font-semibold text-emerald-700 hover:text-emerald-900 underline underline-offset-2"
+                              >
+                                Lihat data mentahnya →
+                              </button>
+                            )}
+                            {insight.target?.kind === "map" && (
+                              <Link href="/map" className="font-semibold text-emerald-700 hover:text-emerald-900 underline underline-offset-2">
+                                Lihat di peta →
+                              </Link>
+                            )}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -695,7 +751,7 @@ function CalendarPageContent() {
 
             {/* Burning Activity Calendar — heatmap */}
             <Card className="p-6">
-              <div className="flex items-start justify-between gap-4 mb-2 flex-wrap">
+              <div ref={heatmapRef} className="flex items-start justify-between gap-4 mb-2 flex-wrap">
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-gray-900 text-sm">Burning Activity Calendar</h3>
@@ -703,7 +759,7 @@ function CalendarPageContent() {
                   </div>
                   <p className="text-xs text-gray-400 mt-1">
                     {hasRealMonths
-                      ? `Pola historis aktivitas kebakaran, ${activeYears[0]}–${activeYears[activeYears.length - 1]} (arsip NASA FIRMS nyata).`
+                      ? `Pola historis aktivitas kebakaran, ${activeYears[0]}–${activeYears[activeYears.length - 1]} (arsip NASA FIRMS nyata). Klik satu sel untuk melihat angka pastinya.`
                       : "Historical pattern of fire activity in this area."}
                   </p>
                 </div>
@@ -742,16 +798,26 @@ function CalendarPageContent() {
                       <div className="flex gap-2 flex-1">
                         {activeMonthlyIntensity[year].map((value, monthIndex) => {
                           const bucket = getIntensityBucket(value);
+                          const month = monthIndex + 1;
+                          const isSelected = hasRealMonths && selectedCell?.year === year && selectedCell?.month === month;
+                          const clickable = hasRealMonths && value !== null;
                           return (
-                            <div
+                            <button
                               key={monthIndex}
-                              className="flex-1 h-10 rounded-md hover:ring-2 hover:ring-offset-2 hover:ring-gray-300 transition-all cursor-default"
+                              type="button"
+                              disabled={!clickable}
+                              onClick={() => clickable && jumpToCell(year, month)}
+                              className={`flex-1 h-10 rounded-md hover:ring-2 hover:ring-offset-2 transition-all ${
+                                isSelected
+                                  ? "ring-2 ring-offset-2 ring-emerald-600"
+                                  : "hover:ring-gray-300"
+                              } ${clickable ? "cursor-pointer" : "cursor-default"}`}
                               style={{ backgroundColor: bucket.bg }}
                               title={
                                 value === null
                                   ? `${DEMO_MONTH_LABELS[monthIndex]} ${year}: belum ada data`
                                   : hasRealMonths
-                                    ? `${DEMO_MONTH_LABELS[monthIndex]} ${year}: ${value.toLocaleString("id-ID")} deteksi`
+                                    ? `${DEMO_MONTH_LABELS[monthIndex]} ${year}: ${value.toLocaleString("id-ID")} deteksi — klik untuk detail`
                                     : `${DEMO_MONTH_LABELS[monthIndex]} ${year}: ${value.toLocaleString("id-ID")} deteksi (contoh)`
                               }
                             />
@@ -762,6 +828,51 @@ function CalendarPageContent() {
                   ))}
                 </div>
               </div>
+
+              {/* Selected cell detail — exact numbers behind the clicked sel, straight from
+                  historical.months, so insights/heatmap cells are never a dead-end sentence. */}
+              {selectedCell && (
+                <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/60 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <h4 className="text-sm font-bold text-gray-900">
+                      {DEMO_MONTH_LABELS[selectedCell.month - 1]} {selectedCell.year} — data mentah
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCell(null)}
+                      className="text-gray-400 hover:text-gray-700"
+                      aria-label="Tutup detail sel"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                  </div>
+                  {selectedCellDetail ? (
+                    <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div>
+                        <div className="text-gray-400">Total deteksi</div>
+                        <div className="font-bold text-gray-900">{selectedCellDetail.detections.toLocaleString("id-ID")}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400">MODIS</div>
+                        <div className="font-bold text-gray-900">{selectedCellDetail.modisDetections.toLocaleString("id-ID")}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400">VIIRS</div>
+                        <div className="font-bold text-gray-900">{selectedCellDetail.viirsDetections.toLocaleString("id-ID")}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400">Total FRP</div>
+                        <div className="font-bold text-gray-900">{selectedCellDetail.frpSum.toLocaleString("id-ID")} MW</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-gray-500">Tidak ada data arsip untuk sel ini.</p>
+                  )}
+                  <p className="mt-2 text-[11px] text-gray-400">
+                    Angka ini total untuk wilayah {activeRegion.label} pada bulan tersebut, dari arsip NASA FIRMS yang sama dengan heatmap di atas — bukan dihitung ulang.
+                  </p>
+                </div>
+              )}
 
               {/* Intensity legend */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-4 mt-2 border-t border-gray-100">

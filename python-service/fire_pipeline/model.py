@@ -60,7 +60,7 @@ def _load_historical_cell_stats(sqlite_path):
 
 
 def historical_baseline(df, sqlite_path=None):
-    """Attach baseline_mean/baseline_std/z_score/anomaly to each area row.
+    """Attach baseline_mean/baseline_std/baseline_source to each area row.
 
     When `sqlite_path` points at a built historical store (see
     scripts/build_historical_store.py) and it has data for a given
@@ -72,6 +72,16 @@ def historical_baseline(df, sqlite_path=None):
     Each row's `baseline_source` column records which mode was used
     ("historical" or "same-batch-fallback") so callers can report it
     honestly instead of implying real history where there is none.
+
+    This used to also compute `z_score`/`anomaly` (frp_sum vs. this same
+    per-cell daily baseline), removed 2026-10-19: confirmed by repo-wide
+    grep that nothing ever consumed those two columns (`summarize_areas()`
+    in live.py only ever serialized `baseline_source`), and the underlying
+    per-cell DAILY frp_sum baseline has the same sparsity problem documented
+    for the (separately fixed) /calendar daily-detections baseline -- ~30%
+    of grid cells have under 10 days of history, too few for a std/z-score
+    to mean much. Don't resurrect this without the same minimum-sample
+    gating applied to the /calendar daily fields.
     """
     result = df.copy()
     if result.empty:
@@ -95,6 +105,4 @@ def historical_baseline(df, sqlite_path=None):
         result = result.merge(same_batch_stats, on=keys, how="left")
         result["baseline_source"] = "same-batch-fallback"
 
-    result["z_score"] = (result.frp_sum - result.baseline_mean) / result.baseline_std.replace(0, np.nan)
-    result["anomaly"] = result.z_score.ge(2).fillna(False)
     return result

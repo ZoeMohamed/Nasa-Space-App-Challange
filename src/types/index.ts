@@ -121,10 +121,12 @@ export interface HistoricalMonth {
 }
 
 /**
- * Per-0.25°-grid-cell historical baseline: mean/std of monthly detection counts for that cell
- * across however many months of the archive actually had data for it (`sampleMonths`).
- * `monthlyStdDetections` is `null` when the cell only has a single sampled month (std of one
- * value is undefined, not zero).
+ * Per-0.25°-grid-cell historical baseline, at two granularities: monthly (mean/std of monthly
+ * SUMS) and daily (mean/std of single-day counts). When comparing against a live snapshot's
+ * count (itself a single-day quantity, see /api/hotspots meta.windowHours=24), use the DAILY
+ * fields — comparing a day's count against the monthly fields mixes units and was a real bug
+ * (see historical.py's load_calendar_summary docstring). Each `*StdDetections` is `null` when
+ * fewer than 2 samples exist at that granularity (std of 0/1 values is undefined, not zero).
  */
 export interface HistoricalCell {
   gridLat: number;
@@ -132,6 +134,9 @@ export interface HistoricalCell {
   monthlyMeanDetections: number;
   monthlyStdDetections: number | null;
   sampleMonths: number;
+  dailyMeanDetections: number;
+  dailyStdDetections: number | null;
+  sampleDays: number;
 }
 
 export interface HistoricalCalendarResponse {
