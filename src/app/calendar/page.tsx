@@ -219,7 +219,12 @@ function CalendarPageContent() {
 
   // Real multi-year archive data (months + per-cell baselines) — fetched once on mount. Falls
   // back to the DEMO_* constants below if this fails or comes back empty; see `hasRealMonths`.
+  // `historicalLoading` starts true and stays true until the fetch actually settles, so the UI
+  // shows a loading state rather than flashing DEMO_* data and then swapping to real data once
+  // it arrives (historical was previously null during the fetch, which hasRealMonths read as
+  // "no real data yet" and rendered the demo fallback for that whole window).
   const [historical, setHistorical] = useState<HistoricalCalendarResponse | null>(null);
+  const [historicalLoading, setHistoricalLoading] = useState(true);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -230,6 +235,9 @@ function CalendarPageContent() {
         if (requestError instanceof DOMException && requestError.name === "AbortError") return;
         console.error("Historical NASA FIRMS fetch failed, falling back to demo data", requestError);
         setHistorical({ months: [], cells: [] });
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setHistoricalLoading(false);
       });
 
     return () => controller.abort();
@@ -335,6 +343,81 @@ function CalendarPageContent() {
   // only the most recent 6 real years. The heatmap above still shows every real year.
   const overviewYears = hasRealMonths ? realYears.slice(-6) : DEMO_YEARS;
 
+  // Multiple real, independently-computed insights (not one hardcoded sentence) — each one is
+  // pure arithmetic over `historical.months`, and is simply omitted if the archive doesn't have
+  // enough years to support that specific comparison. This is the set an officer actually wants
+  // before/during the fire season: where's the current month, is next month likely to stay high,
+  // which year was the worst for this month historically, and is anything live right now already
+  // outside the historical envelope for its grid cell.
+  const historicalInsights = useMemo(() => {
+    if (!hasRealMonths || !historical || historical.months.length === 0) return [];
+    const insights: { icon: string; text: string }[] = [];
+    const sorted = [...historical.months].sort((a, b) => a.year * 12 + a.month - (b.year * 12 + b.month));
+    const latest = sorted[sorted.length - 1];
+    const latestMonthLabel = DEMO_MONTH_LABELS[latest.month - 1];
+
+    // 1) Peak month overall across the whole archive.
+    if (realPeakMonthLabel) {
+      insights.push({
+        icon: "insights",
+        text: `${realPeakMonthLabel} secara historis adalah bulan paling aktif, dihitung dari total deteksi seluruh arsip ${activeYears[0]}–${activeYears[activeYears.length - 1]}.`,
+      });
+    }
+
+    // 2) Current/latest archived month vs. its own historical baseline (reuses realBaseline).
+    if (realBaseline && realBaseline.deviationPct !== null) {
+      const direction = realBaseline.deviationPct > 0 ? "lebih tinggi" : "lebih rendah";
+      insights.push({
+        icon: realBaseline.deviationPct > 0 ? "trending_up" : "trending_down",
+        text: `${realBaseline.monthLabel} ${realBaseline.year}: ${realBaseline.current.toLocaleString("id-ID")} deteksi, ${Math.abs(realBaseline.deviationPct)}% ${direction} dari rata-rata ${realBaseline.monthLabel} ${realBaseline.firstYear}–${realBaseline.lastYear} (${realBaseline.baseline.toLocaleString("id-ID")} deteksi).`,
+      });
+    }
+
+    // 3) Which specific year had the worst value for this same calendar month historically.
+    const sameMonthEntries = sorted.filter((entry) => entry.month === latest.month);
+    if (sameMonthEntries.length > 1) {
+      const peakEntry = sameMonthEntries.reduce((max, entry) => (entry.detections > max.detections ? entry : max));
+      insights.push({
+        icon: "history",
+        text: `Fase tertinggi untuk bulan ${latestMonthLabel} dalam arsip terjadi di tahun ${peakEntry.year}, dengan ${peakEntry.detections.toLocaleString("id-ID")} deteksi.`,
+      });
+    }
+
+    // 4) Forward-look: historical average for next calendar month vs. this month, so an officer
+    // sees whether the season is historically still climbing or past its peak.
+    const nextMonthNum = (latest.month % 12) + 1;
+    const nextMonthLabel = DEMO_MONTH_LABELS[nextMonthNum - 1];
+    const nextMonthEntries = sorted.filter((entry) => entry.month === nextMonthNum && entry.year <= latest.year);
+    const thisMonthEntries = sorted.filter((entry) => entry.month === latest.month && entry.year <= latest.year);
+    if (nextMonthEntries.length > 0 && thisMonthEntries.length > 0) {
+      const nextAvg = nextMonthEntries.reduce((sum, e) => sum + e.detections, 0) / nextMonthEntries.length;
+      const thisAvg = thisMonthEntries.reduce((sum, e) => sum + e.detections, 0) / thisMonthEntries.length;
+      const pct = thisAvg > 0 ? Math.round(((nextAvg - thisAvg) / thisAvg) * 100) : 0;
+      insights.push({
+        icon: pct >= 0 ? "warning" : "south",
+        text:
+          pct >= 10
+            ? `Secara historis, ${nextMonthLabel} rata-rata ${Math.round(pct)}% lebih tinggi dari ${latestMonthLabel} (dari ${nextMonthEntries.length} tahun data) — waspadai kelanjutan tren musim kebakaran ke bulan berikutnya.`
+            : pct <= -10
+              ? `Secara historis, aktivitas cenderung turun ${Math.abs(Math.round(pct))}% memasuki ${nextMonthLabel} dibanding ${latestMonthLabel} (dari ${nextMonthEntries.length} tahun data).`
+              : `Secara historis, ${nextMonthLabel} berada pada tingkat yang mirip dengan ${latestMonthLabel} (selisih rata-rata ${Math.abs(Math.round(pct))}%, dari ${nextMonthEntries.length} tahun data) — belum ada tanda penurunan signifikan.`,
+      });
+    }
+
+    // 5) Live anomaly cells today, same arithmetic as the "Area dengan Aktivitas Tidak Biasa" stat tile.
+    if (unusualAreas && unusualAreas.matchedCells > 0) {
+      insights.push({
+        icon: "travel_explore",
+        text:
+          unusualAreas.unusualCells > 0
+            ? `${unusualAreas.unusualCells} dari ${unusualAreas.matchedCells} sel grid dengan deteksi live hari ini sudah berada di atas baseline historisnya (>2×std bulanan) — prioritaskan verifikasi di sel tersebut.`
+            : `Tidak ada sel grid dengan deteksi live hari ini yang melebihi baseline historisnya saat ini (dari ${unusualAreas.matchedCells} sel yang punya riwayat arsip).`,
+      });
+    }
+
+    return insights;
+  }, [hasRealMonths, historical, realPeakMonthLabel, realBaseline, unusualAreas, activeYears]);
+
   const sourcesAvailable = meta?.sources.filter((source) => source.available).length ?? 0;
 
   return (
@@ -396,277 +479,319 @@ function CalendarPageContent() {
             icon="query_stats"
             iconTone="blue"
             label={
-              realBaseline
-                ? `Baseline Historis ${realBaseline.monthLabel}`
-                : `Baseline Historis ${DEMO_BASELINE_MONTH_LABEL} (Contoh)`
+              historicalLoading
+                ? "Baseline Historis"
+                : realBaseline
+                  ? `Baseline Historis ${realBaseline.monthLabel}`
+                  : `Baseline Historis ${DEMO_BASELINE_MONTH_LABEL} (Contoh)`
             }
-            value={(realBaseline ? realBaseline.baseline : DEMO_BASELINE_REFERENCE).toLocaleString("id-ID")}
+            value={
+              historicalLoading
+                ? "…"
+                : (realBaseline ? realBaseline.baseline : DEMO_BASELINE_REFERENCE).toLocaleString("id-ID")
+            }
             caption={
-              realBaseline
-                ? `Rata-rata ${realBaseline.monthLabel} ${realBaseline.firstYear}–${realBaseline.lastYear} — arsip NASA FIRMS nyata`
-                : "Rata-rata 2023–2025 — data ilustratif, lihat catatan sumber di kode"
+              historicalLoading
+                ? "Memuat arsip historis…"
+                : realBaseline
+                  ? `Rata-rata ${realBaseline.monthLabel} ${realBaseline.firstYear}–${realBaseline.lastYear} — arsip NASA FIRMS nyata`
+                  : "Rata-rata 2023–2025 — data ilustratif, lihat catatan sumber di kode"
             }
           />
           <StatTile
             icon="warning"
             iconTone="amber"
-            label={realBaseline ? "Deviasi dari Baseline" : "Deviasi dari Baseline (Contoh)"}
+            label={historicalLoading ? "Deviasi dari Baseline" : realBaseline ? "Deviasi dari Baseline" : "Deviasi dari Baseline (Contoh)"}
             value={
-              realBaseline && realBaseline.deviationPct !== null
-                ? `${realBaseline.deviationPct > 0 ? "+" : ""}${realBaseline.deviationPct}%`
-                : realBaseline
-                  ? "—"
-                  : `${DEMO_BASELINE_DEVIATION_PCT > 0 ? "+" : ""}${DEMO_BASELINE_DEVIATION_PCT}%`
+              historicalLoading
+                ? "…"
+                : realBaseline && realBaseline.deviationPct !== null
+                  ? `${realBaseline.deviationPct > 0 ? "+" : ""}${realBaseline.deviationPct}%`
+                  : realBaseline
+                    ? "—"
+                    : `${DEMO_BASELINE_DEVIATION_PCT > 0 ? "+" : ""}${DEMO_BASELINE_DEVIATION_PCT}%`
             }
             trend={
-              realBaseline
-                ? realBaseline.deviationPct !== null
-                  ? {
-                      direction: realBaseline.deviationPct > 0 ? "up" : "down",
-                      label: realBaseline.deviationPct > 0 ? "Di atas baseline" : "Di bawah baseline",
+              historicalLoading
+                ? undefined
+                : realBaseline
+                  ? realBaseline.deviationPct !== null
+                    ? {
+                        direction: realBaseline.deviationPct > 0 ? "up" : "down",
+                        label: realBaseline.deviationPct > 0 ? "Di atas baseline" : "Di bawah baseline",
+                      }
+                    : undefined
+                  : {
+                      direction: DEMO_BASELINE_DEVIATION_PCT > 0 ? "up" : "down",
+                      label: DEMO_BASELINE_DEVIATION_PCT > 0 ? "Di atas baseline" : "Di bawah baseline",
                     }
-                  : undefined
-                : {
-                    direction: DEMO_BASELINE_DEVIATION_PCT > 0 ? "up" : "down",
-                    label: DEMO_BASELINE_DEVIATION_PCT > 0 ? "Di atas baseline" : "Di bawah baseline",
-                  }
             }
             caption={
-              realBaseline
-                ? `${realBaseline.monthLabel} ${realBaseline.year} vs rata-rata ${realBaseline.firstYear}–${realBaseline.lastYear} — data arsip nyata`
-                : `${DEMO_BASELINE_MONTH_LABEL} 2026 (contoh) vs rata-rata 2023–2025 — bukan kondisi real-time aktual`
+              historicalLoading
+                ? "Memuat arsip historis…"
+                : realBaseline
+                  ? `${realBaseline.monthLabel} ${realBaseline.year} vs rata-rata ${realBaseline.firstYear}–${realBaseline.lastYear} — data arsip nyata`
+                  : `${DEMO_BASELINE_MONTH_LABEL} 2026 (contoh) vs rata-rata 2023–2025 — bukan kondisi real-time aktual`
             }
           />
           <StatTile
             icon="travel_explore"
             iconTone="amber"
             label="Area dengan Aktivitas Tidak Biasa"
-            value={unusualAreas ? unusualAreas.unusualCells.toLocaleString("id-ID") : "—"}
+            value={historicalLoading ? "…" : unusualAreas ? unusualAreas.unusualCells.toLocaleString("id-ID") : "—"}
             caption={
-              unusualAreas
-                ? `dari ${unusualAreas.matchedCells.toLocaleString("id-ID")} sel 0.25° dengan deteksi live hari ini • deteksi hari ini > rata-rata bulanan + 2×std sel (baseline arsip nyata)`
-                : "Data baseline per-sel belum tersedia"
+              historicalLoading
+                ? "Memuat arsip historis…"
+                : unusualAreas
+                  ? `dari ${unusualAreas.matchedCells.toLocaleString("id-ID")} sel 0.25° dengan deteksi live hari ini • deteksi hari ini > rata-rata bulanan + 2×std sel (baseline arsip nyata)`
+                  : "Data baseline per-sel belum tersedia"
             }
           />
         </div>
 
-        {/* Burning Activity Calendar — heatmap */}
-        <Card className="p-6">
-          <div className="flex items-start justify-between gap-4 mb-2 flex-wrap">
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-gray-900 text-sm">Burning Activity Calendar</h3>
-                {!hasRealMonths && <DemoBadge />}
-              </div>
-              <p className="text-xs text-gray-400 mt-1">
-                {hasRealMonths
-                  ? `Pola historis aktivitas kebakaran, ${activeYears[0]}–${activeYears[activeYears.length - 1]} (arsip NASA FIRMS nyata).`
-                  : "Historical pattern of fire activity in this area."}
-              </p>
-            </div>
-          </div>
-
-          {hasRealMonths ? (
-            <div className="rounded-lg border border-dashed border-blue-200 bg-blue-50/60 px-3 py-2 mb-5 text-xs text-blue-900">
-              Data arsip NASA FIRMS nyata ({activeYears[0]}–{activeYears[activeYears.length - 1]}). Catatan metodologi:
-              filter tipe vegetasi (type==0) hanya berlaku pada baris arsip — baris NRT tidak memiliki kolom ini,
-              jadi bulan-bulan terbaru bisa menyertakan anomali termal non-vegetasi yang disaring di bulan-bulan
-              lama. Filter kepercayaan tinggi juga ketat, terutama untuk VIIRS (~3.4% lolos), sehingga periode
-              dominan-VIIRS bisa terlihat lebih jarang dari kondisi sebenarnya.
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50/60 px-3 py-2 mb-5 text-xs text-amber-800">
-              Data ilustratif untuk mendemonstrasikan tampilan kalender multi-tahun — gagal memuat arsip historis
-              nyata dari backend, menampilkan data contoh sebagai fallback.
-            </div>
-          )}
-
-          <div className="overflow-x-auto">
-            <div className="min-w-[760px]">
-              {/* Month headers */}
-              <div className="flex text-[10px] text-gray-400 font-medium mb-2 ml-10 gap-2">
-                {DEMO_MONTH_LABELS.map((month) => (
-                  <span key={month} className="flex-1 text-center">
-                    {month}
-                  </span>
-                ))}
-              </div>
-
-              {/* Year rows */}
-              {activeYears.map((year) => (
-                <div key={year} className="flex items-center mb-2 gap-2">
-                  <span className="text-xs text-gray-500 w-8 font-semibold shrink-0">{year}</span>
-                  <div className="flex gap-2 flex-1">
-                    {activeMonthlyIntensity[year].map((value, monthIndex) => {
-                      const bucket = getIntensityBucket(value);
-                      return (
-                        <div
-                          key={monthIndex}
-                          className="flex-1 h-10 rounded-md hover:ring-2 hover:ring-offset-2 hover:ring-gray-300 transition-all cursor-default"
-                          style={{ backgroundColor: bucket.bg }}
-                          title={
-                            value === null
-                              ? `${DEMO_MONTH_LABELS[monthIndex]} ${year}: belum ada data`
-                              : hasRealMonths
-                                ? `${DEMO_MONTH_LABELS[monthIndex]} ${year}: ${value.toLocaleString("id-ID")} deteksi`
-                                : `${DEMO_MONTH_LABELS[monthIndex]} ${year}: ${value.toLocaleString("id-ID")} deteksi (contoh)`
-                          }
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Intensity legend */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-4 mt-2 border-t border-gray-100">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] font-semibold text-gray-500 tracking-wide mr-1">INTENSITAS:</span>
-              {INTENSITY_BUCKETS.map((bucket) => (
-                <span
-                  key={bucket.label}
-                  className="text-[11px] font-medium px-2 py-0.5 rounded"
-                  style={{ backgroundColor: bucket.bg, color: bucket.text }}
-                >
-                  {bucket.label}
-                </span>
-              ))}
-              <span
-                className="text-[11px] font-medium px-2 py-0.5 rounded border border-gray-200"
-                style={{ backgroundColor: INTENSITY_NO_DATA.bg, color: INTENSITY_NO_DATA.text }}
-              >
-                {INTENSITY_NO_DATA.label}
-              </span>
-            </div>
-            <span className="text-xs text-gray-400">
-              {hasRealMonths
-                ? "Satuan: Jumlah observasi termal unik per sel kalender (arsip NASA FIRMS nyata)."
-                : "Satuan: Jumlah observasi termal unik per sel kalender (data ilustratif)."}
+        {historicalLoading ? (
+          <Card className="p-10 flex items-center justify-center">
+            <span className="text-sm text-gray-400 animate-pulse flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px] animate-spin">refresh</span>
+              Memuat arsip historis NASA FIRMS…
             </span>
-          </div>
-        </Card>
-
-        {/* Yearly Activity Overview + Insight & rekomendasi */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          <Card className="p-6">
-            <div className="flex items-start justify-between gap-3 mb-6">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-gray-900 text-base">Yearly Activity Overview</h3>
-                  {!hasRealMonths && <DemoBadge />}
-                </div>
-                <p className="text-xs text-gray-400 mt-1">
-                  {hasRealMonths
-                    ? `Total hotspots and peak period comparison — ${overviewYears.length} tahun terakhir dari arsip nyata.`
-                    : "Total hotspots and peak period comparison."}
-                </p>
-              </div>
-              {/* No historical cluster/trend view exists yet for this page specifically — routes
-                  to Analytics, the closest existing page that covers multi-area trend analysis. */}
-              <Link
-                href="/analytics"
-                className="text-xs font-semibold text-blue-600 hover:text-blue-700 inline-flex items-center gap-1 shrink-0"
-              >
-                View details
-                <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-              </Link>
-            </div>
-
-            <div className="space-y-6">
-              {overviewYears.map((year) => {
-                const { total, peakLabel, bucketShares } = summarizeYear(activeMonthlyIntensity[year]);
-                return (
-                  <div key={year} className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-bold text-gray-800">{year}</span>
-                        <span className="text-xs text-gray-400">
-                          {total.toLocaleString("id-ID")} hotspots{hasRealMonths ? "" : " (contoh)"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-4 rounded-full bg-gray-100 overflow-hidden flex">
-                        {bucketShares.map((share, index) =>
-                          share > 0 ? (
-                            <div
-                              key={index}
-                              className="h-full"
-                              style={{ width: `${share}%`, backgroundColor: INTENSITY_BUCKETS[index].bg }}
-                            />
-                          ) : null
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="w-2 h-2 rounded-full bg-rose-600" />
-                        <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Peak: {peakLabel}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           </Card>
-
-          <div className="bg-red-50/60 border border-red-100 rounded-xl shadow-sm p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[16px] text-[#b91c1c]">warning</span>
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-[#b91c1c] text-sm">Insight &amp; rekomendasi aktivitas</h3>
-                  {!hasRealMonths && <DemoBadge />}
+        ) : (
+          <>
+            {/* Yearly Activity Overview + Insight & rekomendasi — moved above the calendar heatmap
+                per user request, so the summary/recommendations are seen before the raw grid. */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              <Card className="p-6">
+                <div className="flex items-start justify-between gap-3 mb-6">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-gray-900 text-base">Yearly Activity Overview</h3>
+                      {!hasRealMonths && <DemoBadge />}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {hasRealMonths
+                        ? `Total hotspots and peak period comparison — ${overviewYears.length} tahun terakhir dari arsip nyata.`
+                        : "Total hotspots and peak period comparison."}
+                    </p>
+                  </div>
+                  {/* No historical cluster/trend view exists yet for this page specifically — routes
+                      to Analytics, the closest existing page that covers multi-area trend analysis. */}
+                  <Link
+                    href="/analytics"
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 inline-flex items-center gap-1 shrink-0"
+                  >
+                    View details
+                    <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                  </Link>
                 </div>
-                <p className="text-[11px] text-red-900/70">
-                  {activeRegion.label} •{" "}
-                  {hasRealMonths ? `${activeYears[0]}–${activeYears[activeYears.length - 1]}` : "2023–2026"} •
-                  Unified (MODIS + VIIRS)
-                </p>
+
+                <div className="space-y-6">
+                  {overviewYears.map((year) => {
+                    const { total, peakLabel, bucketShares } = summarizeYear(activeMonthlyIntensity[year]);
+                    return (
+                      <div key={year} className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-sm font-bold text-gray-800">{year}</span>
+                            <span className="text-xs text-gray-400">
+                              {total.toLocaleString("id-ID")} hotspots{hasRealMonths ? "" : " (contoh)"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-4 rounded-full bg-gray-100 overflow-hidden flex">
+                            {bucketShares.map((share, index) =>
+                              share > 0 ? (
+                                <div
+                                  key={index}
+                                  className="h-full"
+                                  style={{ width: `${share}%`, backgroundColor: INTENSITY_BUCKETS[index].bg }}
+                                />
+                              ) : null
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="w-2 h-2 rounded-full bg-rose-600" />
+                            <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Peak: {peakLabel}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+
+              <div className="bg-red-50/60 border border-red-100 rounded-xl shadow-sm p-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-[16px] text-[#b91c1c]">warning</span>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-[#b91c1c] text-sm">Insight &amp; rekomendasi aktivitas</h3>
+                      {!hasRealMonths && <DemoBadge />}
+                    </div>
+                    <p className="text-[11px] text-red-900/70">
+                      {activeRegion.label} •{" "}
+                      {hasRealMonths ? `${activeYears[0]}–${activeYears[activeYears.length - 1]}` : "2023–2026"} •
+                      Unified (MODIS + VIIRS)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 mb-4">
+                  <h4 className="text-sm font-semibold text-[#b91c1c]">Insight historis</h4>
+                  {hasRealMonths && historicalInsights.length > 0 ? (
+                    <ul className="space-y-2">
+                      {historicalInsights.map((insight, index) => (
+                        <li key={index} className="flex items-start gap-2.5 text-[13px] leading-[18px] text-red-900/80">
+                          <span className="material-symbols-outlined text-red-600 text-base shrink-0 leading-5">{insight.icon}</span>
+                          <span>{insight.text}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-[13px] leading-[18px] text-red-900/80">
+                      Agustus–September menjadi puncak aktivitas pada contoh data 2023–2026 ini. Pola berulang seperti
+                      ini membantu menentukan waktu prioritas pemantauan. Aktivitas lebih rendah di luar puncak tidak
+                      berarti bebas risiko.
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2 mb-4">
+                  <h4 className="text-sm font-semibold text-[#b91c1c]">Rekomendasi tindak lanjut</h4>
+                  <ul className="space-y-2">
+                    <li className="flex items-start gap-2.5 text-[13px] text-red-900/80">
+                      <span className="material-symbols-outlined text-red-600 text-base shrink-0 leading-5">check_circle</span>
+                      Sebelum bulan puncak{hasRealMonths && realPeakMonthLabel ? ` (${realPeakMonthLabel})` : " (Agustus)"}: siapkan jadwal pemantauan dan koordinasi tim.
+                    </li>
+                    <li className="flex items-start gap-2.5 text-[13px] text-red-900/80">
+                      <span className="material-symbols-outlined text-red-600 text-base shrink-0 leading-5">check_circle</span>
+                      Pada bulan puncak{hasRealMonths && realPeakMonthLabel ? ` (${realPeakMonthLabel})` : " (Agustus–September)"}: prioritaskan pemantauan dan verifikasi deteksi.
+                    </li>
+                    {hasRealMonths && unusualAreas && unusualAreas.unusualCells > 0 && (
+                      <li className="flex items-start gap-2.5 text-[13px] text-red-900/80">
+                        <span className="material-symbols-outlined text-red-600 text-base shrink-0 leading-5">priority_high</span>
+                        Saat ini: {unusualAreas.unusualCells} sel grid sudah di atas baseline historisnya hari ini — prioritaskan verifikasi di sel tersebut lebih dulu.
+                      </li>
+                    )}
+                    <li className="flex items-start gap-2.5 text-[13px] text-red-900/80">
+                      <span className="material-symbols-outlined text-red-600 text-base shrink-0 leading-5">check_circle</span>
+                      Di luar puncak: lanjutkan pemantauan rutin dan tinjau deteksi baru.
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="flex items-start gap-2 bg-white rounded-md px-3 py-2">
+                  <span className="material-symbols-outlined text-[14px] text-red-600 mt-0.5 shrink-0">info</span>
+                  <p className="text-xs leading-[18px] text-red-900/80">
+                    Pola historis, bukan kondisi terkini. Deteksi satelit merupakan indikasi dan perlu verifikasi
+                    lapangan.
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-1.5 mb-4">
-              <h4 className="text-sm font-semibold text-[#b91c1c]">Insight historis</h4>
-              <p className="text-[13px] leading-[18px] text-red-900/80">
-                {hasRealMonths && realPeakMonthLabel
-                  ? `${realPeakMonthLabel} menjadi bulan dengan total deteksi tertinggi secara agregat pada arsip ${activeYears[0]}–${activeYears[activeYears.length - 1]} ini. Pola berulang seperti ini membantu menentukan waktu prioritas pemantauan.`
-                  : "Agustus–September menjadi puncak aktivitas pada contoh data 2023–2026 ini. Pola berulang seperti ini membantu menentukan waktu prioritas pemantauan."}
-              </p>
-              <p className="text-[13px] leading-[18px] text-red-900/80">
-                Aktivitas lebih rendah di luar puncak tidak berarti bebas risiko.
-              </p>
-            </div>
+            {/* Burning Activity Calendar — heatmap */}
+            <Card className="p-6">
+              <div className="flex items-start justify-between gap-4 mb-2 flex-wrap">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-gray-900 text-sm">Burning Activity Calendar</h3>
+                    {!hasRealMonths && <DemoBadge />}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {hasRealMonths
+                      ? `Pola historis aktivitas kebakaran, ${activeYears[0]}–${activeYears[activeYears.length - 1]} (arsip NASA FIRMS nyata).`
+                      : "Historical pattern of fire activity in this area."}
+                  </p>
+                </div>
+              </div>
 
-            <div className="space-y-2 mb-4">
-              <h4 className="text-sm font-semibold text-[#b91c1c]">Rekomendasi tindak lanjut</h4>
-              <ul className="space-y-2">
-                <li className="flex items-start gap-2.5 text-[13px] text-red-900/80">
-                  <span className="material-symbols-outlined text-red-600 text-base shrink-0 leading-5">check_circle</span>
-                  Sebelum bulan puncak{hasRealMonths && realPeakMonthLabel ? ` (${realPeakMonthLabel})` : " (Agustus)"}: siapkan jadwal pemantauan dan koordinasi tim.
-                </li>
-                <li className="flex items-start gap-2.5 text-[13px] text-red-900/80">
-                  <span className="material-symbols-outlined text-red-600 text-base shrink-0 leading-5">check_circle</span>
-                  Pada bulan puncak{hasRealMonths && realPeakMonthLabel ? ` (${realPeakMonthLabel})` : " (Agustus–September)"}: prioritaskan pemantauan dan verifikasi deteksi.
-                </li>
-                <li className="flex items-start gap-2.5 text-[13px] text-red-900/80">
-                  <span className="material-symbols-outlined text-red-600 text-base shrink-0 leading-5">check_circle</span>
-                  Di luar puncak: lanjutkan pemantauan rutin dan tinjau deteksi baru.
-                </li>
-              </ul>
-            </div>
+              {hasRealMonths ? (
+                <div className="rounded-lg border border-dashed border-blue-200 bg-blue-50/60 px-3 py-2 mb-5 text-xs text-blue-900">
+                  Data arsip NASA FIRMS nyata ({activeYears[0]}–{activeYears[activeYears.length - 1]}). Catatan metodologi:
+                  filter tipe vegetasi (type==0) hanya berlaku pada baris arsip — baris NRT tidak memiliki kolom ini,
+                  jadi bulan-bulan terbaru bisa menyertakan anomali termal non-vegetasi yang disaring di bulan-bulan
+                  lama. Filter kepercayaan tinggi juga ketat, terutama untuk VIIRS (~3.4% lolos), sehingga periode
+                  dominan-VIIRS bisa terlihat lebih jarang dari kondisi sebenarnya.
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50/60 px-3 py-2 mb-5 text-xs text-amber-800">
+                  Data ilustratif untuk mendemonstrasikan tampilan kalender multi-tahun — gagal memuat arsip historis
+                  nyata dari backend, menampilkan data contoh sebagai fallback.
+                </div>
+              )}
 
-            <div className="flex items-start gap-2 bg-white rounded-md px-3 py-2">
-              <span className="material-symbols-outlined text-[14px] text-red-600 mt-0.5 shrink-0">info</span>
-              <p className="text-xs leading-[18px] text-red-900/80">
-                Pola historis, bukan kondisi terkini. Deteksi satelit merupakan indikasi dan perlu verifikasi
-                lapangan.
-              </p>
-            </div>
-          </div>
-        </div>
+              <div className="overflow-x-auto">
+                <div className="min-w-[760px]">
+                  {/* Month headers */}
+                  <div className="flex text-[10px] text-gray-400 font-medium mb-2 ml-10 gap-2">
+                    {DEMO_MONTH_LABELS.map((month) => (
+                      <span key={month} className="flex-1 text-center">
+                        {month}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Year rows */}
+                  {activeYears.map((year) => (
+                    <div key={year} className="flex items-center mb-2 gap-2">
+                      <span className="text-xs text-gray-500 w-8 font-semibold shrink-0">{year}</span>
+                      <div className="flex gap-2 flex-1">
+                        {activeMonthlyIntensity[year].map((value, monthIndex) => {
+                          const bucket = getIntensityBucket(value);
+                          return (
+                            <div
+                              key={monthIndex}
+                              className="flex-1 h-10 rounded-md hover:ring-2 hover:ring-offset-2 hover:ring-gray-300 transition-all cursor-default"
+                              style={{ backgroundColor: bucket.bg }}
+                              title={
+                                value === null
+                                  ? `${DEMO_MONTH_LABELS[monthIndex]} ${year}: belum ada data`
+                                  : hasRealMonths
+                                    ? `${DEMO_MONTH_LABELS[monthIndex]} ${year}: ${value.toLocaleString("id-ID")} deteksi`
+                                    : `${DEMO_MONTH_LABELS[monthIndex]} ${year}: ${value.toLocaleString("id-ID")} deteksi (contoh)`
+                              }
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Intensity legend */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 mt-2 border-t border-gray-100">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-semibold text-gray-500 tracking-wide mr-1">INTENSITAS:</span>
+                  {INTENSITY_BUCKETS.map((bucket) => (
+                    <span
+                      key={bucket.label}
+                      className="text-[11px] font-medium px-2 py-0.5 rounded"
+                      style={{ backgroundColor: bucket.bg, color: bucket.text }}
+                    >
+                      {bucket.label}
+                    </span>
+                  ))}
+                  <span
+                    className="text-[11px] font-medium px-2 py-0.5 rounded border border-gray-200"
+                    style={{ backgroundColor: INTENSITY_NO_DATA.bg, color: INTENSITY_NO_DATA.text }}
+                  >
+                    {INTENSITY_NO_DATA.label}
+                  </span>
+                </div>
+                <span className="text-xs text-gray-400">
+                  {hasRealMonths
+                    ? "Satuan: Jumlah observasi termal unik per sel kalender (arsip NASA FIRMS nyata)."
+                    : "Satuan: Jumlah observasi termal unik per sel kalender (data ilustratif)."}
+                </span>
+              </div>
+            </Card>
+          </>
+        )}
 
       </div>
     </WorkstationLayout>

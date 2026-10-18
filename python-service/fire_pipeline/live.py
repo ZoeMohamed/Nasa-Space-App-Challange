@@ -25,6 +25,17 @@ CACHE_SECONDS = 5 * 60
 REQUEST_TIMEOUT_SECONDS = 20
 FETCH_ATTEMPTS = 3
 RETRY_BACKOFF_SECONDS = 1
+# FIRMS's "/1" day-range parameter is a processing-day bucket, not "last 24h
+# from now" -- VIIRS NRT in particular lags behind MODIS and is often still
+# empty for day-range=1 even though same-day detections exist once the
+# bucket closes (confirmed directly against the FIRMS API: /1 returned 0
+# VIIRS_SNPP_NRT rows for Indonesia while /2 returned 8514, with "h"
+# confidence rows as recent as a few hours old). We request a 2-day bucket
+# to absorb that lag, then filter to the real last-24h window ourselves
+# (see _within_last_24h) so the advertised `windowHours: 24` stays accurate
+# regardless of upstream bucket latency.
+FETCH_DAY_RANGE = 2
+WINDOW_HOURS = 24
 SOURCES = (
     ("MODIS_NRT", "MODIS"),
     ("VIIRS_SNPP_NRT", "VIIRS"),
@@ -54,7 +65,7 @@ _cache: tuple[float, dict] | None = None
 
 
 def _fetch_source(map_key: str, source_id: str, sensor: str) -> tuple[pd.DataFrame, dict]:
-    url = f"{FIRMS_API_BASE}/{quote(map_key, safe='')}/{source_id}/{INDONESIA_BOUNDS}/1"
+    url = f"{FIRMS_API_BASE}/{quote(map_key, safe='')}/{source_id}/{INDONESIA_BOUNDS}/{FETCH_DAY_RANGE}"
     request = Request(url, headers={"User-Agent": "FireWatch-Python/1.0"})
     last_error = None
     for attempt in range(FETCH_ATTEMPTS):
@@ -159,6 +170,13 @@ def process_live_frames(frames: list[pd.DataFrame], source_summaries: list[dict]
         raise LiveDataError("All NASA FIRMS feeds are unavailable")
     detections = add_quality_flags(harmonize(pd.concat(frames, ignore_index=True, sort=False)))
     detections = detections[detections["quality_ok"]].reset_index(drop=True)
+    # We fetch a FETCH_DAY_RANGE-day bucket from FIRMS to absorb VIIRS NRT's
+    # processing lag (see FETCH_DAY_RANGE's comment), so trim back down to the
+    # real last WINDOW_HOURS here -- otherwise this endpoint's advertised
+    # "windowHours: 24" would be a lie on any VIIRS-lag day.
+    if "acq_datetime" in detections.columns:
+        cutoff = pd.Timestamp.now(tz="UTC").tz_localize(None) - pd.Timedelta(hours=WINDOW_HOURS)
+        detections = detections[detections["acq_datetime"] >= cutoff].reset_index(drop=True)
     detections = deduplicate_detections(detections)
     matches = match_modis_viirs(detections) if not detections.empty else pd.DataFrame(columns=["detection_id", "match_status", "matched_detection_id"])
     match_status = matches.set_index("detection_id")["match_status"].to_dict() if not matches.empty else {}

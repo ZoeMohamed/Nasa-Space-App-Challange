@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import LocationPicker from "../components/LocationPicker";
 import type { LocationSource } from "../lib/geo";
@@ -40,7 +40,6 @@ function readFileAsBase64(file: File): Promise<string> {
 }
 
 function ReportPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const location = useLocationState();
   const didInitFromQuery = useRef(false);

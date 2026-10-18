@@ -58,13 +58,6 @@ const STATUS_STYLE: Record<ReportStatus, { bg: string; text: string; dot: string
 
 const STATUS_FILTERS: ("all" | ReportStatus)[] = ["all", ...STATUS_ORDER];
 
-/** Map tile severity is just a visual weight for the pin on the basemap — not a real FRP/intensity
- * value (citizen reports don't have one). Needs-review reports get the most visually urgent pin. */
-function severityForStatus(status: ReportStatus): HotspotMarker["severity"] {
-  if (status === "submitted" || status === "under_review") return "HIGH";
-  if (status === "satellite_matched") return "MEDIUM";
-  return "LOW";
-}
 
 function formatDateTime(value: string | null | undefined): string {
   if (!value) return "Tidak tercatat";
@@ -134,15 +127,6 @@ function NoAccessControlBanner() {
         </p>
       </div>
     </div>
-  );
-}
-
-function LegendItem({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-gray-600">
-      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
-      {label}
-    </span>
   );
 }
 
@@ -268,15 +252,20 @@ export default function CitizenReportsPage() {
     });
   }, [reports, search, statusFilter]);
 
-  const reportMarkers = useMemo<HotspotMarker[]>(
+  // Citizen reports render as real person-pin markers (same shape/legend as
+  // Community View and the operator map), not disguised as fake satellite
+  // detections — a triangle "unknown sensor" marker would have misleadingly
+  // implied these came from MODIS/VIIRS. Real nearby satellite detections
+  // (hotspotMarkers, already fetched) are shown alongside for context.
+  const reportPins = useMemo(
     () =>
       filteredReports.map((report) => ({
         id: report.id,
         lat: report.lat,
         lng: report.lon,
-        label: `${report.id.slice(0, 8)} · ${STATUS_LABEL[report.status]}`,
-        frp: 0,
-        severity: severityForStatus(report.status),
+        status: report.status,
+        description: report.description,
+        createdAt: report.createdAt,
       })),
     [filteredReports]
   );
@@ -403,21 +392,21 @@ export default function CitizenReportsPage() {
                 <div className="flex h-full w-full items-center justify-center text-sm text-gray-400">Memuat peta…</div>
               ) : (
                 <FireMap
-                  markers={reportMarkers}
+                  markers={hotspotMarkers}
+                  reports={reportPins}
                   center={[-2.2, 113.8]}
                   zoom={7}
                   className="h-full w-full"
                   showSeverityLegend={false}
-                  onMarkerSelect={(marker) => selectReport(marker.id)}
+                  showDetailPanel={false}
+                  onReportSelect={(report) => (report ? selectReport(report.id) : null)}
                 />
               )}
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-4">
-              {STATUS_ORDER.map((status) => (
-                <LegendItem key={status} color={STATUS_STYLE[status].dot} label={STATUS_LABEL[status]} />
-              ))}
-            </div>
+            <p className="mt-3 text-[11px] text-gray-400">
+              Simbol peta (satelit &amp; laporan warga) ada di tombol &quot;Legenda&quot; pada peta di atas.
+            </p>
           </Card>
 
           {/* Detail / validation panel */}

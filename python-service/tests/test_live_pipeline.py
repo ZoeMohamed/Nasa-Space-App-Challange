@@ -1,9 +1,16 @@
 import sqlite3
+from datetime import datetime, timezone
 
 import pandas as pd
 
 from fire_pipeline.features import temporal_features
 from fire_pipeline.live import process_live_frames
+
+# process_live_frames() filters detections to the real last 24h (see
+# WINDOW_HOURS in fire_pipeline/live.py), so fixture acq_date must stay
+# within that window relative to whenever the test actually runs -- a
+# fixed past date would get silently filtered out.
+TODAY = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
 def test_live_frames_run_python_pipeline(monkeypatch, tmp_path):
@@ -12,8 +19,8 @@ def test_live_frames_run_python_pipeline(monkeypatch, tmp_path):
     monkeypatch.setenv("FIRE_HISTORICAL_DB_PATH", str(tmp_path / "no_such_store.sqlite"))
     frame = pd.DataFrame(
         [
-            {"latitude": -2.1, "longitude": 104.8, "brightness": 330, "acq_date": "2026-10-12", "acq_time": 300, "satellite": "Terra", "confidence": 92, "frp": 80, "sensor": "MODIS", "source": "MODIS_NRT", "source_file": "MODIS_NRT"},
-            {"latitude": -2.11, "longitude": 104.81, "bright_ti4": 340, "acq_date": "2026-10-12", "acq_time": 330, "satellite": "N20", "confidence": "h", "frp": 75, "sensor": "VIIRS", "source": "VIIRS_NOAA20_NRT", "source_file": "VIIRS_NOAA20_NRT"},
+            {"latitude": -2.1, "longitude": 104.8, "brightness": 330, "acq_date": TODAY, "acq_time": 300, "satellite": "Terra", "confidence": 92, "frp": 80, "sensor": "MODIS", "source": "MODIS_NRT", "source_file": "MODIS_NRT"},
+            {"latitude": -2.11, "longitude": 104.81, "bright_ti4": 340, "acq_date": TODAY, "acq_time": 330, "satellite": "N20", "confidence": "h", "frp": 75, "sensor": "VIIRS", "source": "VIIRS_NOAA20_NRT", "source_file": "VIIRS_NOAA20_NRT"},
         ]
     )
     summaries = [
@@ -65,7 +72,7 @@ def test_unmatched_detection_has_no_matched_detection_id(monkeypatch, tmp_path):
     monkeypatch.setenv("FIRE_HISTORICAL_DB_PATH", str(tmp_path / "no_such_store.sqlite"))
     frame = pd.DataFrame(
         [
-            {"latitude": -2.1, "longitude": 104.8, "brightness": 330, "acq_date": "2026-10-12", "acq_time": 300, "satellite": "Terra", "confidence": 92, "frp": 80, "sensor": "MODIS", "source": "MODIS_NRT", "source_file": "MODIS_NRT"},
+            {"latitude": -2.1, "longitude": 104.8, "brightness": 330, "acq_date": TODAY, "acq_time": 300, "satellite": "Terra", "confidence": 92, "frp": 80, "sensor": "MODIS", "source": "MODIS_NRT", "source_file": "MODIS_NRT"},
         ]
     )
     summaries = [{"id": "MODIS_NRT", "sensor": "MODIS", "rawCount": 1, "highConfidenceCount": 1, "available": True}]
@@ -92,7 +99,7 @@ def test_historical_baseline_source_is_honestly_reported(monkeypatch, tmp_path):
 
     frame = pd.DataFrame(
         [
-            {"latitude": -2.1, "longitude": 104.8, "brightness": 330, "acq_date": "2026-10-12", "acq_time": 300, "satellite": "Terra", "confidence": 92, "frp": 80, "sensor": "MODIS", "source": "MODIS_NRT", "source_file": "MODIS_NRT"},
+            {"latitude": -2.1, "longitude": 104.8, "brightness": 330, "acq_date": TODAY, "acq_time": 300, "satellite": "Terra", "confidence": 92, "frp": 80, "sensor": "MODIS", "source": "MODIS_NRT", "source_file": "MODIS_NRT"},
         ]
     )
     summaries = [{"id": "MODIS_NRT", "sensor": "MODIS", "rawCount": 1, "highConfidenceCount": 1, "available": True}]

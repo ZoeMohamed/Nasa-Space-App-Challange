@@ -8,7 +8,7 @@ import WorkstationLayout from "@/components/layout/WorkstationLayout";
 import Card from "@/components/ui/Card";
 import Badge, { type BadgeTone } from "@/components/ui/Badge";
 import { getRegionOption, getRangeOption, isDemoRange, isWithinBounds } from "@/lib/filters";
-import type { AreaSummary, HotspotApiResponse, HotspotMarker } from "@/types";
+import type { AreaSummary, CommunityReport, HotspotApiResponse, HotspotMarker } from "@/types";
 
 const FireMap = dynamic(() => import("@/components/map/FireMap"), {
   ssr: false,
@@ -133,108 +133,109 @@ function formatAcquiredAt(acquiredAt: string | undefined) {
 }
 
 function HotspotDetailPanel({ marker, onClose }: { marker: HotspotMarker; onClose: () => void }) {
+  const [expanded, setExpanded] = useState(false);
   const acquired = formatAcquiredAt(marker.acquiredAt);
   const frpPercent = Math.max(6, Math.min(100, (marker.frp / 100) * 100));
   const confidenceText =
     marker.confidenceLabel ?? (marker.confidence !== undefined ? `${marker.confidence.toFixed(0)}%` : null);
 
   return (
-    <Card className="absolute top-4 right-4 z-[1200] w-[320px] max-h-[calc(100%-2rem)] overflow-y-auto p-5">
-      <div className="flex items-start justify-between gap-2 pb-3 border-b border-[var(--color-border)]">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[18px] text-red-600">local_fire_department</span>
-          <h2 className="text-sm font-bold text-[var(--color-text-main)]">Deteksi Titik Panas (Hotspot)</h2>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Tutup detail hotspot"
-          className="shrink-0 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
-        >
-          <span className="material-symbols-outlined text-[18px]">close</span>
-        </button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 py-3 border-b border-[var(--color-border)]">
-        <div>
-          <div className="flex items-center gap-1 text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">
-            <span className="material-symbols-outlined text-[12px]">location_on</span>
-            Lokasi
-          </div>
-          <div className="text-xs font-bold text-[var(--color-text-main)] mt-1">{marker.label}</div>
-          <div className="text-[10px] text-[var(--color-text-muted)]">
-            {marker.lat.toFixed(4)}°, {marker.lng.toFixed(4)}°
-          </div>
-        </div>
-        <div>
-          <div className="flex items-center gap-1 text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">
-            <span className="material-symbols-outlined text-[12px]">schedule</span>
-            Deteksi
-          </div>
-          <div className="text-xs font-bold text-[var(--color-text-main)] mt-1">{acquired.date}</div>
-          <div className="text-[10px] text-[var(--color-text-muted)]">{acquired.time}</div>
-        </div>
-      </div>
-
-      <div className="py-3 border-b border-[var(--color-border)]">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">
-            Intensitas Panas
+    <Card className="absolute top-4 right-4 z-[1200] w-[min(340px,calc(100vw-2rem))] max-h-[calc(100%-2rem)] overflow-y-auto p-4 shadow-xl backdrop-blur-md bg-white/95 border border-[var(--color-border)] rounded-2xl transition-all">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-[var(--color-border)]">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
+            <span className="material-symbols-outlined text-[18px]">local_fire_department</span>
           </span>
-          <Badge tone={SEVERITY_BADGE_TONE[marker.severity]}>{marker.severity}</Badge>
-        </div>
-        <div className="flex items-end justify-between mb-2">
-          <div>
-            <span className="text-[11px] text-[var(--color-text-muted)]">Daya radiasi (FRP): </span>
-            <span className="text-base font-bold text-[var(--color-text-main)]">{marker.frp.toFixed(1)}</span>
-            <span className="text-xs font-medium text-[var(--color-text-muted)]"> MW</span>
+          <div className="min-w-0">
+            <h2 className="text-xs font-bold text-[var(--color-text-main)] truncate">
+              {marker.matchStatus === "MATCHED" ? "Harmonized (MODIS + VIIRS)" : `Deteksi ${marker.sensor ?? "Satelit"}`}
+            </h2>
+            <div className="text-[10px] text-[var(--color-text-muted)] mt-0.5 truncate">{marker.label}</div>
           </div>
         </div>
-        <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
-          <div
-            className="h-2 rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-red-600"
-            style={{ width: `${frpPercent}%` }}
-          />
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            title={expanded ? "Ciutkan panel" : "Perluas rincian"}
+            aria-label={expanded ? "Ciutkan panel" : "Perluas rincian"}
+            className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+          >
+            <span className="material-symbols-outlined text-[17px]">{expanded ? "expand_less" : "expand_more"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup detail hotspot"
+            className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+          >
+            <span className="material-symbols-outlined text-[16px]">close</span>
+          </button>
         </div>
       </div>
 
-      <div className="py-3 border-b border-[var(--color-border)]">
-        <div className="flex items-center gap-1 text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide mb-1">
-          <span className="material-symbols-outlined text-[12px]">satellite_alt</span>
-          Sumber Deteksi
+      {/* Collapsed view summary */}
+      <div className="py-2.5 border-b border-[var(--color-border)] flex items-center justify-between text-xs">
+        <div className="flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)]">
+          <span className="material-symbols-outlined text-[14px]">schedule</span>
+          <span>{acquired.date} · {acquired.time}</span>
         </div>
-        <div className="text-xs font-semibold text-[var(--color-text-main)]">
-          {marker.sensor ?? marker.source ?? "NASA FIRMS"} • {marker.satellite ?? "Satelit tidak diketahui"}
-        </div>
-        <div className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
-          {confidenceText ? `Keyakinan: ${confidenceText}` : "Keyakinan tidak dilaporkan"}
-          {marker.matchStatus && ` • Status: ${marker.matchStatus.replaceAll("_", " ")}`}
-        </div>
-        {marker.priorityTier && (
-          <div className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
-            Prioritas pipeline: {marker.priorityTier}
-            {marker.priorityScore !== undefined ? ` (${marker.priorityScore.toFixed(2)})` : ""}
-          </div>
-        )}
+        <Badge tone={SEVERITY_BADGE_TONE[marker.severity]}>{marker.severity}</Badge>
       </div>
 
-      <div className="pt-3 space-y-2">
-        <p className="text-[13px] font-semibold text-[var(--color-text-main)]">Cara membaca titik ini</p>
-        <p className="text-xs leading-[18px] text-[var(--color-text-muted)]">
-          FRP {marker.frp.toFixed(1)} MW menunjukkan daya radiasi panas yang terdeteksi satelit, bukan luas lahan
-          terbakar.
-        </p>
-        {confidenceText && (
-          <p className="text-xs leading-[18px] text-[var(--color-text-muted)]">
-            Keyakinan {confidenceText} adalah kualitas deteksi pada data sumber, bukan peluang kebakaran atau
-            tingkat bahaya.
-          </p>
-        )}
-        <p className="text-xs leading-[18px] font-semibold text-emerald-800">
-          Tindak lanjut: cocokkan lokasi dan waktu, lalu verifikasi kondisi lapangan sesuai prosedur. Titik panas
-          belum membuktikan adanya kebakaran.
-        </p>
-      </div>
+      {/* Expanded details */}
+      {expanded && (
+        <div className="space-y-3 pt-3 animate-fadeIn text-xs">
+          <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-100 text-[11px]">
+            <div>
+              <span className="text-gray-400 block text-[10px]">Koordinat</span>
+              <span className="font-mono text-gray-700 font-semibold">{marker.lat.toFixed(4)}°, {marker.lng.toFixed(4)}°</span>
+            </div>
+            <div>
+              <span className="text-gray-400 block text-[10px]">Sensor / Satelit</span>
+              <span className="font-semibold text-gray-800">{marker.sensor ?? marker.source ?? "NASA FIRMS"} {marker.satellite ? `(${marker.satellite})` : ""}</span>
+            </div>
+            <div>
+              <span className="text-gray-400 block text-[10px]">Keyakinan</span>
+              <span className="font-semibold text-gray-800">{confidenceText ?? "Tidak dilaporkan"}</span>
+            </div>
+            <div>
+              <span className="text-gray-400 block text-[10px]">Status Validasi</span>
+              <span className="font-semibold text-emerald-800">{marker.matchStatus ? marker.matchStatus.replaceAll("_", " ") : "Belum dicocokkan"}</span>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-[var(--color-text-muted)]">Daya Radiasi (FRP):</span>
+              <span className="font-bold text-[var(--color-text-main)]">{marker.frp.toFixed(1)} MW</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
+              <div
+                className="h-2 rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-red-600"
+                style={{ width: `${frpPercent}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5 text-[11px] text-[var(--color-text-muted)] leading-relaxed pt-1">
+            <p className="bg-amber-50 text-amber-900 border border-amber-200/60 p-2 rounded-lg">
+              FRP {marker.frp.toFixed(1)} MW menunjukkan daya radiasi panas yang terdeteksi satelit, bukan luas lahan terbakar. Titik panas belum membuktikan adanya kebakaran aktif di lapangan.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Toggle button footer */}
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="w-full text-center text-[11px] font-bold text-emerald-700 hover:text-emerald-900 pt-2 flex items-center justify-center gap-1"
+      >
+        <span>{expanded ? "Ciutkan rincian" : "Lihat rincian lengkap"}</span>
+        <span className="material-symbols-outlined text-[15px]">{expanded ? "expand_less" : "expand_more"}</span>
+      </button>
     </Card>
   );
 }
@@ -258,6 +259,27 @@ function MapExplorerPageContent() {
   const [exploreTab, setExploreTab] = useState<ExploreTab>("hotspot");
   const [onlyMatched, setOnlyMatched] = useState(false);
   const [onlyHighFrp, setOnlyHighFrp] = useState(false);
+  const [reports, setReports] = useState<CommunityReport[]>([]);
+  const [showReports, setShowReports] = useState(true);
+
+  // Citizen reports are fetched separately from /api/reports (not part of
+  // /api/hotspots) and shown as person-pin markers alongside satellite
+  // detections — same shared backend as Community View / /citizen-reports.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/reports", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => {
+        if (cancelled || !body?.reports) return;
+        setReports(body.reports);
+      })
+      .catch(() => {
+        /* best-effort */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -370,7 +392,20 @@ function MapExplorerPageContent() {
           zoom={5}
           className="absolute inset-0 h-full w-full"
           showSeverityLegend={false}
+          showDetailPanel={false}
           onMarkerSelect={setSelectedMarker}
+          reports={
+            showReports
+              ? reports.map((r) => ({
+                  id: r.id,
+                  lat: r.lat,
+                  lng: r.lon,
+                  status: r.status,
+                  description: r.description,
+                  createdAt: r.createdAt,
+                }))
+              : []
+          }
         />
 
         {!showControls && (
@@ -462,7 +497,25 @@ function MapExplorerPageContent() {
                     ? "NASA live → Python processing…"
                     : `${visibleMarkers.length.toLocaleString()} ${activeLayer === "HARMONIZED" ? "combined" : activeLayer} observations`}
               </span>
-              {!loading && !error && <span className="text-gray-400">• {meta?.sources.filter((source) => source.available).length ?? 0}/4 feeds</span>}
+              {!loading && !error && meta && (
+                <span
+                  className={meta.degraded ? "text-amber-600" : "text-gray-400"}
+                  title="Jumlah ini berasal langsung dari NASA FIRMS dan bisa naik-turun antar pemuatan karena jadwal lintasan satelit yang sesungguhnya — bukan bug."
+                >
+                  •{" "}
+                  {Object.entries(
+                    meta.sources.reduce<Record<string, { count: number; allAvailable: boolean }>>((acc, source) => {
+                      const entry = acc[source.sensor] ?? { count: 0, allAvailable: true };
+                      entry.count += source.available ? source.highConfidenceCount : 0;
+                      entry.allAvailable = entry.allAvailable && source.available;
+                      acc[source.sensor] = entry;
+                      return acc;
+                    }, {})
+                  )
+                    .map(([sensor, { count, allAvailable }]) => `${sensor} ${count}${allAvailable ? "" : " (sebagian gagal)"}`)
+                    .join(" · ")}
+                </span>
+              )}
             </div>
           </Card>
         )}
@@ -554,9 +607,13 @@ function MapExplorerPageContent() {
             {exploreTab === "filter" && (
               <div className="mt-4 space-y-3">
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900">Filtering Area</h3>
-                  <p className="mt-1 text-xs text-gray-500">Filter ini langsung mengatur marker yang terlihat.</p>
+                  <h3 className="text-sm font-bold text-gray-900">Layer</h3>
+                  <p className="mt-1 text-xs text-gray-500">Atur lapisan &amp; filter yang terlihat di peta.</p>
                 </div>
+                <label className="flex items-start gap-2 rounded-lg border border-gray-200 p-3 text-xs text-gray-700 hover:bg-gray-50">
+                  <input type="checkbox" checked={showReports} onChange={(event) => setShowReports(event.target.checked)} className="mt-0.5 h-4 w-4 accent-emerald-600" />
+                  <span><strong className="font-semibold">Laporan warga</strong><br /><span className="text-gray-500">Tampilkan titik laporan dari Community View.</span></span>
+                </label>
                 <label className="flex items-start gap-2 rounded-lg border border-gray-200 p-3 text-xs text-gray-700 hover:bg-gray-50">
                   <input type="checkbox" checked={onlyMatched} onChange={(event) => setOnlyMatched(event.target.checked)} className="mt-0.5 h-4 w-4 accent-emerald-600" />
                   <span><strong className="font-semibold">Hanya matched</strong><br /><span className="text-gray-500">MODIS dan VIIRS memiliki pasangan terdekat.</span></span>
@@ -565,7 +622,7 @@ function MapExplorerPageContent() {
                   <input type="checkbox" checked={onlyHighFrp} onChange={(event) => setOnlyHighFrp(event.target.checked)} className="mt-0.5 h-4 w-4 accent-emerald-600" />
                   <span><strong className="font-semibold">FRP tinggi (&gt;50 MW)</strong><br /><span className="text-gray-500">Tampilkan anomali panas dengan intensitas lebih tinggi.</span></span>
                 </label>
-                <button type="button" onClick={() => { setOnlyMatched(false); setOnlyHighFrp(false); }} className="text-xs font-semibold text-emerald-700 hover:text-emerald-800">
+                <button type="button" onClick={() => { setOnlyMatched(false); setOnlyHighFrp(false); setShowReports(true); }} className="text-xs font-semibold text-emerald-700 hover:text-emerald-800">
                   Reset filter
                 </button>
               </div>

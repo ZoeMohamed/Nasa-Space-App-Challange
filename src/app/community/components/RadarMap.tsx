@@ -1,8 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { HotspotMarker } from "@/types";
+import type { CommunityReportPin, UserLocationPin } from "@/components/map/FireMap";
 
 const FireMap = dynamic(() => import("@/components/map/FireMap"), {
   ssr: false,
@@ -19,163 +20,231 @@ const FireMap = dynamic(() => import("@/components/map/FireMap"), {
 interface RadarMapProps {
   markers: HotspotMarker[];
   locationLabel?: string;
-  nearestDistanceKm?: number;
+  userCoords?: { lat: number; lon: number };
+  reports?: CommunityReportPin[];
 }
 
-export default function RadarMap({ markers, locationLabel = "Lokasimu", nearestDistanceKm = 2.4 }: RadarMapProps) {
-  const [viewMode, setViewMode] = useState<"radar" | "interactive">("radar");
+type MapLayerFilter = "ALL" | "MATCHED" | "VIIRS" | "MODIS";
+
+export default function RadarMap({
+  markers,
+  locationLabel = "Lokasimu",
+  userCoords = { lat: -3.125, lon: 114.15 },
+  reports = [],
+}: RadarMapProps) {
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [activeLayer, setActiveLayer] = useState<MapLayerFilter>("ALL");
+
+  // Prevent background scroll when in full-screen mode
+  useEffect(() => {
+    if (isFullScreen) {
+      document.body.style.overflow = "hidden";
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") setIsFullScreen(false);
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.body.style.overflow = "";
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    } else {
+      document.body.style.overflow = "";
+    }
+  }, [isFullScreen]);
+
+  // Filter markers based on layer selection
+  const filteredMarkers = useMemo(() => {
+    if (activeLayer === "MATCHED") {
+      return markers.filter((m) => m.matchStatus === "MATCHED");
+    }
+    if (activeLayer === "VIIRS") {
+      return markers.filter((m) => m.sensor === "VIIRS" || m.matchStatus === "VIIRS_ONLY");
+    }
+    if (activeLayer === "MODIS") {
+      return markers.filter((m) => m.sensor === "MODIS" || m.matchStatus === "MODIS_ONLY");
+    }
+    return markers;
+  }, [markers, activeLayer]);
+
+  const userLocationObj: UserLocationPin = useMemo(
+    () => ({
+      lat: userCoords.lat,
+      lng: userCoords.lon,
+      label: locationLabel,
+      radiusKm: 10,
+    }),
+    [userCoords, locationLabel]
+  );
 
   return (
-    <div className="rounded-3xl border border-[var(--community-border)] bg-white overflow-hidden shadow-xs">
-      {/* Header */}
-      <div className="p-4 pb-3 flex items-start justify-between">
-        <div>
-          <h2 className="text-[15px] font-bold text-[#123027] tracking-tight">Kebakaran di sekitarmu</h2>
-          <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5">
-            Ilustrasi peta · MODIS / VIIRS + laporan warga
-          </p>
+    <>
+      {/* Standard In-Page Card (Figma Screen 01) */}
+      <div className="rounded-3xl border border-[var(--community-border)] bg-white overflow-hidden shadow-xs">
+        {/* Header */}
+        <div className="p-4 pb-3 flex items-start justify-between gap-2">
+          <div>
+            <h2 className="text-[15px] font-bold text-[#123027] tracking-tight">Kebakaran di sekitarmu</h2>
+            <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5">
+              Peta nyata · MODIS / VIIRS + laporan warga
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Buka peta lengkap (Full-Screen Map) Button */}
+            <button
+              type="button"
+              onClick={() => setIsFullScreen(true)}
+              className="text-xs font-bold text-[var(--community-accent)] hover:text-emerald-950 flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 transition active:scale-95"
+            >
+              <span>Buka peta lengkap</span>
+              <span className="material-symbols-outlined text-[16px]">open_in_full</span>
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setViewMode(viewMode === "radar" ? "interactive" : "radar")}
-          className="text-xs font-bold text-[var(--community-accent)] hover:text-emerald-800 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 transition"
-        >
-          <span>{viewMode === "radar" ? "Buka peta interaktif" : "Lihat radar radius"}</span>
-          <span className="material-symbols-outlined text-[15px]">
-            {viewMode === "radar" ? "map" : "radar"}
-          </span>
-        </button>
+
+        {/* Map Content Container — always the real map, never a decorative illustration */}
+        <div className="relative h-[290px] w-full bg-[#f1f6f2] overflow-hidden select-none">
+          <div className="h-full w-full">
+            <FireMap
+              markers={markers}
+              userLocation={userLocationObj}
+              reports={reports}
+              center={[userCoords.lat, userCoords.lon]}
+              zoom={10}
+              className="h-full w-full"
+              showSeverityLegend={true}
+              showSymbolLegend={true}
+              allowFullScreenToggle={true}
+              isFullScreen={false}
+              onToggleFullScreen={() => setIsFullScreen(true)}
+            />
+          </div>
+        </div>
+
+        {/* Legend Bar */}
+        <div className="p-3 border-t border-[var(--community-border)] bg-white flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[11px] text-[var(--community-ink-muted)] font-medium">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-blue-600 ring-1 ring-white" />
+            <span>Lokasimu</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-red-600 ring-1 ring-white" />
+            <span>Tervalidasi</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full border border-orange-500 bg-orange-100" />
+            <span>Perlu ditinjau</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-slate-400" />
+            <span>Satelit</span>
+          </div>
+        </div>
       </div>
 
-      {/* Map Content */}
-      <div className="relative h-[290px] w-full bg-[#f1f6f2] overflow-hidden select-none">
-        {viewMode === "interactive" ? (
-          <div className="h-full w-full">
-            <FireMap markers={markers} className="h-full w-full" showSeverityLegend={false} />
-          </div>
-        ) : (
-          /* Figma-style stylized Radar Map View */
-          <div className="relative h-full w-full flex items-center justify-center bg-gradient-to-b from-[#e8f1eb] via-[#e2eee5] to-[#d9e7dd]">
-            {/* SVG Background Contours / Rivers / Peatland */}
-            <svg className="absolute inset-0 h-full w-full opacity-40 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
-                  <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#b2cdbe" strokeWidth="0.5" strokeDasharray="2,2" />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#grid)" />
-              {/* River path */}
-              <path
-                d="M -10 120 C 80 140, 150 90, 220 160 C 290 230, 340 180, 420 200"
-                fill="none"
-                stroke="#9fc0b0"
-                strokeWidth="10"
-                strokeLinecap="round"
-                className="opacity-60"
-              />
-              <path
-                d="M -10 120 C 80 140, 150 90, 220 160 C 290 230, 340 180, 420 200"
-                fill="none"
-                stroke="#c0dfd0"
-                strokeWidth="4"
-                strokeLinecap="round"
-              />
-            </svg>
-
-            {/* Radar Radius Circles */}
-            <div className="relative flex items-center justify-center">
-              {/* 10 km Outer Circle */}
-              <div className="w-[230px] h-[230px] rounded-full border-2 border-dashed border-emerald-600/40 bg-emerald-500/5 flex items-center justify-center relative animate-pulse">
-                {/* 10 km badge tag */}
-                <span className="absolute top-2 left-6 bg-white/90 backdrop-blur-xs text-[10px] font-bold text-emerald-800 px-2 py-0.5 rounded-full shadow-xs border border-emerald-200">
-                  Radius 10 km
-                </span>
-                
-                {/* 5 km Inner Circle */}
-                <div className="w-[140px] h-[140px] rounded-full border border-emerald-600/30 bg-emerald-500/5 flex items-center justify-center relative">
-                  
-                  {/* Center: Lokasimu */}
-                  <div className="relative z-10 flex flex-col items-center">
-                    <span className="relative flex h-5 w-5 items-center justify-center">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-blue-600 ring-3 ring-white shadow-md" />
-                    </span>
-                    <span className="mt-1 text-[9px] font-bold bg-[#123027] text-white px-2 py-0.5 rounded-full shadow-xs whitespace-nowrap">
-                      {locationLabel}
-                    </span>
-                  </div>
-
-                  {/* Hotspot 1: 2.4 km (Timur Laut) with distance indicator */}
-                  <div className="absolute top-4 right-3 z-10 flex flex-col items-center">
-                    {/* Distance pill */}
-                    <span className="mb-0.5 text-[9px] font-extrabold bg-[#ba1a1a] text-white px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-0.5">
-                      <span>{nearestDistanceKm.toFixed(1)} km</span>
-                    </span>
-                    <span className="relative flex h-4 w-4 items-center justify-center">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600 ring-2 ring-white shadow-sm" />
-                    </span>
-                  </div>
-
-                  {/* Connector line between Lokasimu and 2.4km */}
-                  <svg className="absolute inset-0 h-full w-full pointer-events-none">
-                    <line x1="70" y1="70" x2="115" y2="35" stroke="#ba1a1a" strokeWidth="1.5" strokeDasharray="3,3" />
-                  </svg>
-                </div>
-              </div>
-
-              {/* Hotspot 2: 5.8 km (Selatan) */}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
-                <span className="relative flex h-3.5 w-3.5 items-center justify-center">
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500 ring-2 ring-white shadow-xs" />
-                </span>
-                <span className="text-[8px] font-semibold text-gray-700 bg-white/80 px-1 rounded">5,8 km</span>
-              </div>
-
-              {/* Hotspot 3: 8.1 km (Barat) */}
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex flex-col items-center">
-                <span className="relative flex h-3.5 w-3.5 items-center justify-center">
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 border-2 border-orange-500 bg-white ring-1 ring-white shadow-xs" />
-                </span>
-                <span className="text-[8px] font-semibold text-gray-700 bg-white/80 px-1 rounded">8,1 km</span>
-              </div>
-
-              {/* Satellite Detection 4 */}
-              <div className="absolute right-4 bottom-12 z-10 flex flex-col items-center">
-                <span className="relative flex h-3.5 w-3.5 items-center justify-center">
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-slate-400 ring-2 ring-white shadow-xs" />
-                </span>
-                <span className="text-[8px] font-semibold text-gray-700 bg-white/80 px-1 rounded">6,9 km</span>
-              </div>
-
-              {/* Area label: Pulang Pisau */}
-              <div className="absolute bottom-2 left-4 text-[10px] font-bold text-emerald-900/60 uppercase tracking-widest">
-                PULANG PISAU
+      {/* DEDICATED FULL-SCREEN MAP VIEW (Requirement 1) */}
+      {isFullScreen && (
+        <div className="fixed inset-0 z-[1500] bg-white flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] animate-fadeIn">
+          {/* Full-screen Header Bar */}
+          <header className="shrink-0 bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 py-2.5 flex items-center justify-between gap-3 shadow-xs">
+            {/* Back Button & Title */}
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                type="button"
+                onClick={() => setIsFullScreen(false)}
+                className="flex items-center gap-1.5 text-xs font-bold text-[#123027] hover:text-emerald-800 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-xl transition active:scale-95"
+              >
+                <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                <span>Kembali</span>
+              </button>
+              <div className="min-w-0 hidden sm:block">
+                <h1 className="text-sm font-extrabold text-[#123027] truncate">
+                  Peta Pemantauan Karhutla
+                </h1>
+                <p className="text-[10px] text-gray-500 truncate">
+                  {locationLabel} · Radius pantau 10 km
+                </p>
               </div>
             </div>
-          </div>
-        )}
-      </div>
 
-      {/* Legend Bar */}
-      <div className="p-3 border-t border-[var(--community-border)] bg-white flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[11px] text-[var(--community-ink-muted)] font-medium">
-        <div className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-blue-600 ring-1 ring-white" />
-          <span>Lokasimu</span>
+            {/* Layer Filter Pills */}
+            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl text-xs font-bold overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setActiveLayer("ALL")}
+                className={`px-2.5 py-1 rounded-lg transition ${
+                  activeLayer === "ALL"
+                    ? "bg-white text-emerald-900 shadow-xs"
+                    : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                Semua ({markers.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveLayer("MATCHED")}
+                className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${
+                  activeLayer === "MATCHED"
+                    ? "bg-white text-emerald-900 shadow-xs"
+                    : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                <span>🔥</span>
+                <span>Harmonized</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveLayer("VIIRS")}
+                className={`px-2.5 py-1 rounded-lg transition ${
+                  activeLayer === "VIIRS"
+                    ? "bg-white text-emerald-900 shadow-xs"
+                    : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                VIIRS
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveLayer("MODIS")}
+                className={`px-2.5 py-1 rounded-lg transition ${
+                  activeLayer === "MODIS"
+                    ? "bg-white text-emerald-900 shadow-xs"
+                    : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                MODIS
+              </button>
+            </div>
+
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setIsFullScreen(false)}
+              aria-label="Tutup peta layar penuh"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </header>
+
+          {/* Fullscreen Map Canvas */}
+          <main className="flex-1 relative w-full h-full overflow-hidden bg-[#d9e4df]">
+            <FireMap
+              markers={filteredMarkers}
+              userLocation={userLocationObj}
+              reports={reports}
+              center={[userCoords.lat, userCoords.lon]}
+              zoom={11}
+              className="h-full w-full"
+              showSeverityLegend={true}
+              showSymbolLegend={true}
+              showDetailPanel={true}
+              allowFullScreenToggle={false}
+              actionHref={(m) => `/community/alert/${m.id}`}
+              actionLabel="Lihat Detail Peringatan"
+            />
+          </main>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-red-600 ring-1 ring-white" />
-          <span>Tervalidasi</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full border border-orange-500 bg-orange-100" />
-          <span>Perlu ditinjau</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-slate-400" />
-          <span>Satelit</span>
-        </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 }

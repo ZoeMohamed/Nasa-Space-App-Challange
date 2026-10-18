@@ -9,7 +9,7 @@ import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import StatTile from "@/components/ui/StatTile";
 import { getRegionOption, isDemoRange, isWithinBounds } from "@/lib/filters";
-import type { AreaSummary, HotspotApiResponse, HotspotMarker } from "@/types";
+import type { AreaSummary, CommunityReport, HotspotApiResponse, HotspotMarker } from "@/types";
 
 /**
  * Dashboard / Overview — rebuilt from Figma file wasTTtlmYfsjK1ZkH1Kzim, node 169:3496
@@ -93,6 +93,25 @@ function DashboardPageContent() {
   const [meta, setMeta] = useState<HotspotApiResponse["meta"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reports, setReports] = useState<CommunityReport[]>([]);
+
+  // Citizen reports, shown as person-pin markers on the dashboard map alongside
+  // satellite detections — same shared backend as /map and /citizen-reports.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/reports", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => {
+        if (cancelled || !body?.reports) return;
+        setReports(body.reports);
+      })
+      .catch(() => {
+        /* best-effort */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Region filter — client-side bbox check against the already-fetched live markers/areas.
   // Bounding boxes are approximate (see src/lib/filters.ts), "Seluruh Indonesia" is a no-op.
@@ -215,8 +234,22 @@ function DashboardPageContent() {
                   : ""}
           </span>
           {!loading && !error && meta && (
-            <span className={meta.degraded ? "text-amber-600" : "text-gray-400"}>
-              • {meta.sources.filter((source) => source.available).length}/{meta.sources.length} NASA FIRMS feeds live
+            <span
+              className={meta.degraded ? "text-amber-600" : "text-gray-400"}
+              title="Jumlah ini berasal langsung dari NASA FIRMS dan bisa naik-turun antar pemuatan karena jadwal lintasan satelit yang sesungguhnya — bukan bug."
+            >
+              •{" "}
+              {Object.entries(
+                meta.sources.reduce<Record<string, { count: number; allAvailable: boolean }>>((acc, source) => {
+                  const entry = acc[source.sensor] ?? { count: 0, allAvailable: true };
+                  entry.count += source.available ? source.highConfidenceCount : 0;
+                  entry.allAvailable = entry.allAvailable && source.available;
+                  acc[source.sensor] = entry;
+                  return acc;
+                }, {})
+              )
+                .map(([sensor, { count, allAvailable }]) => `${sensor} ${count}${allAvailable ? "" : " (sebagian gagal)"}`)
+                .join(" · ")}
             </span>
           )}
         </div>
@@ -232,7 +265,20 @@ function DashboardPageContent() {
             </div>
           </div>
           <div className="relative h-[420px] m-4 rounded-lg overflow-hidden border border-[var(--color-border)]">
-            <FireMap markers={markers} center={[-2.2, 118]} zoom={5} className="h-full w-full" />
+            <FireMap
+              markers={markers}
+              center={[-2.2, 118]}
+              zoom={5}
+              className="h-full w-full"
+              reports={reports.map((r) => ({
+                id: r.id,
+                lat: r.lat,
+                lng: r.lon,
+                status: r.status,
+                description: r.description,
+                createdAt: r.createdAt,
+              }))}
+            />
 
             {/* Detection legend — real matchStatus counts, mirrors Figma's floating
                 "Bottom-Right Floating Quick Legend" (node 169:7619) panel layout */}

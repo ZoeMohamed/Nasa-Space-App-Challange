@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import type { HotspotMarker } from "@/types";
 
 /** A community-submitted field report pin, rendered alongside satellite markers. */
@@ -10,7 +11,20 @@ export interface CommunityReportPin {
   lng: number;
   status: string;
   description: string;
+  createdAt?: string;
 }
+
+export interface UserLocationPin {
+  lat: number;
+  lng: number;
+  label?: string;
+  radiusKm?: number;
+}
+
+export type SelectedMapEntity =
+  | { kind: "hotspot"; marker: HotspotMarker; groupMembers?: HotspotMarker[] }
+  | { kind: "report"; report: CommunityReportPin }
+  | { kind: "user"; location: UserLocationPin };
 
 interface FireMapProps {
   markers: HotspotMarker[];
@@ -18,12 +32,28 @@ interface FireMapProps {
   zoom?: number;
   className?: string;
   showSeverityLegend?: boolean;
-  /** Shows the shape/symbol legend (fire / circle / square / triangle / person). Default true. */
   showSymbolLegend?: boolean;
-  /** Called with the full marker record when its map point is clicked — drives an external detail panel. */
-  onMarkerSelect?: (marker: HotspotMarker) => void;
-  /** Optional community field reports, rendered as person-icon pins with their own popup. */
+  /** Called when a marker is selected, or with null when deselected/cleared. */
+  onMarkerSelect?: (marker: HotspotMarker | null) => void;
+  /** Called when a community-report pin is selected, or with null when deselected/cleared. */
+  onReportSelect?: (report: CommunityReportPin | null) => void;
+  /** Optional community field reports, rendered as person-icon pins. */
   reports?: CommunityReportPin[];
+  /** Optional user location pin, rendered as a distinct blue pulsing circle. */
+  userLocation?: UserLocationPin;
+  /** Controls if the built-in non-intrusive detail panel/bottom sheet renders. Default true. */
+  showDetailPanel?: boolean;
+  /** Optional action link generator for the detail panel. */
+  actionHref?: (marker: HotspotMarker) => string;
+  actionLabel?: string;
+  /** Enable built-in full-screen mode toggle. */
+  allowFullScreenToggle?: boolean;
+  /** Fit the view to all markers once, right after they first load — for a small focused map
+   * (e.g. a single grid cell's detections) where a fixed center/zoom can leave markers tiny or
+   * off-view. Only fires once per mount, not on every poll, so it doesn't fight manual panning. */
+  autoFitOnLoad?: boolean;
+  isFullScreen?: boolean;
+  onToggleFullScreen?: () => void;
 }
 
 const SEVERITY_COLOR: Record<string, string> = {
@@ -32,16 +62,17 @@ const SEVERITY_COLOR: Record<string, string> = {
   LOW: "#facc15", // yellow-400
 };
 
-const REPORT_PIN_COLOR = "#2563eb"; // blue-600, consistent with this app's existing blue accent
+const SEVERITY_LABEL_ID: Record<string, string> = {
+  HIGH: "Tinggi (>70 MW)",
+  MEDIUM: "Sedang (25–70 MW)",
+  LOW: "Rendah (<25 MW)",
+};
 
-// Slightly wider than the 60-minute window python-service/fire_pipeline/matching.py uses to
-// pair MODIS↔VIIRS detections, to tolerate acquiredAt string rounding to the minute.
+const REPORT_PIN_COLOR = "#2563eb"; // blue-600
+
+// 70-minute window for pairing MODIS and VIIRS detections
 const MATCH_PAIR_WINDOW_MS = 70 * 60 * 1000;
 
-/**
- * One rendered "harmonized fire" marker — either an actual MODIS+VIIRS matched pair (2 members)
- * or a lone MATCHED-status detection that had no in-bucket partner (1 member, nothing dropped).
- */
 interface FirePairGroup {
   key: string;
   lat: number;
@@ -56,27 +87,23 @@ function highestSeverity(members: HotspotMarker[]): HotspotMarker["severity"] {
   return "LOW";
 }
 
-/**
- * Groups raw markers into:
- *  - `fireGroups`: one combined 🔥 marker per MATCHED MODIS/VIIRS pair (the live pipeline
- *    currently emits BOTH sides of a matched pair as separate marker entries, each flagged
- *    matchStatus: "MATCHED" — this collapses them into one visual marker so a matched pair
- *    never renders as two overlapping points).
- *  - `singles`: every other marker (MODIS_ONLY / VIIRS_ONLY / UNMATCHED / unrecognized),
- *    rendered individually by `singleShapeKind`.
- *
- * Pairing strategy (documented per the task): `matchedDetectionId` from the Python pipeline is
- * an internal pandas `detection_id` integer, not this marker's own string `id`
- * (`source-acquiredAt-lat-lon`), so it cannot be used as a direct id→id lookup from the
- * frontend. Instead this buckets MATCHED markers by `areaId` (a Map, O(n) over all markers —
- * no nested loop over the full list), then within each small bucket (normally 2–8 detections
- * sharing one 0.25° grid cell) pairs the nearest-in-time detections, preferring a cross-sensor
- * match first so two unrelated same-sensor MATCHED detections that happen to share a grid cell
- * aren't fused together. No detection is ever dropped: an unpaired MATCHED marker still renders
- * as its own single-member fire marker with its own detail in the popup.
- *
- * Representative position for a pair: the midpoint of the two members' coordinates.
- */
+function computeDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function formatDistance(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)} m`;
+  return `${km.toFixed(1)} km`;
+}
+
 function groupMatchedPairs(markers: HotspotMarker[]): {
   fireGroups: FirePairGroup[];
   singles: HotspotMarker[];
@@ -114,15 +141,13 @@ function groupMatchedPairs(markers: HotspotMarker[]): {
         const b = sorted[j];
         if (used.has(b.id)) continue;
         const diff = Math.abs(Date.parse(b.acquiredAt ?? "") - Date.parse(a.acquiredAt ?? ""));
-        if (diff > MATCH_PAIR_WINDOW_MS) break; // sorted ascending — nothing further qualifies
+        if (diff > MATCH_PAIR_WINDOW_MS) break;
         if (b.sensor && a.sensor && b.sensor !== a.sensor && diff < partnerDiff) {
           partnerDiff = diff;
           partnerIndex = j;
         }
       }
       if (partnerIndex === -1) {
-        // No cross-sensor candidate in the window — fall back to the nearest remaining
-        // unused detection in-bucket rather than dropping it unpaired.
         for (let j = i + 1; j < sorted.length; j++) {
           const b = sorted[j];
           if (used.has(b.id)) continue;
@@ -155,38 +180,53 @@ function groupMatchedPairs(markers: HotspotMarker[]): {
   return { fireGroups, singles };
 }
 
-type SingleShapeKind = "circle" | "square" | "triangle";
+type SingleShapeKind = "star" | "hexagon" | "triangle";
 
-/** MODIS_ONLY -> circle, VIIRS_ONLY -> square, anything else (UNMATCHED / missing sensor info,
- * expected to be rare) -> triangle fallback. */
 function singleShapeKind(marker: HotspotMarker): SingleShapeKind {
-  if (marker.matchStatus === "MODIS_ONLY") return "circle";
-  if (marker.matchStatus === "VIIRS_ONLY") return "square";
+  if (marker.matchStatus === "MODIS_ONLY") return "star";
+  if (marker.matchStatus === "VIIRS_ONLY") return "hexagon";
   return "triangle";
 }
 
 function sizeForSeverity(severity: HotspotMarker["severity"]) {
-  return severity === "HIGH" ? 22 : severity === "MEDIUM" ? 18 : 14;
+  return severity === "HIGH" ? 13 : severity === "MEDIUM" ? 11 : 9;
+}
+
+/** SVG polygon points for a pointy-top regular hexagon inscribed in a size×size box. */
+function hexagonPoints(size: number): string {
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = (size / 2) * 0.95;
+  const points: string[] = [];
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 180) * (60 * i - 30);
+    points.push(`${(cx + r * Math.cos(angle)).toFixed(2)},${(cy + r * Math.sin(angle)).toFixed(2)}`);
+  }
+  return points.join(" ");
+}
+
+/** SVG polygon points for a 5-point star inscribed in a size×size box. */
+function starPoints(size: number): string {
+  const cx = size / 2;
+  const cy = size / 2;
+  const outerR = (size / 2) * 0.98;
+  const innerR = outerR * 0.42;
+  const points: string[] = [];
+  for (let i = 0; i < 10; i++) {
+    const angle = (Math.PI / 180) * (36 * i - 90);
+    const r = i % 2 === 0 ? outerR : innerR;
+    points.push(`${(cx + r * Math.cos(angle)).toFixed(2)},${(cy + r * Math.sin(angle)).toFixed(2)}`);
+  }
+  return points.join(" ");
 }
 
 function formatAcquiredAt(acquiredAt: string | undefined) {
-  if (!acquiredAt) return "waktu tidak diketahui";
+  if (!acquiredAt) return "Waktu tidak tercatat";
   const parsed = new Date(acquiredAt);
-  if (Number.isNaN(parsed.getTime())) return "waktu tidak diketahui";
+  if (Number.isNaN(parsed.getTime())) return "Waktu tidak tercatat";
   const date = parsed.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
   const time = parsed.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
-  return `${date} ${time} UTC`;
-}
-
-function buildDetectionDetailHtml(marker: HotspotMarker) {
-  const confidenceText =
-    marker.confidenceLabel ?? (marker.confidence !== undefined ? `${marker.confidence.toFixed(0)}%` : "tidak dilaporkan");
-  return `<div style="border-top:1px solid #e2e8f0;padding-top:4px;margin-top:4px;">
-    <div style="font-weight:600;">${escapeHtml(marker.sensor ?? marker.source ?? "Sensor tidak diketahui")}</div>
-    <div>Keyakinan: ${escapeHtml(confidenceText)}</div>
-    <div>FRP: ${marker.frp.toFixed(1)} MW</div>
-    <div>Terdeteksi: ${escapeHtml(formatAcquiredAt(marker.acquiredAt))}</div>
-  </div>`;
+  return `${date} · ${time} UTC`;
 }
 
 export default function FireMap({
@@ -197,18 +237,38 @@ export default function FireMap({
   showSeverityLegend = true,
   showSymbolLegend = true,
   onMarkerSelect,
+  onReportSelect,
   reports,
+  userLocation,
+  showDetailPanel = true,
+  actionHref,
+  actionLabel = "Lihat Detail Peringatan",
+  allowFullScreenToggle = false,
+  isFullScreen = false,
+  onToggleFullScreen,
+  autoFitOnLoad = false,
 }: FireMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const markerLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const highlightLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const userLocationLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
+
   const [ready, setReady] = useState(false);
+  const didAutoFitRef = useRef(false);
+  const [selectedEntity, setSelectedEntity] = useState<SelectedMapEntity | null>(null);
+  const [panelExpanded, setPanelExpanded] = useState(false);
+  // Open by default — users repeatedly couldn't tell circle (MODIS) from
+  // square (VIIRS) from 🔥 (harmonized) because this legend used to be
+  // hidden behind a click. Still collapsible via the same button.
+  const [showLegendModal, setShowLegendModal] = useState(true);
+
   const centerLat = center[0];
   const centerLng = center[1];
 
+  // Initialize Map
   useEffect(() => {
     if (typeof window === "undefined") return;
-
     let isMounted = true;
 
     import("leaflet").then((L) => {
@@ -217,24 +277,50 @@ export default function FireMap({
       const map = L.map(containerRef.current, {
         center: [centerLat, centerLng],
         zoom,
-        zoomControl: true,
+        zoomControl: false, // Custom styled zoom controls
         attributionControl: false,
         preferCanvas: true,
       });
 
+      // Satellite imagery basemap (Esri World Imagery — free, no API key),
+      // matching the look of reference systems like KLHK's SiPongi+.
       L.tileLayer(
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         {
           attribution: "Esri",
-          opacity: 0.9,
+          maxZoom: 18,
+        }
+      ).addTo(map);
+
+      // Place-name/boundary labels over the imagery, same provider's reference overlay —
+      // keeps province/city names legible on top of satellite photography.
+      L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+        {
+          maxZoom: 18,
+          pane: "overlayPane",
         }
       ).addTo(map);
 
       L.control
-        .attribution({ prefix: "FireWatch | © Esri | NASA FIRMS" })
+        .attribution({ prefix: "AGNIBHŪMI | © Esri | NASA FIRMS" })
         .addTo(map);
 
+      // Dedicated layers
+      userLocationLayerRef.current = L.layerGroup().addTo(map);
       markerLayerRef.current = L.layerGroup().addTo(map);
+      highlightLayerRef.current = L.layerGroup().addTo(map);
+
+      // Empty map tap / click dismisses selection panel
+      map.on("click", (e) => {
+        // If clicking map canvas directly
+        const target = e.originalEvent.target as HTMLElement | null;
+        if (target && (target.classList.contains("leaflet-container") || target.tagName === "CANVAS" || target.id?.includes("map"))) {
+          setSelectedEntity(null);
+          onMarkerSelect?.(null);
+          onReportSelect?.(null);
+        }
+      });
 
       mapRef.current = map;
       setReady(true);
@@ -246,10 +332,62 @@ export default function FireMap({
         mapRef.current.remove();
         mapRef.current = null;
         markerLayerRef.current = null;
+        highlightLayerRef.current = null;
+        userLocationLayerRef.current = null;
       }
     };
-  }, [centerLat, centerLng, zoom]);
+  }, [centerLat, centerLng, zoom, onMarkerSelect, onReportSelect]);
 
+  // Render User Location
+  useEffect(() => {
+    if (!ready || !userLocationLayerRef.current || !mapRef.current) return;
+    const layer = userLocationLayerRef.current;
+    layer.clearLayers();
+
+    if (!userLocation) return;
+
+    import("leaflet").then((L) => {
+      // 10 km Radius Circle if specified
+      if (userLocation.radiusKm) {
+        L.circle([userLocation.lat, userLocation.lng], {
+          radius: userLocation.radiusKm * 1000,
+          color: "#075640",
+          weight: 1.5,
+          dashArray: "5, 5",
+          fillColor: "#10b981",
+          fillOpacity: 0.05,
+        }).addTo(layer);
+      }
+
+      // User location pulsing pin
+      const icon = L.divIcon({
+        className: "agnibhumi-user-location-icon",
+        html: `<div style="position:relative;width:24px;height:24px;display:flex;align-items:center;justify-content:center;">
+          <div style="position:absolute;inset:0;border-radius:50%;background:#3b82f6;opacity:0.4;animation:ping 2s cubic-bezier(0,0,0.2,1) infinite;"></div>
+          <div style="position:relative;width:14px;height:14px;border-radius:50%;background:#2563eb;border:3px solid #ffffff;box-shadow:0 2px 6px rgba(0,0,0,0.35);"></div>
+        </div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
+
+      const userMarker = L.marker([userLocation.lat, userLocation.lng], {
+        icon,
+        zIndexOffset: 500,
+      }).addTo(layer);
+
+      userMarker.bindTooltip(userLocation.label ?? "Lokasi Anda", {
+        direction: "top",
+        className: "firesight-tooltip",
+      });
+
+      userMarker.on("click", () => {
+        setSelectedEntity({ kind: "user", location: userLocation });
+        setPanelExpanded(false);
+      });
+    });
+  }, [ready, userLocation]);
+
+  // Render Markers and Non-intrusive Selection Interactions (NO popup balloons!)
   useEffect(() => {
     if (!ready || !markerLayerRef.current) return;
 
@@ -263,192 +401,602 @@ export default function FireMap({
 
       const { fireGroups, singles } = groupMatchedPairs(markers);
 
-      // MATCHED pairs -> one 🔥 divIcon marker each, popup carries BOTH source detections.
+      // 1. MATCHED pairs -> Harmonized fire marker 🔥
       for (const group of fireGroups) {
-        const size = sizeForSeverity(group.severity);
-        const color = SEVERITY_COLOR[group.severity] ?? "#9ca3af";
+        // Fire emoji needs more room than the flat sensor shapes to stay legible,
+        // so it gets its own (still small) scale — no background disc, just the
+        // glyph with a drop-shadow for contrast against the satellite imagery.
+        const size = sizeForSeverity(group.severity) + 8;
+        const isSelected =
+          selectedEntity?.kind === "hotspot" &&
+          group.members.some((m) => m.id === selectedEntity.marker.id);
+
         const icon = L.divIcon({
           className: "firesight-fire-icon",
-          html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.45);font-size:${Math.round(
-            size * 0.62
-          )}px;line-height:1;">🔥</div>`,
+          html: `<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;font-size:${Math.round(
+            size * 0.85
+          )}px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.55))${isSelected ? " drop-shadow(0 0 4px #ea580c)" : ""};">🔥</div>`,
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2],
         });
-        const point: import("leaflet").Layer = L.marker([group.lat, group.lng], { icon }).addTo(layer);
 
-        const detailHtml = group.members.map((member) => buildDetectionDetailHtml(member)).join("");
-        const heading =
+        const point = L.marker([group.lat, group.lng], {
+          icon,
+          zIndexOffset: isSelected ? 1200 : 600,
+        }).addTo(layer);
+
+        // Hover tooltip ONLY - NOT a large intrusive popup!
+        const label =
           group.members.length > 1
-            ? "Terdeteksi dua sensor (MODIS + VIIRS)"
-            : "Terdeteksi (pasangan sensor tidak ditemukan di sel grid ini)";
-        point.bindPopup(
-          `<div style="font:12px/1.4 system-ui, sans-serif;min-width:200px;">
-            <div style="font-weight:700;">🔥 ${escapeHtml(heading)}</div>
-            ${detailHtml}
-          </div>`
-        );
-        point.bindTooltip(group.members.length > 1 ? "Harmonized (MODIS + VIIRS)" : escapeHtml(group.members[0].label), {
-          direction: "top",
-          className: "firesight-tooltip",
-        });
-
-        if (onMarkerSelect) {
-          const primary = group.members[0];
-          point.on("click", () => onMarkerSelect(primary));
-        }
-      }
-
-      // Everything else: MODIS_ONLY -> circle, VIIRS_ONLY -> square, fallback -> triangle.
-      for (const marker of singles) {
-        const shape = singleShapeKind(marker);
-        const color = SEVERITY_COLOR[marker.severity] ?? "#9ca3af";
-        const label = escapeHtml(marker.label);
-        let point: import("leaflet").Layer;
-
-        if (shape === "circle") {
-          const radius = marker.severity === "HIGH" ? 7 : marker.severity === "MEDIUM" ? 5 : 4;
-          point = L.circleMarker([marker.lat, marker.lng], {
-            radius,
-            color: "#fff",
-            weight: 1,
-            fillColor: color,
-            fillOpacity: 0.85,
-          }).addTo(layer);
-        } else {
-          const size = sizeForSeverity(marker.severity);
-          const html =
-            shape === "square"
-              ? `<div style="width:${size}px;height:${size}px;background:${color};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>`
-              : `<div style="width:0;height:0;border-left:${size / 2}px solid transparent;border-right:${size / 2}px solid transparent;border-bottom:${size}px solid ${color};filter:drop-shadow(0 1px 1px rgba(0,0,0,0.4));"></div>`;
-          const icon = L.divIcon({
-            className: shape === "square" ? "firesight-square-icon" : "firesight-triangle-icon",
-            html,
-            iconSize: [size, size],
-            iconAnchor: [size / 2, size / 2],
-          });
-          point = L.marker([marker.lat, marker.lng], { icon }).addTo(layer);
-        }
-
+            ? "🔥 Harmonized (MODIS + VIIRS)"
+            : `🔥 ${group.members[0].label}`;
         point.bindTooltip(label, {
           direction: "top",
           className: "firesight-tooltip",
         });
 
-        if (onMarkerSelect) {
-          point.on("click", () => onMarkerSelect(marker));
-        }
+        // Click opens/updates bottom sheet or side panel cleanly
+        point.on("click", (e) => {
+          L.DomEvent.stopPropagation(e);
+          const primary = group.members[0];
+          setSelectedEntity({
+            kind: "hotspot",
+            marker: primary,
+            groupMembers: group.members,
+          });
+          setPanelExpanded(false);
+          onMarkerSelect?.(primary);
+        });
       }
 
-      // Community field reports -> person-icon pins with their own popup (optional, backward
-      // compatible — existing callers that don't pass `reports` render none of this).
+      // 2. Singles: MODIS (Star), VIIRS (Hexagon), Fallback (Triangle) — small,
+      // flat SVG shapes with a thin outline for contrast, no solid icon background.
+      for (const marker of singles) {
+        const shape = singleShapeKind(marker);
+        const color = SEVERITY_COLOR[marker.severity] ?? "#9ca3af";
+        const isSelected = selectedEntity?.kind === "hotspot" && selectedEntity.marker.id === marker.id;
+        const size = isSelected ? sizeForSeverity(marker.severity) + 4 : sizeForSeverity(marker.severity);
+        const stroke = isSelected ? "#facc15" : "rgba(255,255,255,0.9)";
+        const strokeWidth = isSelected ? 1.5 : 1;
+
+        const shapeMarkup =
+          shape === "star"
+            ? `<polygon points="${starPoints(size)}" fill="${color}" stroke="${stroke}" stroke-width="${strokeWidth}" />`
+            : shape === "hexagon"
+              ? `<polygon points="${hexagonPoints(size)}" fill="${color}" stroke="${stroke}" stroke-width="${strokeWidth}" />`
+              : `<polygon points="${size / 2},0 ${size},${size} 0,${size}" fill="${color}" stroke="${stroke}" stroke-width="${strokeWidth}" />`;
+
+        const icon = L.divIcon({
+          className: `firesight-${shape}-icon`,
+          html: `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.45));">${shapeMarkup}</svg>`,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+        });
+        const point = L.marker([marker.lat, marker.lng], {
+          icon,
+          zIndexOffset: isSelected ? 1200 : 500,
+        }).addTo(layer);
+
+        point.bindTooltip(`${marker.label} (${marker.sensor ?? "Satelit"})`, {
+          direction: "top",
+          className: "firesight-tooltip",
+        });
+
+        point.on("click", (e) => {
+          L.DomEvent.stopPropagation(e);
+          setSelectedEntity({ kind: "hotspot", marker });
+          setPanelExpanded(false);
+          onMarkerSelect?.(marker);
+        });
+      }
+
+      // 3. Community Reports (Person pin) — icon only, no solid background disc.
       for (const report of reports ?? []) {
+        const isSelected = selectedEntity?.kind === "report" && selectedEntity.report.id === report.id;
         const icon = L.divIcon({
           className: "firesight-person-icon",
-          html: `<div style="width:22px;height:22px;border-radius:50%;background:${REPORT_PIN_COLOR};display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.45);"><span class="material-symbols-outlined" style="font-size:14px;color:#fff;">person_pin_circle</span></div>`,
-          iconSize: [22, 22],
-          iconAnchor: [11, 11],
+          html: `<div style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.5))${isSelected ? " drop-shadow(0 0 4px #2563eb)" : ""};"><span class="material-symbols-outlined" style="font-size:20px;color:${REPORT_PIN_COLOR};">person_pin_circle</span></div>`,
+          iconSize: [20, 20],
+          iconAnchor: [10, 10],
         });
-        const point = L.marker([report.lat, report.lng], { icon }).addTo(layer);
-        point.bindPopup(
-          `<div style="font:12px/1.4 system-ui, sans-serif;min-width:180px;">
-            <div style="font-weight:700;margin-bottom:2px;">Laporan Komunitas</div>
-            <div style="margin-bottom:2px;"><strong>Status:</strong> ${escapeHtml(report.status)}</div>
-            <div>${escapeHtml(report.description)}</div>
-          </div>`
-        );
+
+        const point = L.marker([report.lat, report.lng], {
+          icon,
+          zIndexOffset: isSelected ? 1300 : 700,
+        }).addTo(layer);
+
+        point.bindTooltip(`Laporan Warga: ${report.status}`, {
+          direction: "top",
+          className: "firesight-tooltip",
+        });
+
+        point.on("click", (e) => {
+          L.DomEvent.stopPropagation(e);
+          setSelectedEntity({ kind: "report", report });
+          setPanelExpanded(false);
+          onReportSelect?.(report);
+        });
       }
     });
 
     return () => {
       isMounted = false;
     };
-  }, [markers, reports, ready, onMarkerSelect]);
+  }, [markers, reports, ready, onMarkerSelect, onReportSelect, selectedEntity]);
+
+  // Render Highlight Halo for Selected Entity
+  useEffect(() => {
+    if (!ready || !highlightLayerRef.current) return;
+    const layer = highlightLayerRef.current;
+    layer.clearLayers();
+
+    if (!selectedEntity) return;
+
+    import("leaflet").then((L) => {
+      let lat = 0;
+      let lng = 0;
+
+      if (selectedEntity.kind === "hotspot") {
+        lat = selectedEntity.marker.lat;
+        lng = selectedEntity.marker.lng;
+      } else if (selectedEntity.kind === "report") {
+        lat = selectedEntity.report.lat;
+        lng = selectedEntity.report.lng;
+      } else if (selectedEntity.kind === "user") {
+        lat = selectedEntity.location.lat;
+        lng = selectedEntity.location.lng;
+      }
+
+      if (!lat || !lng) return;
+
+      const auraIcon = L.divIcon({
+        className: "firesight-selection-aura",
+        html: `<div style="position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+          <div style="position:absolute;inset:0;border-radius:50%;border:2px dashed #f59e0b;animation:spin 12s linear infinite;"></div>
+          <div style="width:34px;height:34px;border-radius:50%;background:rgba(245,158,11,0.18);border:2px solid #d97706;"></div>
+        </div>`,
+        iconSize: [44, 44],
+        iconAnchor: [22, 22],
+      });
+
+      L.marker([lat, lng], {
+        icon: auraIcon,
+        zIndexOffset: 2000,
+        interactive: false,
+      }).addTo(layer);
+    });
+  }, [ready, selectedEntity]);
+
+  // Recenter controls
+  const handleRecenter = () => {
+    if (!mapRef.current) return;
+    if (userLocation) {
+      mapRef.current.setView([userLocation.lat, userLocation.lng], 11, { animate: true });
+    } else {
+      mapRef.current.setView([centerLat, centerLng], zoom, { animate: true });
+    }
+  };
+
+  const handleFitAll = () => {
+    if (!mapRef.current || markers.length === 0) return;
+    import("leaflet").then((L) => {
+      const bounds = L.latLngBounds(markers.map((m) => [m.lat, m.lng]));
+      if (userLocation) bounds.extend([userLocation.lat, userLocation.lng]);
+      mapRef.current?.fitBounds(bounds, { padding: [40, 40], maxZoom: 14, animate: true });
+    });
+  };
+
+  // Auto-fit once, the first time markers are available, when requested —
+  // for a small focused map a fixed zoom can otherwise leave a sparse
+  // cluster of tiny markers looking like an empty map.
+  useEffect(() => {
+    if (!autoFitOnLoad || didAutoFitRef.current || !ready || markers.length === 0) return;
+    didAutoFitRef.current = true;
+    handleFitAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFitOnLoad, ready, markers]);
+
+  const handleZoomIn = () => mapRef.current?.zoomIn();
+  const handleZoomOut = () => mapRef.current?.zoomOut();
+
+  // Selected distance calculation
+  const distanceToSelected = useMemo(() => {
+    if (!userLocation || !selectedEntity) return null;
+    let targetLat = 0;
+    let targetLon = 0;
+    if (selectedEntity.kind === "hotspot") {
+      targetLat = selectedEntity.marker.lat;
+      targetLon = selectedEntity.marker.lng;
+    } else if (selectedEntity.kind === "report") {
+      targetLat = selectedEntity.report.lat;
+      targetLon = selectedEntity.report.lng;
+    }
+    if (!targetLat || !targetLon) return null;
+    return computeDistanceKm(userLocation.lat, userLocation.lng, targetLat, targetLon);
+  }, [userLocation, selectedEntity]);
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative overflow-hidden select-none ${className}`}>
+      {/* Loading overlay */}
       {!ready && (
-        <div className="absolute inset-0 z-[2000] flex items-center justify-center bg-blue-50 border border-gray-200">
-          <div className="font-medium text-sm text-gray-500 animate-pulse">
-            LOADING MAP ENGINE…
-          </div>
-        </div>
-      )}
-      <div
-        ref={containerRef}
-        className="h-full w-full z-[100]"
-      />
-
-      {showSeverityLegend && (
-        <div className="absolute bottom-4 left-4 z-[1000] bg-white border border-gray-200 p-3 rounded-lg shadow-md text-[11px] font-medium space-y-2 pointer-events-none">
-          <div className="font-bold text-gray-900 border-b border-gray-100 pb-1 mb-2">
-            Severity Legend
-          </div>
-          <div className="flex items-center gap-2 text-gray-700">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-600" /> High (&gt;70MW)
-          </div>
-          <div className="flex items-center gap-2 text-gray-700">
-            <span className="w-2.5 h-2.5 rounded-full bg-orange-400" /> Medium (25–70MW)
-          </div>
-          <div className="flex items-center gap-2 text-gray-700">
-            <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" /> Low (&lt;25MW)
+        <div className="absolute inset-0 z-[2000] flex items-center justify-center bg-emerald-50/70 backdrop-blur-xs">
+          <div className="flex items-center gap-2.5 font-bold text-xs text-emerald-900 bg-white/90 px-4 py-2.5 rounded-full shadow-md border border-emerald-200">
+            <span className="material-symbols-outlined text-[18px] animate-spin text-emerald-600">refresh</span>
+            <span>MEMUAT ENGINE PETA…</span>
           </div>
         </div>
       )}
 
-      {showSymbolLegend && (
-        <div
-          className="absolute bottom-4 right-4 z-[1000] bg-white border border-gray-200 p-3 rounded-lg shadow-md text-[11px] font-medium space-y-2 pointer-events-none max-w-[210px]"
-          aria-label="Legenda simbol peta"
+      {/* Leaflet DOM container */}
+      <div ref={containerRef} className="h-full w-full z-[100]" />
+
+      {/* Top-Right & Bottom-Right Floating Controls (Zoom, Recenter, Legend, Fullscreen) */}
+      <div className="absolute top-3 left-3 z-[1000] flex flex-col gap-1.5 pointer-events-auto">
+        {/* Zoom In */}
+        <button
+          type="button"
+          onClick={handleZoomIn}
+          aria-label="Perbesar peta"
+          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-gray-800 shadow-md border border-gray-200/80 hover:bg-white active:scale-95 transition"
         >
-          <div className="font-bold text-gray-900 border-b border-gray-100 pb-1 mb-2">
-            Legenda Simbol
-          </div>
-          <div className="flex items-center gap-2 text-gray-700">
-            <span aria-hidden="true" className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-gray-500 text-[9px] leading-none">
-              🔥
+          <span className="material-symbols-outlined text-[20px]">add</span>
+        </button>
+        {/* Zoom Out */}
+        <button
+          type="button"
+          onClick={handleZoomOut}
+          aria-label="Perkecil peta"
+          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-gray-800 shadow-md border border-gray-200/80 hover:bg-white active:scale-95 transition"
+        >
+          <span className="material-symbols-outlined text-[20px]">remove</span>
+        </button>
+        {/* Recenter to Location */}
+        <button
+          type="button"
+          onClick={handleRecenter}
+          title={userLocation ? "Pusatkan ke lokasi Anda" : "Pusatkan peta"}
+          aria-label="Pusatkan peta"
+          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-emerald-800 shadow-md border border-gray-200/80 hover:bg-white active:scale-95 transition"
+        >
+          <span className="material-symbols-outlined text-[19px]">my_location</span>
+        </button>
+        {/* Fit All Points */}
+        <button
+          type="button"
+          onClick={handleFitAll}
+          title="Tampilkan seluruh titik api"
+          aria-label="Tampilkan seluruh titik api"
+          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-gray-700 shadow-md border border-gray-200/80 hover:bg-white active:scale-95 transition"
+        >
+          <span className="material-symbols-outlined text-[19px]">crop_free</span>
+        </button>
+        {/* Fullscreen toggle button if allowed */}
+        {allowFullScreenToggle && onToggleFullScreen && (
+          <button
+            type="button"
+            onClick={onToggleFullScreen}
+            title={isFullScreen ? "Keluar layar penuh" : "Buka layar penuh"}
+            aria-label={isFullScreen ? "Keluar layar penuh" : "Buka layar penuh"}
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-[#075640] shadow-md border border-emerald-200 hover:bg-white active:scale-95 transition"
+          >
+            <span className="material-symbols-outlined text-[19px]">
+              {isFullScreen ? "fullscreen_exit" : "fullscreen"}
             </span>
-            <span>Cocok 2 sensor (MODIS + VIIRS)</span>
+          </button>
+        )}
+      </div>
+
+      {/* Legend — two small always-visible stacked boxes (SiPongi+-style), not a
+          collapsible popover, so the symbol meanings are never one click away. */}
+      {(showSeverityLegend || showSymbolLegend) && (
+        <div className="absolute top-3 right-3 z-[1000] pointer-events-auto flex flex-col items-end gap-2">
+          {showSeverityLegend && (
+            <div className="rounded-lg bg-white/97 backdrop-blur-xs border border-gray-200 shadow-md px-3 py-2 text-[11px] text-gray-700">
+              <div className="font-extrabold text-[10px] text-[#123027] uppercase tracking-wide pb-1.5">
+                Tingkat Keparahan (FRP)
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-red-600 ring-1 ring-red-200" />
+                  Tinggi
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-orange-400 ring-1 ring-orange-200" />
+                  Sedang
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-yellow-400 ring-1 ring-yellow-200" />
+                  Rendah
+                </span>
+              </div>
+            </div>
+          )}
+
+          {showSymbolLegend && (
+            <div className="rounded-lg bg-white/97 backdrop-blur-xs border border-gray-200 shadow-md px-3 py-2 text-[11px] text-gray-700 max-w-[220px]">
+              <button
+                type="button"
+                onClick={() => setShowLegendModal(!showLegendModal)}
+                className="flex w-full items-center justify-between gap-2 font-extrabold text-[10px] text-[#123027] uppercase tracking-wide"
+              >
+                <span>Sumber Data &amp; Bentuk</span>
+                <span className="material-symbols-outlined text-[14px] text-gray-400">
+                  {showLegendModal ? "expand_less" : "expand_more"}
+                </span>
+              </button>
+              {showLegendModal && (
+                <div className="mt-1.5 space-y-1 pt-1.5 border-t border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-3.5 w-3.5 items-center justify-center text-[10px]">🔥</span>
+                    <span>Harmonized (MODIS + VIIRS)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[12px] text-slate-500">star</span>
+                    <span>Hanya MODIS (Terra/Aqua)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[12px] text-slate-500">hexagon</span>
+                    <span>Hanya VIIRS (Suomi-NPP)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[14px] text-blue-600">person_pin_circle</span>
+                    <span>Laporan warga</span>
+                  </div>
+                  {userLocation && (
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full bg-blue-600 ring-2 ring-white" />
+                      <span className="font-semibold text-blue-900">Lokasi Anda (Bukan api)</span>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-gray-400 leading-snug pt-1 border-t border-gray-100">
+                    Deteksi satelit adalah anomali radiasi termal near-real-time.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* COMPACT DISMISSIBLE DETAIL PANEL (Bottom Sheet on Mobile / Side Card on Desktop) */}
+      {showDetailPanel && selectedEntity && (
+        <div
+          className={`pointer-events-auto transition-all duration-200 z-[1100] ${
+            /* Mobile: Bottom Sheet floating above bottom nav */
+            /* Desktop: Elegant side panel floating on top-right */
+            "fixed inset-x-3 bottom-3 md:absolute md:inset-auto md:top-14 md:right-3 md:w-84 md:max-w-sm"
+          }`}
+        >
+          <div className="rounded-2xl bg-white/98 backdrop-blur-md border border-gray-200/90 shadow-2xl p-4 space-y-2.5 overflow-hidden">
+            
+            {/* Header with Title, Close, and Expand toggle */}
+            <div className="flex items-start justify-between gap-2 border-b border-gray-100 pb-2">
+              <div className="flex items-center gap-2 min-w-0">
+                {selectedEntity.kind === "hotspot" && (
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white ${
+                      selectedEntity.marker.severity === "HIGH"
+                        ? "bg-red-600 shadow-xs shadow-red-900/30"
+                        : selectedEntity.marker.severity === "MEDIUM"
+                          ? "bg-orange-500"
+                          : "bg-amber-400"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">local_fire_department</span>
+                  </span>
+                )}
+                {selectedEntity.kind === "report" && (
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-xs">
+                    <span className="material-symbols-outlined text-[18px]">person_pin_circle</span>
+                  </span>
+                )}
+                {selectedEntity.kind === "user" && (
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-xs">
+                    <span className="material-symbols-outlined text-[18px]">my_location</span>
+                  </span>
+                )}
+
+                <div className="min-w-0">
+                  <h3 className="text-xs md:text-sm font-bold text-[#123027] truncate">
+                    {selectedEntity.kind === "hotspot"
+                      ? selectedEntity.marker.matchStatus === "MATCHED"
+                        ? "Titik Api (MODIS + VIIRS)"
+                        : `Titik Api ${selectedEntity.marker.sensor ?? "Satelit"}`
+                      : selectedEntity.kind === "report"
+                        ? "Laporan Lapangan Warga"
+                        : selectedEntity.location.label ?? "Lokasi Anda"}
+                  </h3>
+                  <div className="flex items-center gap-2 text-[11px] text-gray-500 truncate mt-0.5 font-medium">
+                    {distanceToSelected !== null && (
+                      <span className="font-bold text-emerald-800">
+                        {formatDistance(distanceToSelected)} dari Anda
+                      </span>
+                    )}
+                    {selectedEntity.kind === "hotspot" && (
+                      <span>{formatAcquiredAt(selectedEntity.marker.acquiredAt).split("·")[1] ?? ""}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Controls */}
+              <div className="flex items-center gap-1 shrink-0">
+                {selectedEntity.kind === "hotspot" && (
+                  <button
+                    type="button"
+                    onClick={() => setPanelExpanded(!panelExpanded)}
+                    title={panelExpanded ? "Sembunyikan rincian" : "Tampilkan rincian lengkap"}
+                    aria-label={panelExpanded ? "Sembunyikan rincian" : "Tampilkan rincian lengkap"}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+                  >
+                    <span className="material-symbols-outlined text-[17px]">
+                      {panelExpanded ? "expand_less" : "expand_more"}
+                    </span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedEntity(null);
+                    onMarkerSelect?.(null);
+                    onReportSelect?.(null);
+                  }}
+                  title="Tutup panel"
+                  aria-label="Tutup panel"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+                >
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Summary Row (Visible in Collapsed State) */}
+            {selectedEntity.kind === "hotspot" && (
+              <div className="flex items-center justify-between text-xs py-0.5">
+                <span className="text-[11px] text-gray-500 font-medium">
+                  {selectedEntity.marker.label}
+                </span>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                    selectedEntity.marker.severity === "HIGH"
+                      ? "bg-red-50 text-red-700 border-red-200"
+                      : selectedEntity.marker.severity === "MEDIUM"
+                        ? "bg-orange-50 text-orange-700 border-orange-200"
+                        : "bg-yellow-50 text-yellow-800 border-yellow-200"
+                  }`}
+                >
+                  {SEVERITY_LABEL_ID[selectedEntity.marker.severity] ?? selectedEntity.marker.severity}
+                </span>
+              </div>
+            )}
+
+            {selectedEntity.kind === "report" && (
+              <div className="space-y-1.5 text-xs text-gray-700">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">Status verifikasi:</span>
+                  <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                    {selectedEntity.report.status}
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-600 leading-relaxed bg-gray-50 p-2 rounded-xl">
+                  {selectedEntity.report.description}
+                </p>
+              </div>
+            )}
+
+            {selectedEntity.kind === "user" && (
+              <div className="text-xs text-gray-600 space-y-1">
+                <p>Ini adalah titik acuan lokasi Anda untuk menghitung radius pantau kebakaran.</p>
+                <div className="text-[11px] font-mono text-gray-500">
+                  {selectedEntity.location.lat.toFixed(4)}°, {selectedEntity.location.lng.toFixed(4)}°
+                </div>
+              </div>
+            )}
+
+            {/* EXPANDED STATE (Detailed Fields without Fabricated Data) */}
+            {panelExpanded && selectedEntity.kind === "hotspot" && (
+              <div className="space-y-2.5 pt-2 border-t border-gray-100 text-xs animate-fadeIn">
+                {/* FRP Meter */}
+                <div>
+                  <div className="flex items-center justify-between text-[11px] font-medium text-gray-600 mb-1">
+                    <span>Daya Radiasi (FRP)</span>
+                    <span className="font-extrabold text-[#123027]">
+                      {selectedEntity.marker.frp.toFixed(1)} MW
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600"
+                      style={{
+                        width: `${Math.min(100, Math.max(8, (selectedEntity.marker.frp / 100) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Details Grid */}
+                <div className="grid grid-cols-2 gap-2 text-[11px] bg-gray-50/80 p-2.5 rounded-xl border border-gray-100">
+                  <div>
+                    <span className="text-gray-400 block text-[10px]">Sensor / Satelit</span>
+                    <span className="font-semibold text-gray-800">
+                      {selectedEntity.marker.sensor ?? selectedEntity.marker.source ?? "NASA FIRMS"}
+                      {selectedEntity.marker.satellite ? ` (${selectedEntity.marker.satellite})` : ""}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[10px]">Tingkat Keyakinan</span>
+                    <span className="font-semibold text-gray-800">
+                      {selectedEntity.marker.confidenceLabel ??
+                        (typeof selectedEntity.marker.confidence === "number"
+                          ? `${selectedEntity.marker.confidence.toFixed(0)}%`
+                          : "Tersedia")}
+                    </span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-400 block text-[10px]">Waktu Pengamatan</span>
+                    <span className="font-semibold text-gray-800">
+                      {formatAcquiredAt(selectedEntity.marker.acquiredAt)}
+                    </span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-400 block text-[10px]">Koordinat Deteksi</span>
+                    <span className="font-mono text-gray-700">
+                      {selectedEntity.marker.lat.toFixed(4)}°, {selectedEntity.marker.lng.toFixed(4)}°
+                    </span>
+                  </div>
+                  {selectedEntity.marker.matchStatus && (
+                    <div className="col-span-2">
+                      <span className="text-gray-400 block text-[10px]">Validasi Silang Sensor</span>
+                      <span className="font-semibold text-emerald-800">
+                        {selectedEntity.marker.matchStatus === "MATCHED"
+                          ? "Cocok lintas sensor (MODIS + VIIRS)"
+                          : selectedEntity.marker.matchStatus.replaceAll("_", " ")}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Caution Note */}
+                <p className="text-[10px] text-amber-900 bg-amber-50/80 border border-amber-200/60 p-2 rounded-xl leading-relaxed">
+                  Deteksi satelit adalah anomali radiasi termal near-real-time, bukan konfirmasi resmi kebakaran di lapangan.
+                </p>
+
+                {/* Action Link (e.g., Detail Peringatan or Lapor) */}
+                {actionHref ? (
+                  <Link
+                    href={actionHref(selectedEntity.marker)}
+                    className="block w-full text-center py-2 px-3 rounded-xl bg-[#075640] hover:bg-[#054030] text-white font-bold text-xs shadow-xs transition active:scale-[0.99]"
+                  >
+                    {actionLabel}
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/community/alert/${selectedEntity.marker.id}`}
+                    className="block w-full text-center py-2 px-3 rounded-xl bg-[#075640] hover:bg-[#054030] text-white font-bold text-xs shadow-xs transition active:scale-[0.99]"
+                  >
+                    Lihat Panduan &amp; Detail Peringatan
+                  </Link>
+                )}
+              </div>
+            )}
+
+            {/* Toggle Expand/Collapse Link */}
+            {selectedEntity.kind === "hotspot" && (
+              <button
+                type="button"
+                onClick={() => setPanelExpanded(!panelExpanded)}
+                className="w-full text-center text-[11px] font-bold text-emerald-800 hover:text-emerald-950 pt-1 border-t border-gray-100 flex items-center justify-center gap-1"
+              >
+                <span>{panelExpanded ? "Ciutkan rincian" : "Lihat rincian lengkap deteksi"}</span>
+                <span className="material-symbols-outlined text-[14px]">
+                  {panelExpanded ? "expand_less" : "expand_more"}
+                </span>
+              </button>
+            )}
+
           </div>
-          <div className="flex items-center gap-2 text-gray-700">
-            <span aria-hidden="true" className="inline-block w-2.5 h-2.5 rounded-full bg-gray-500 shrink-0" />
-            <span>Hanya MODIS</span>
-          </div>
-          <div className="flex items-center gap-2 text-gray-700">
-            <span aria-hidden="true" className="inline-block w-2.5 h-2.5 bg-gray-500 shrink-0" />
-            <span>Hanya VIIRS</span>
-          </div>
-          <div className="flex items-center gap-2 text-gray-700">
-            <span
-              aria-hidden="true"
-              className="inline-block w-0 h-0 shrink-0"
-              style={{ borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderBottom: "9px solid #6b7280" }}
-            />
-            <span>Sensor tidak diketahui</span>
-          </div>
-          <div className="flex items-center gap-2 text-gray-700">
-            <span className="material-symbols-outlined text-[14px] text-blue-600 shrink-0">person_pin_circle</span>
-            <span>Laporan komunitas</span>
-          </div>
-          <p className="text-[10px] text-gray-400 pt-1 border-t border-gray-100 leading-snug">
-            Warna = tingkat keparahan (merah tinggi, oranye sedang, kuning rendah). Bentuk = jenis sumber data.
-          </p>
         </div>
       )}
     </div>
-  );
-}
-
-function escapeHtml(value: string) {
-  return value.replace(
-    /[&<>'"]/g,
-    (character) =>
-      ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        "'": "&#39;",
-        '"': "&quot;",
-      })[character] ?? character
   );
 }

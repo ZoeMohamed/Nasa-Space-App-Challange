@@ -8,7 +8,7 @@ import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
 import StatTile from "@/components/ui/StatTile";
 import { getRegionOption, getRangeOption, isDemoRange, isWithinBounds } from "@/lib/filters";
-import type { AreaSummary, HotspotApiResponse, HotspotMarker } from "@/types";
+import type { AreaSummary, CommunityReport, HotspotApiResponse, HotspotMarker } from "@/types";
 
 const FireMap = dynamic(() => import("@/components/map/FireMap"), {
   ssr: false,
@@ -231,10 +231,12 @@ const DETAIL_TABS: { id: DetailTab; label: (count: number) => string }[] = [
 function AreaDetailPanel({
   area,
   markers,
+  reports,
   onClose,
 }: {
   area: AreaSummary;
   markers: HotspotMarker[];
+  reports: CommunityReport[];
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<DetailTab>("overview");
@@ -245,6 +247,17 @@ function AreaDetailPanel({
   const areaMarkers = useMemo(
     () => markers.filter((marker) => marker.areaId === area.areaId),
     [markers, area.areaId]
+  );
+
+  // Reports have no areaId of their own, so match them into this 0.25°
+  // grid cell the same way the backend grids satellite detections
+  // (see aggregate_grid in fire_pipeline/features.py, cell_size=0.25).
+  const areaReports = useMemo(
+    () =>
+      reports.filter(
+        (r) => Math.abs(r.lat - area.gridLat) <= 0.125 && Math.abs(r.lon - area.gridLon) <= 0.125
+      ),
+    [reports, area.gridLat, area.gridLon]
   );
 
   const sortedMarkers = useMemo(
@@ -318,13 +331,28 @@ function AreaDetailPanel({
       <div className="p-5">
         {tab === "overview" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <div className="rounded-lg overflow-hidden border border-gray-200 h-[340px]">
+            <div className="relative rounded-lg overflow-hidden border border-gray-200 h-[340px]">
               <FireMap
                 markers={areaMarkers}
                 center={[area.gridLat, area.gridLon]}
                 zoom={10}
                 className="h-full w-full"
+                autoFitOnLoad
+                reports={areaReports.map((r) => ({
+                  id: r.id,
+                  lat: r.lat,
+                  lng: r.lon,
+                  status: r.status,
+                  description: r.description,
+                  createdAt: r.createdAt,
+                }))}
               />
+              {areaMarkers.length === 0 && areaReports.length === 0 && (
+                <div className="pointer-events-none absolute inset-x-3 bottom-3 z-[1050] rounded-lg bg-white/95 px-3 py-2 text-[11px] text-gray-600 shadow">
+                  Tidak ada deteksi satelit atau laporan warga tercatat untuk sel grid ini saat ini — peta
+                  menampilkan lokasinya saja, bukan kesalahan.
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <StatTile
@@ -523,6 +551,23 @@ function PriorityAreasPageContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
+  const [reports, setReports] = useState<CommunityReport[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/reports", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => {
+        if (cancelled || !body?.reports) return;
+        setReports(body.reports);
+      })
+      .catch(() => {
+        /* best-effort */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Region filter — client-side bbox check against the already-fetched live areas/markers.
   // Bounding boxes are approximate (see src/lib/filters.ts), "Seluruh Indonesia" is a no-op.
@@ -641,6 +686,7 @@ function PriorityAreasPageContent() {
           <AreaDetailPanel
             area={selectedArea}
             markers={markers}
+            reports={reports}
             onClose={() => setSelectedAreaId(null)}
           />
         )}
