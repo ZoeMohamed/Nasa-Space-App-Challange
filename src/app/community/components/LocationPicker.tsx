@@ -69,6 +69,7 @@ export default function LocationPicker({ location }: { location: LocationState }
         )}
       </div>
 
+      <div aria-live="polite" aria-atomic="true" className="contents">
       {/* idle */}
       {geoStatus === "idle" && (
         <div className="space-y-2">
@@ -122,6 +123,7 @@ export default function LocationPicker({ location }: { location: LocationState }
           <p className="text-xs mt-0.5">{errorMessage}</p>
         </div>
       )}
+      </div>
 
       {/* manually-picked fix summary (shown regardless of geoStatus, since manual picks don't go through geoStatus) */}
       {fix && fix.source !== "gps" && (
@@ -175,11 +177,14 @@ export default function LocationPicker({ location }: { location: LocationState }
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-[var(--community-ink)]">Atau ketik koordinat</label>
-              <div className="mt-1 flex gap-2">
+              <span id="manual-coord-heading" className="text-xs font-semibold text-[var(--community-ink)]">
+                Atau ketik koordinat
+              </span>
+              <div className="mt-1 flex gap-2" role="group" aria-labelledby="manual-coord-heading">
                 <input
                   inputMode="decimal"
                   placeholder="Lintang (lat)"
+                  aria-label="Lintang (lat)"
                   value={latInput}
                   onChange={(event) => setLatInput(event.target.value)}
                   className="w-1/2 rounded-lg border border-[var(--community-border)] bg-white px-3 py-2 text-sm"
@@ -187,12 +192,17 @@ export default function LocationPicker({ location }: { location: LocationState }
                 <input
                   inputMode="decimal"
                   placeholder="Bujur (lon)"
+                  aria-label="Bujur (lon)"
                   value={lonInput}
                   onChange={(event) => setLonInput(event.target.value)}
                   className="w-1/2 rounded-lg border border-[var(--community-border)] bg-white px-3 py-2 text-sm"
                 />
               </div>
-              {coordError && <p className="text-[11px] text-rose-600 mt-1">{coordError}</p>}
+              {coordError && (
+                <p className="text-[11px] text-rose-600 mt-1" role="alert">
+                  {coordError}
+                </p>
+              )}
               <button
                 type="button"
                 onClick={submitCoords}

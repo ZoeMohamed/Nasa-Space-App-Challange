@@ -43,6 +43,16 @@ def test_live_frames_run_python_pipeline(monkeypatch, tmp_path):
     assert markers_by_sensor["MODIS"]["matchedDetectionId"] is not None
     assert markers_by_sensor["VIIRS"]["matchedDetectionId"] is not None
 
+    # Regression: MODIS confidence is a real percentage; VIIRS confidence is a
+    # discrete class (low/nominal/high) with no percentage meaning and must
+    # never be sent as a number or a synthetic "95%"-style label -- see
+    # _marker_confidence() in fire_pipeline/live.py for why.
+    assert markers_by_sensor["MODIS"]["confidence"] == 92
+    assert markers_by_sensor["MODIS"]["confidenceLabel"] == "92%"
+    assert markers_by_sensor["VIIRS"]["confidence"] is None
+    assert markers_by_sensor["VIIRS"]["confidenceLabel"] == "Tinggi (VIIRS)"
+    assert "%" not in markers_by_sensor["VIIRS"]["confidenceLabel"]
+
     assert len(result["areas"]) == 1
     area = result["areas"][0]
     assert area["priorityRank"] == 1
@@ -117,3 +127,26 @@ def test_empty_live_result_is_valid():
     result = process_live_frames([empty], summaries)
     assert result["markers"] == []
     assert result["meta"]["processing"]["areasAnalyzed"] == 0
+
+
+def test_include_all_confidence_toggle(monkeypatch, tmp_path):
+    # Mirrors what _fetch_source() actually produces: every row kept, plus a
+    # high_confidence column (not a pre-filtered frame) -- see live.py's
+    # comment on why filtering moved out of _fetch_source and into here.
+    monkeypatch.setenv("FIRE_HISTORICAL_DB_PATH", str(tmp_path / "no_such_store.sqlite"))
+    frame = pd.DataFrame(
+        [
+            {"latitude": -2.1, "longitude": 104.8, "acq_date": TODAY, "acq_time": 300, "satellite": "Terra", "confidence": 92, "frp": 80, "sensor": "MODIS", "source": "MODIS_NRT", "source_file": "MODIS_NRT", "high_confidence": True},
+            {"latitude": -5.0, "longitude": 110.0, "acq_date": TODAY, "acq_time": 300, "satellite": "Terra", "confidence": 55, "frp": 30, "sensor": "MODIS", "source": "MODIS_NRT", "source_file": "MODIS_NRT", "high_confidence": False},
+        ]
+    )
+    summaries = [{"id": "MODIS_NRT", "sensor": "MODIS", "rawCount": 2, "highConfidenceCount": 1, "available": True}]
+
+    default_result = process_live_frames([frame], summaries)
+    assert len(default_result["markers"]) == 1
+    assert default_result["markers"][0]["highConfidence"] is True
+
+    all_confidence_result = process_live_frames([frame], summaries, include_all_confidence=True)
+    assert len(all_confidence_result["markers"]) == 2
+    high_conf_flags = sorted(marker["highConfidence"] for marker in all_confidence_result["markers"])
+    assert high_conf_flags == [False, True]

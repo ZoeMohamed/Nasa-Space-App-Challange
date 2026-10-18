@@ -1,0 +1,167 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useLocationState } from "../lib/useLocation";
+import type { WeatherResponse } from "@/types";
+
+const BMKG_URL = "https://www.bmkg.go.id/";
+
+// Same fallback reference point used on /community when no real fix exists.
+const DEFAULT_LOCATION = { lat: -3.125, lon: 114.15, name: "Desa Bahaur, Pulang Pisau (contoh)" };
+
+const AQI_CATEGORY_STYLE: Record<string, { bg: string; text: string }> = {
+  Baik: { bg: "bg-emerald-50 border-emerald-200", text: "text-emerald-800" },
+  Sedang: { bg: "bg-amber-50 border-amber-200", text: "text-amber-800" },
+  "Tidak sehat (kelompok sensitif)": { bg: "bg-orange-50 border-orange-200", text: "text-orange-800" },
+  "Tidak sehat": { bg: "bg-red-50 border-red-200", text: "text-red-800" },
+  "Sangat tidak sehat": { bg: "bg-purple-50 border-purple-200", text: "text-purple-800" },
+  Berbahaya: { bg: "bg-rose-100 border-rose-300", text: "text-rose-900" },
+};
+
+function windDirectionLabel(deg: number | null): string {
+  if (deg === null) return "—";
+  const directions = ["Utara", "Timur Laut", "Timur", "Tenggara", "Selatan", "Barat Daya", "Barat", "Barat Laut"];
+  return directions[Math.round(deg / 45) % 8];
+}
+
+export default function UdaraPage() {
+  const { fix } = useLocationState();
+  const [weather, setWeather] = useState<WeatherResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const activeLat = fix ? fix.lat : DEFAULT_LOCATION.lat;
+  const activeLon = fix ? fix.lon : DEFAULT_LOCATION.lon;
+  const locationLabel = fix ? `Koordinat ${fix.lat.toFixed(3)}, ${fix.lon.toFixed(3)}` : DEFAULT_LOCATION.name;
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/weather?lat=${activeLat}&lon=${activeLon}`, { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Gagal memuat data cuaca");
+        return (await res.json()) as WeatherResponse;
+      })
+      .then((body) => {
+        if (cancelled) return;
+        setWeather(body);
+        setError(null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setError("Data cuaca & kualitas udara sedang tidak tersedia. Coba lagi beberapa saat lagi.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeLat, activeLon]);
+
+  const aqiCategory = weather?.airQuality?.usAqiCategory ?? null;
+  const aqiStyle = aqiCategory ? AQI_CATEGORY_STYLE[aqiCategory] : null;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-2">
+        <Link href="/community" className="inline-flex items-center gap-1.5 text-xs font-bold text-[#123027] hover:text-[var(--community-accent)] transition">
+          <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
+            arrow_back
+          </span>
+          <span>Beranda</span>
+        </Link>
+      </div>
+
+      <div>
+        <h1 className="text-lg font-bold text-[#123027]">Kualitas Udara &amp; Cuaca</h1>
+        <p className="text-xs text-[var(--community-ink-muted)] mt-1">{locationLabel}</p>
+      </div>
+
+      {loading && (
+        <div className="rounded-2xl border border-[var(--community-border)] bg-white p-6 text-center text-sm text-[var(--community-ink-muted)] animate-pulse">
+          Memuat data cuaca &amp; kualitas udara…
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</div>
+      )}
+
+      {!loading && !error && weather && (
+        <>
+          <div className={`rounded-2xl border p-5 ${aqiStyle?.bg ?? "bg-gray-50 border-gray-200"}`}>
+            {weather.airQuality ? (
+              <>
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-3xl font-black ${aqiStyle?.text ?? "text-gray-700"}`}>
+                    {weather.airQuality.usAqi}
+                  </span>
+                  <span className={`text-sm font-bold ${aqiStyle?.text ?? "text-gray-700"}`}>
+                    {aqiCategory ?? "Tidak diketahui"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[var(--community-ink-muted)] mt-1">
+                  US AQI (skala kualitas udara AS) — bukan ISPU Indonesia, karena ambang batasnya berbeda.
+                  PM2.5: {weather.airQuality.pm2_5 ?? "—"} µg/m³ · PM10: {weather.airQuality.pm10 ?? "—"} µg/m³
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-gray-500">Data kualitas udara tidak tersedia saat ini.</p>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-[var(--community-border)] bg-white p-5">
+            <h2 className="text-sm font-bold text-[#123027] mb-3">Angin &amp; Cuaca Saat Ini</h2>
+            {weather.wind ? (
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-[11px] text-[var(--community-ink-muted)] block">Kecepatan angin</span>
+                  <span className="font-bold text-[#123027]">{weather.wind.windSpeedKmh} km/j</span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-[var(--community-ink-muted)] block">Arah angin</span>
+                  <span className="font-bold text-[#123027]">{windDirectionLabel(weather.wind.windDirectionDeg)}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-[var(--community-ink-muted)] block">Suhu</span>
+                  <span className="font-bold text-[#123027]">{weather.wind.temperatureC}°C</span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-[var(--community-ink-muted)] block">Kelembapan</span>
+                  <span className="font-bold text-[#123027]">{weather.wind.relativeHumidityPct}%</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">Data cuaca tidak tersedia saat ini.</p>
+            )}
+          </div>
+
+          {weather.errors.length > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+              Sebagian data tidak dapat dimuat: {weather.errors.join("; ")}
+            </div>
+          )}
+
+          <p className="text-[11px] text-[var(--community-ink-muted)] leading-relaxed">
+            Sumber: {weather.source}, bukan data resmi BMKG — untuk informasi cuaca &amp; kualitas udara resmi
+            Indonesia, kunjungi{" "}
+            <a href={BMKG_URL} target="_blank" rel="noopener noreferrer" className="underline">
+              bmkg.go.id
+            </a>
+            . Angka ini bukan prediksi arah sebaran asap kebakaran.
+          </p>
+        </>
+      )}
+
+      <Link
+        href="/community/edukasi/asap"
+        className="block rounded-2xl border border-[var(--community-border)] bg-white p-4 hover:border-emerald-300 transition"
+      >
+        <span className="text-xs font-bold text-[var(--community-accent)]">
+          Lindungi keluarga dari asap — baca panduan →
+        </span>
+      </Link>
+    </div>
+  );
+}

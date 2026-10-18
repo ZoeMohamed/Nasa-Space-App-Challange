@@ -44,6 +44,9 @@ export interface HotspotMarker {
   priorityTier?: "HIGH" | "MEDIUM" | "LOW";
   /** Links this live marker to a historical archive detection row, when the pipeline matched one. */
   matchedDetectionId?: number | null;
+  /** False only when the request opted into `includeAllConfidence=true` and this
+   * detection is low/nominal confidence — the default request never returns these. */
+  highConfidence?: boolean;
 }
 
 export interface HotspotSourceSummary {
@@ -181,4 +184,32 @@ export interface ReportsListResponse {
  * succeeds in that case; see main.py submit_report docstring). */
 export interface ReportCreateResponse extends CommunityReport {
   correlationWarning?: string;
+}
+
+/** Response body from GET /api/weather — real current conditions from
+ * Open-Meteo (no API key). `wind`/`airQuality` are null, with a matching
+ * entry in `errors`, when that specific upstream call failed — never
+ * fabricated to fill the gap. `airQuality.usAqiCategory` is the US EPA AQI
+ * scale, not Indonesia's ISPU (different breakpoints), so it must not be
+ * labeled as ISPU in the UI. */
+export interface WeatherResponse {
+  lat: number;
+  lon: number;
+  fetchedAt: string;
+  wind: {
+    windSpeedKmh: number | null;
+    windDirectionDeg: number | null;
+    temperatureC: number | null;
+    relativeHumidityPct: number | null;
+    observedAt: string | null;
+  } | null;
+  airQuality: {
+    pm2_5: number | null;
+    pm10: number | null;
+    usAqi: number | null;
+    usAqiCategory: string | null;
+    observedAt: string | null;
+  } | null;
+  source: string;
+  errors: string[];
 }

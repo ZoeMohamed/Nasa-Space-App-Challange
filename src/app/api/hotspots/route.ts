@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 const PYTHON_API = process.env.PYTHON_PROCESSING_API_URL ?? "http://127.0.0.1:8000";
 
-export async function GET() {
+export async function GET(request: Request) {
   const mapKey = process.env.NASA_FIRMS_MAP_KEY;
 
   if (!mapKey) {
@@ -15,12 +15,17 @@ export async function GET() {
     );
   }
 
+  const includeAllConfidence = new URL(request.url).searchParams.get("includeAllConfidence") === "true";
+
   try {
-    const upstream = await fetch(`${PYTHON_API}/api/live/hotspots`, {
-      cache: "no-store",
-      headers: { "X-FIRMS-Map-Key": mapKey },
-      signal: AbortSignal.timeout(60_000),
-    });
+    const upstream = await fetch(
+      `${PYTHON_API}/api/live/hotspots${includeAllConfidence ? "?include_all_confidence=true" : ""}`,
+      {
+        cache: "no-store",
+        headers: { "X-FIRMS-Map-Key": mapKey },
+        signal: AbortSignal.timeout(60_000),
+      }
+    );
     const body = await upstream.json();
 
     if (!upstream.ok) {

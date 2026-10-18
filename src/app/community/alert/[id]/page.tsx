@@ -88,8 +88,9 @@ export default function AlertDetailPage() {
           onClick={handleShare}
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white border border-[var(--community-border)] text-[#123027] hover:bg-emerald-50 transition active:scale-95 shadow-xs"
           title="Bagikan ke keluarga"
+          aria-label={shareSuccess ? "Tautan disalin" : "Bagikan ke keluarga"}
         >
-          <span className="material-symbols-outlined text-[18px]">
+          <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
             {shareSuccess ? "check" : "share"}
           </span>
         </button>

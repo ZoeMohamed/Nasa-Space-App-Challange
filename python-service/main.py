@@ -10,6 +10,7 @@ from fire_pipeline import reports as reports_store
 from fire_pipeline.correlation import correlate_report
 from fire_pipeline.historical import load_calendar_summary, load_map_summary
 from fire_pipeline.live import LiveDataError, default_historical_db_path, load_live_hotspots
+from fire_pipeline.weather import fetch_weather_and_air_quality
 
 app = FastAPI(title="FireWatch Live Processing API", version="1.0.0")
 
@@ -87,9 +88,10 @@ def health() -> dict[str, str]:
 @app.get("/api/live/hotspots")
 def live_hotspots(
     map_key: str | None = Header(default=None, alias="X-FIRMS-Map-Key"),
+    include_all_confidence: bool = False,
 ) -> dict:
     try:
-        return load_live_hotspots(map_key)
+        return load_live_hotspots(map_key, include_all_confidence=include_all_confidence)
     except LiveDataError as exc:
         status = 503 if "not configured" in str(exc) else 502
         raise HTTPException(status_code=status, detail=str(exc)) from exc
@@ -134,6 +136,16 @@ def historical_map(
         return load_map_summary(default_historical_db_path(), days=days, bounds=bounds, start_date=start_date, end_date=end_date)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid historical map date range") from exc
+
+
+@app.get("/api/weather")
+def weather(lat: float, lon: float) -> dict:
+    """Real current wind + air quality for one point (Open-Meteo, no API
+    key). Never raises on a partial upstream failure -- see
+    fetch_weather_and_air_quality()'s docstring; `wind`/`airQuality` are
+    null and `errors` lists what failed instead.
+    """
+    return fetch_weather_and_air_quality(lat, lon)
 
 
 @app.post("/api/reports", status_code=201)

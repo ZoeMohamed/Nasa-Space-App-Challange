@@ -262,6 +262,7 @@ export default function FireMap({
   // square (VIIRS) from 🔥 (harmonized) because this legend used to be
   // hidden behind a click. Still collapsible via the same button.
   const [showLegendModal, setShowLegendModal] = useState(true);
+  const hasAnyLowConfidenceMarker = useMemo(() => markers.some((m) => m.highConfidence === false), [markers]);
 
   const centerLat = center[0];
   const centerLng = center[1];
@@ -466,21 +467,31 @@ export default function FireMap({
               ? `<polygon points="${hexagonPoints(size)}" fill="${color}" stroke="${stroke}" stroke-width="${strokeWidth}" />`
               : `<polygon points="${size / 2},0 ${size},${size} 0,${size}" fill="${color}" stroke="${stroke}" stroke-width="${strokeWidth}" />`;
 
+        // Low/nominal-confidence detections (only present when the caller opted into
+        // includeAllConfidence) are rendered faded + dashed, never visually identical
+        // to a high-confidence detection — same data, honestly lower certainty.
+        const isLowConfidence = marker.highConfidence === false;
+        const opacity = isLowConfidence ? 0.5 : 1;
+        const dashed = isLowConfidence ? ` stroke-dasharray="2,1.5"` : "";
+
         const icon = L.divIcon({
           className: `firesight-${shape}-icon`,
-          html: `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.45));">${shapeMarkup}</svg>`,
+          html: `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="opacity:${opacity};filter:drop-shadow(0 1px 2px rgba(0,0,0,0.45));">${shapeMarkup.replace("/>", `${dashed}/>`)}</svg>`,
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2],
         });
         const point = L.marker([marker.lat, marker.lng], {
           icon,
-          zIndexOffset: isSelected ? 1200 : 500,
+          zIndexOffset: isSelected ? 1200 : isLowConfidence ? 400 : 500,
         }).addTo(layer);
 
-        point.bindTooltip(`${marker.label} (${marker.sensor ?? "Satelit"})`, {
-          direction: "top",
-          className: "firesight-tooltip",
-        });
+        point.bindTooltip(
+          `${marker.label} (${marker.sensor ?? "Satelit"})${isLowConfidence ? " · confidence rendah/menengah" : ""}`,
+          {
+            direction: "top",
+            className: "firesight-tooltip",
+          }
+        );
 
         point.on("click", (e) => {
           L.DomEvent.stopPropagation(e);
@@ -742,6 +753,12 @@ export default function FireMap({
                     <span className="material-symbols-outlined text-[14px] text-blue-600">person_pin_circle</span>
                     <span>Laporan warga</span>
                   </div>
+                  {hasAnyLowConfidenceMarker && (
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full border border-dashed border-gray-400 bg-gray-300 opacity-50" />
+                      <span>Marker pudar/putus-putus = confidence rendah/menengah</span>
+                    </div>
+                  )}
                   {userLocation && (
                     <div className="flex items-center gap-2">
                       <span className="h-2.5 w-2.5 rounded-full bg-blue-600 ring-2 ring-white" />

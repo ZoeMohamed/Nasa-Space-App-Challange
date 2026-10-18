@@ -7,7 +7,7 @@ import RadarMap from "./components/RadarMap";
 import { NearbyReportList, type NearbyReportItem } from "./components/NearbyLists";
 import { formatDistanceKm, haversineKm } from "./lib/geo";
 import { useLocationState } from "./lib/useLocation";
-import type { CommunityReport, HotspotApiResponse, HotspotMarker } from "@/types";
+import type { CommunityReport, HotspotApiResponse, HotspotMarker, WeatherResponse } from "@/types";
 
 const MAX_NEARBY = 5;
 const RADIUS_KM = 10;
@@ -46,6 +46,8 @@ export default function CommunityBerandaPage() {
   const [hotspotLoading, setHotspotLoading] = useState(true);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [shareSuccess, setShareSuccess] = useState(false);
+  const [weather, setWeather] = useState<WeatherResponse | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(true);
 
   // Active coordinates: uses user's GPS/manual pick if set, else defaults to Desa Bahaur
   const activeLat = fix ? fix.lat : DEFAULT_PRESET_LOCATION.lat;
@@ -86,6 +88,33 @@ export default function CommunityBerandaPage() {
       cancelled = true;
     };
   }, []);
+
+  // Real current wind + air quality for the active location (Open-Meteo, no
+  // API key, see python-service/fire_pipeline/weather.py). Re-fetches when
+  // the location changes (GPS fix, manual pick, or the Bahaur default).
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/weather?lat=${activeLat}&lon=${activeLon}`, { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Gagal memuat data cuaca");
+        return (await res.json()) as WeatherResponse;
+      })
+      .then((body) => {
+        if (cancelled) return;
+        setWeather(body);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setWeather(null);
+      })
+      .finally(() => {
+        if (!cancelled) setWeatherLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeLat, activeLon]);
 
   // Fetch real community reports from API
   useEffect(() => {
@@ -328,8 +357,9 @@ export default function CommunityBerandaPage() {
             onClick={handleShare}
             className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 hover:bg-white/20 text-white transition active:scale-95"
             title="Bagikan status"
+            aria-label={shareSuccess ? "Tautan disalin" : "Bagikan status"}
           >
-            <span className="material-symbols-outlined text-[20px]">{shareSuccess ? "check" : "share"}</span>
+            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">{shareSuccess ? "check" : "share"}</span>
           </button>
         </div>
       </div>
@@ -363,17 +393,24 @@ export default function CommunityBerandaPage() {
           </span>
           <span className="text-xs font-bold text-[#123027]">Belajar Bersiap</span>
         </Link>
-        <div
-          className="rounded-2xl border border-dashed border-[var(--community-border)] bg-gray-50/60 p-4 flex flex-col gap-2 cursor-default"
-          title="Data kualitas udara belum terhubung ke aplikasi ini"
+        <Link
+          href="/community/udara"
+          className="rounded-2xl border border-[var(--community-border)] bg-white p-4 flex flex-col gap-2 hover:border-emerald-300 transition shadow-xs"
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 text-gray-400">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-700">
             <span className="material-symbols-outlined text-[20px]">air</span>
           </span>
-          <span className="text-xs font-bold text-gray-400">
-            Cek Kualitas Udara <span className="block text-[10px] font-semibold">Segera hadir</span>
+          <span className="text-xs font-bold text-[#123027]">
+            Cek Kualitas Udara
+            <span className="block text-[10px] font-semibold text-[var(--community-ink-muted)] mt-0.5">
+              {weatherLoading
+                ? "Memuat…"
+                : weather?.airQuality?.usAqiCategory
+                  ? `${weather.airQuality.usAqiCategory} (AQI ${weather.airQuality.usAqi})`
+                  : "Data belum tersedia"}
+            </span>
           </span>
-        </div>
+        </Link>
       </div>
 
       {/* Responsive Grid on Desktop / Single Stacked Column on Mobile */}

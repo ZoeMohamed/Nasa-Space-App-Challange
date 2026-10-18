@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import WorkstationLayout from "@/components/layout/WorkstationLayout";
@@ -46,8 +46,11 @@ const SEVERITY_BADGE_TONE: Record<HotspotMarker["severity"], BadgeTone> = {
   LOW: "low",
 };
 
-async function requestHotspots(signal?: AbortSignal) {
-  const response = await fetch("/api/hotspots", { signal, cache: "no-store" });
+async function requestHotspots(signal?: AbortSignal, includeAllConfidence = false) {
+  const response = await fetch(`/api/hotspots${includeAllConfidence ? "?includeAllConfidence=true" : ""}`, {
+    signal,
+    cache: "no-store",
+  });
   const body = (await response.json()) as HotspotApiResponse & { error?: string };
 
   if (!response.ok) {
@@ -241,7 +244,6 @@ function HotspotDetailPanel({ marker, onClose }: { marker: HotspotMarker; onClos
 }
 
 function MapExplorerPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const activeRegion = getRegionOption(searchParams.get("region"));
   const activeRange = getRangeOption(searchParams.get("range"));
@@ -261,6 +263,7 @@ function MapExplorerPageContent() {
   const [onlyHighFrp, setOnlyHighFrp] = useState(false);
   const [reports, setReports] = useState<CommunityReport[]>([]);
   const [showReports, setShowReports] = useState(true);
+  const [includeAllConfidence, setIncludeAllConfidence] = useState(false);
 
   // Citizen reports are fetched separately from /api/reports (not part of
   // /api/hotspots) and shown as person-pin markers alongside satellite
@@ -286,7 +289,7 @@ function MapExplorerPageContent() {
 
     const load = () => {
       const request = activeRange.value === "24h"
-        ? requestHotspots(controller.signal)
+        ? requestHotspots(controller.signal, includeAllConfidence)
         : requestHistoricalMap(
           activeRange.value === "7d" ? { days: 7 } : activeRange.value === "30d" ? { days: 30 } : { startDate: "2023-01-01", endDate: "2024-12-31" },
           activeRegion.bounds,
@@ -321,7 +324,7 @@ function MapExplorerPageContent() {
       controller.abort();
       window.clearInterval(interval);
     };
-  }, [activeRange.value, activeRegion.bounds]);
+  }, [activeRange.value, activeRegion.bounds, includeAllConfidence]);
 
   async function refreshHotspots() {
     setLoading(true);
@@ -329,7 +332,7 @@ function MapExplorerPageContent() {
 
     try {
       const body = activeRange.value === "24h"
-        ? await requestHotspots()
+        ? await requestHotspots(undefined, includeAllConfidence)
         : await requestHistoricalMap(
           activeRange.value === "7d" ? { days: 7 } : activeRange.value === "30d" ? { days: 30 } : { startDate: "2023-01-01", endDate: "2024-12-31" },
           activeRegion.bounds
@@ -479,13 +482,6 @@ function MapExplorerPageContent() {
               >
                 Refresh
               </button>
-              <button
-                type="button"
-                onClick={() => router.push("/activities")}
-                className="rounded-md border border-gray-200 bg-white px-2.5 py-1.5 font-semibold text-blue-700 hover:bg-blue-50"
-              >
-                Table view
-              </button>
             </div>
 
             <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3 text-[11px]" aria-live="polite">
@@ -622,7 +618,33 @@ function MapExplorerPageContent() {
                   <input type="checkbox" checked={onlyHighFrp} onChange={(event) => setOnlyHighFrp(event.target.checked)} className="mt-0.5 h-4 w-4 accent-emerald-600" />
                   <span><strong className="font-semibold">FRP tinggi (&gt;50 MW)</strong><br /><span className="text-gray-500">Tampilkan anomali panas dengan intensitas lebih tinggi.</span></span>
                 </label>
-                <button type="button" onClick={() => { setOnlyMatched(false); setOnlyHighFrp(false); setShowReports(true); }} className="text-xs font-semibold text-emerald-700 hover:text-emerald-800">
+                <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs text-gray-700 hover:bg-amber-50">
+                  <input
+                    type="checkbox"
+                    checked={includeAllConfidence}
+                    onChange={(event) => setIncludeAllConfidence(event.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-amber-600"
+                  />
+                  <span>
+                    <strong className="font-semibold">Sertakan confidence rendah/menengah</strong>
+                    <br />
+                    <span className="text-gray-500">
+                      Default-nya hanya deteksi confidence tinggi (MODIS &gt;80%, VIIRS &quot;high&quot;). Opsi ini
+                      menambahkan deteksi yang lebih longgar — lebih banyak titik, tapi lebih besar kemungkinan
+                      false positive. Marker confidence rendah/menengah ditandai beda di peta.
+                    </span>
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOnlyMatched(false);
+                    setOnlyHighFrp(false);
+                    setShowReports(true);
+                    setIncludeAllConfidence(false);
+                  }}
+                  className="text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+                >
                   Reset filter
                 </button>
               </div>

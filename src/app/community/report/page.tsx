@@ -326,8 +326,10 @@ function ReportPageContent() {
 
       {/* Apa yang kamu lihat? */}
       <div className="space-y-2">
-        <label className="text-xs font-bold text-[#123027]">Apa yang kamu lihat?</label>
-        <div className="flex flex-wrap gap-2">
+        <span id="report-category-heading" className="text-xs font-bold text-[#123027]">
+          Apa yang kamu lihat?
+        </span>
+        <div role="group" aria-labelledby="report-category-heading" className="flex flex-wrap gap-2">
           {REPORT_CATEGORIES.map((cat) => {
             const selected = selectedCategory === cat.id;
             return (
@@ -335,13 +337,14 @@ function ReportPageContent() {
                 key={cat.id}
                 type="button"
                 onClick={() => setSelectedCategory(cat.id)}
+                aria-pressed={selected}
                 className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
                   selected
                     ? "bg-[#075640] text-white shadow-xs"
                     : "bg-white border border-[var(--community-border)] text-[#123027] hover:bg-gray-50"
                 }`}
               >
-                {selected && <span className="material-symbols-outlined text-[15px]">check</span>}
+                {selected && <span className="material-symbols-outlined text-[15px]" aria-hidden="true">check</span>}
                 <span>{cat.label}</span>
               </button>
             );
@@ -367,9 +370,10 @@ function ReportPageContent() {
               <button
                 type="button"
                 onClick={() => handleRemovePhoto(idx)}
+                aria-label={`Hapus foto ${idx + 1}`}
                 className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/70 text-white flex items-center justify-center text-[12px] hover:bg-rose-600 transition"
               >
-                ✕
+                <span aria-hidden="true">✕</span>
               </button>
             </div>
           ))}
@@ -430,8 +434,10 @@ function ReportPageContent() {
 
       {/* Perkiraan jarak dari kamu */}
       <div className="space-y-2">
-        <label className="text-xs font-bold text-[#123027]">Perkiraan jarak dari kamu</label>
-        <div className="grid grid-cols-3 gap-2">
+        <span id="report-distance-heading" className="text-xs font-bold text-[#123027]">
+          Perkiraan jarak dari kamu
+        </span>
+        <div role="group" aria-labelledby="report-distance-heading" className="grid grid-cols-3 gap-2">
           {DISTANCE_OPTIONS.map((dist) => {
             const selected = distanceEstimate === dist;
             return (
@@ -439,6 +445,7 @@ function ReportPageContent() {
                 key={dist}
                 type="button"
                 onClick={() => setDistanceEstimate(dist)}
+                aria-pressed={selected}
                 className={`py-2 rounded-xl text-xs font-bold transition-all ${
                   selected
                     ? "bg-[#075640] text-white shadow-xs"

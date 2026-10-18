@@ -313,9 +313,9 @@ function AnalyticsPageContent() {
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Analytics</h1>
             <p className="text-sm text-gray-500 max-w-2xl">
-              Statistik dan klaster spasial dari snapshot NASA FIRMS 24 jam terakhir. Belum ada riwayat historis
-              multi-bulan/tahun, jadi tren bulanan di bawah ini sengaja ditampilkan kosong sampai data itu tersedia —
-              bukan dikosongkan karena kesalahan.
+              Statistik dan klaster spasial dari snapshot NASA FIRMS 24 jam terakhir, dibandingkan dengan arsip
+              historis nyata (2000–2026) untuk wilayah terpilih. Deteksi satelit adalah indikasi anomali termal,
+              bukan konfirmasi kebakaran — perlu verifikasi lapangan sebelum tindak lanjut.
             </p>
           </div>
           <button

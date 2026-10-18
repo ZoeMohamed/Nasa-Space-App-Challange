@@ -6,6 +6,24 @@ import pandas as pd
 
 
 def deterministic_priority(df):
+    """`priority_score`/`priority_tier`: ranks grid cells for operator
+    triage, built on top of `attention_score` (see attention_features()'s
+    docstring for that formula's own justification) plus two more proxies:
+    growth trend (30%, is this cell's activity increasing) and detection
+    count (20%, spatial extent again, independent of `attention_score`'s own
+    count term since this re-ranks across the whole batch rather than just
+    this cell).
+
+    This is a deterministic formula, not a trained or AI model -- no fire
+    behavior prediction is happening here. The weights (50/30/20) and the
+    tier cutoffs (0.66/0.33) are engineering defaults chosen for a
+    reasonable high/medium/low spread on typical batches, not validated
+    against any real fire-management agency's prioritization criteria (e.g.
+    Manggala Agni) or a labeled ground-truth dataset. Before this is used
+    for anything beyond demo/triage-ordering, it needs that external
+    validation -- documenting that gap honestly here rather than silently
+    presenting tier labels as more authoritative than they are.
+    """
     result = df.copy()
     if result.empty:
         return result

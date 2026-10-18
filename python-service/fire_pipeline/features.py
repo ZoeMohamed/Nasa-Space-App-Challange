@@ -69,6 +69,22 @@ def temporal_features(areas):
 
 
 def attention_features(areas):
+    """`attention_score`: a deterministic 0-1 ranking signal per grid cell,
+    not a calibrated danger probability. The three inputs are each a
+    standard proxy in satellite fire monitoring, not arbitrary choices:
+    - FRP (fire radiative power, 45%) is the standard remote-sensing proxy
+      for fire intensity (Giglio et al., the same metric MODIS/VIIRS active
+      fire products themselves report).
+    - persistence (30%, fraction of recent days with a detection in this
+      cell) is a common proxy for a sustained vs. transient fire.
+    - detection count (25%) is a simple spatial-extent proxy.
+
+    The WEIGHTS (45/30/25) are an engineering default, not fitted to ground
+    truth or expert-elicited -- this has not been validated against a real
+    fire-management agency's criteria. Treat `attention_score` as "rank
+    these cells by relative urgency," not as a validated risk/danger score,
+    until that validation happens.
+    """
     result = areas.copy()
     if result.empty:
         return result

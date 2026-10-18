@@ -640,7 +640,16 @@ function PriorityAreasPageContent() {
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Priority Areas</h1>
             <p className="text-sm text-gray-500 max-w-2xl">
-              Area yang disarankan untuk verifikasi lapangan lebih dulu, diurutkan dari skor prioritas tertinggi. Kriteria & bobot ditampilkan apa adanya — ini bukan prediksi atau konfirmasi kebakaran.
+              Sel grid 0,25° (bukan nama wilayah resmi) yang disarankan untuk verifikasi lapangan lebih dulu,
+              diurutkan dari skor prioritas tertinggi. Kriteria &amp; bobot ditampilkan apa adanya — ini bukan
+              prediksi atau konfirmasi kebakaran.
+            </p>
+            <p className="text-xs text-gray-400 max-w-2xl mt-1.5">
+              Skor = formula deterministik (50% attention score + 30% tren pertumbuhan + 20% jumlah deteksi), bukan
+              AI atau model prediktif. Attention score sendiri = 45% FRP + 30% persistensi + 25% jumlah deteksi.
+              Bobot-bobot ini adalah default rekayasa untuk memberi sebaran High/Medium/Low yang wajar, belum
+              divalidasi terhadap kriteria instansi pemadam kebakaran sungguhan — perlakukan sebagai urutan
+              relatif untuk triase, bukan skor risiko yang terkalibrasi.
             </p>
           </div>
           <button

@@ -61,7 +61,7 @@ def default_historical_db_path() -> str:
 
 
 _cache_lock = threading.Lock()
-_cache: tuple[float, dict] | None = None
+_cache: tuple[float, tuple[list[pd.DataFrame], list[dict]]] | None = None
 
 
 def _fetch_source(map_key: str, source_id: str, sensor: str) -> tuple[pd.DataFrame, dict]:
@@ -92,8 +92,14 @@ def _fetch_source(map_key: str, source_id: str, sensor: str) -> tuple[pd.DataFra
     required = {"latitude", "longitude", "acq_date", "acq_time", "satellite", "confidence", "frp"}
     if not required.issubset(frame.columns):
         raise LiveDataError(f"NASA FIRMS returned unexpected data for {source_id}")
+    # Keep every row (don't drop low/nominal confidence here) -- the high-confidence
+    # filter is now applied per-request in process_live_frames, not baked into the
+    # fetch, so a caller can opt into seeing lower-confidence detections instead of
+    # having them silently discarded before they ever reach the pipeline. See
+    # `include_all_confidence` on load_live_hotspots()/process_live_frames().
     high_confidence = high_confidence_mask(frame)
-    live = frame.loc[high_confidence].copy()
+    live = frame.copy()
+    live["high_confidence"] = high_confidence
     live["sensor"] = sensor
     live["source"] = source_id
     live["source_file"] = source_id
@@ -120,6 +126,32 @@ def _safe_float(value) -> float | None:
 
 def _safe_int(value) -> int | None:
     return None if pd.isna(value) else int(value)
+
+
+_VIIRS_CONFIDENCE_LABEL = {"l": "Rendah (VIIRS)", "n": "Nominal (VIIRS)", "h": "Tinggi (VIIRS)"}
+
+
+def _marker_confidence(sensor: str, confidence_raw) -> tuple[float | None, str]:
+    """Honest per-sensor confidence for the frontend marker.
+
+    MODIS confidence is a genuine continuous 0-100% algorithm output, so it's
+    passed through as a real percentage. VIIRS confidence is one of three
+    discrete classes (low/nominal/high) with no percentage meaning -- it must
+    NOT be sent as a number or a synthetic "95%"-style label, since that
+    would imply a precision VIIRS confidence doesn't have and make it look
+    directly comparable to MODIS's real percentage, which NASA's own FIRMS
+    documentation says these two confidence schemes are not. `confidence_num`
+    (clean.py's l/n/h -> 30/70/95 placeholder) is kept internally for
+    aggregate statistics but is intentionally never surfaced here as this
+    marker's displayed confidence.
+    """
+    if sensor == "MODIS":
+        value = pd.to_numeric(confidence_raw, errors="coerce")
+        if pd.notna(value):
+            return float(value), f"{float(value):.0f}%"
+        return None, "Tidak tercatat"
+    text = str(confidence_raw).strip().lower() if pd.notna(confidence_raw) else ""
+    return None, _VIIRS_CONFIDENCE_LABEL.get(text, "Tidak tercatat")
 
 
 def summarize_areas(areas: pd.DataFrame) -> list[dict]:
@@ -165,11 +197,22 @@ def summarize_areas(areas: pd.DataFrame) -> list[dict]:
     return sorted(summaries, key=lambda item: item["priorityRank"] if item["priorityRank"] is not None else 10**9)
 
 
-def process_live_frames(frames: list[pd.DataFrame], source_summaries: list[dict]) -> dict:
+def process_live_frames(frames: list[pd.DataFrame], source_summaries: list[dict], include_all_confidence: bool = False) -> dict:
+    """`include_all_confidence=False` (default) keeps only high-confidence
+    detections (numeric >80 or categorical "h") -- the same conservative
+    default this endpoint has always shipped with. `include_all_confidence=True`
+    also keeps low/nominal-confidence detections, each one honestly labeled
+    via `confidenceLabel`/`highConfidence` on the marker, never hidden or
+    silently relabeled as high-confidence. This is a per-request toggle, not a
+    change to the underlying filter -- see high_confidence_mask()'s own
+    docstring for why the threshold itself stays untouched.
+    """
     if not frames:
         raise LiveDataError("All NASA FIRMS feeds are unavailable")
     detections = add_quality_flags(harmonize(pd.concat(frames, ignore_index=True, sort=False)))
     detections = detections[detections["quality_ok"]].reset_index(drop=True)
+    if not include_all_confidence and "high_confidence" in detections.columns:
+        detections = detections[detections["high_confidence"]].reset_index(drop=True)
     # We fetch a FETCH_DAY_RANGE-day bucket from FIRMS to absorb VIIRS NRT's
     # processing lag (see FETCH_DAY_RANGE's comment), so trim back down to the
     # real last WINDOW_HOURS here -- otherwise this endpoint's advertised
@@ -219,7 +262,7 @@ def process_live_frames(frames: list[pd.DataFrame], source_summaries: list[dict]
         if marker_id in seen:
             continue
         seen.add(marker_id)
-        confidence = float(row.confidence_num) if pd.notna(row.get("confidence_num")) else None
+        confidence, confidence_label = _marker_confidence(str(row.sensor), row.get("confidence_raw"))
         matched_id_raw = matched_detection_id.get(detection_id)
         matched_detection_id_value = int(matched_id_raw) if matched_id_raw is not None and matched_id_raw != -1 else None
         markers.append(
@@ -234,7 +277,8 @@ def process_live_frames(frames: list[pd.DataFrame], source_summaries: list[dict]
                 "source": source,
                 "satellite": str(row.get("satellite", "Unknown")),
                 "confidence": confidence,
-                "confidenceLabel": f"{confidence:.0f}%" if confidence is not None else str(row.get("confidence_raw", "High")),
+                "confidenceLabel": confidence_label,
+                "highConfidence": bool(row.get("high_confidence", True)),
                 "acquiredAt": acquired.strftime("%Y-%m-%dT%H:%M:00Z"),
                 "areaId": area_id,
                 "matchStatus": str(match_status.get(detection_id, "UNMATCHED")),
@@ -267,14 +311,19 @@ def process_live_frames(frames: list[pd.DataFrame], source_summaries: list[dict]
     }
 
 
-def load_live_hotspots(map_key: str | None = None) -> dict:
+def load_live_hotspots(map_key: str | None = None, include_all_confidence: bool = False) -> dict:
     global _cache
     key = map_key or os.getenv("NASA_FIRMS_MAP_KEY")
     if not key:
         raise LiveDataError("NASA_FIRMS_MAP_KEY is not configured")
     with _cache_lock:
+        # The cache holds the raw fetched frames (the expensive part -- real
+        # HTTP calls to NASA), not the final processed result, so toggling
+        # include_all_confidence re-runs process_live_frames (cheap, no
+        # network) instead of needing a second 5-minute-stale cache entry.
         if _cache and _cache[0] > time.monotonic():
-            return _cache[1]
+            frames, summaries = _cache[1]
+            return process_live_frames(frames, summaries, include_all_confidence=include_all_confidence)
         frames, summaries_by_id = [], {}
         with ThreadPoolExecutor(max_workers=len(SOURCES)) as executor:
             futures = {
@@ -297,6 +346,5 @@ def load_live_hotspots(map_key: str | None = None) -> dict:
                         "error": "Temporarily unavailable",
                     }
         summaries = [summaries_by_id[source_id] for source_id, _ in SOURCES]
-        result = process_live_frames(frames, summaries)
-        _cache = (time.monotonic() + CACHE_SECONDS, result)
-        return result
+        _cache = (time.monotonic() + CACHE_SECONDS, (frames, summaries))
+        return process_live_frames(frames, summaries, include_all_confidence=include_all_confidence)
