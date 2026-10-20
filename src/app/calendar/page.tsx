@@ -2,13 +2,15 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import AreaSearch, { type AreaHit } from "@/components/AreaSearch";
 import WorkstationLayout from "@/components/layout/WorkstationLayout";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import StatTile from "@/components/ui/StatTile";
-import { getRegionOption, getRangeOption, isWithinBounds } from "@/lib/filters";
-import type { HistoricalCalendarResponse, HistoricalCell, HotspotApiResponse } from "@/types";
+import { getRegionOption, getRangeOption, historicalQuery, isArchiveRange, matchesRegion, type RegionOption, withFilters } from "@/lib/filters";
+import { useLiveHotspots } from "@/lib/useLiveHotspots";
+import type { HistoricalCalendarResponse, HistoricalCell } from "@/types";
 
 /**
  * Figma source: file wasTTtlmYfsjK1ZkH1Kzim, node 169:16396 ("Desktop - 10"). That top frame
@@ -36,8 +38,8 @@ import type { HistoricalCalendarResponse, HistoricalCell, HotspotApiResponse } f
  * Two real, honest limitations remain even with real data (see the methodology note rendered
  * near the heatmap): (1) the archive's `type==0` vegetation-fire filter only applies to archive
  * rows — NRT rows don't have that column, so recent months may include non-vegetation thermal
- * anomalies that older months exclude; (2) the high-confidence filter is strict, especially for
- * VIIRS (~3.4% pass rate), so VIIRS-heavy periods can look sparser than they really are.
+ * anomalies that older months exclude; (2) VIIRS joins the record on 2012-01-20 and dominates the
+ * nominal+high counts after that, so cross-year comparisons and per-cell baselines use 2012+ only.
  *
  * The "Deteksi 24 Jam Terakhir" stat tile is still the one *live* (not historical-archive) number
  * on this page, fetched the same way as /map, /analytics and /priority-areas
@@ -52,7 +54,6 @@ import type { HistoricalCalendarResponse, HistoricalCell, HotspotApiResponse } f
  * instead of bolting on decorative, non-functional dropdowns next to real ones.
  */
 
-const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 // ---------------------------------------------------------------------------------------------
 // DEMO / ILLUSTRATIVE DATA — FALLBACK ONLY, isolated here so it's obvious at a glance what is
@@ -132,28 +133,19 @@ function summarizeYear(months: (number | null)[]) {
   return { total, peakLabel, bucketShares };
 }
 
-async function requestHotspots(signal?: AbortSignal) {
-  const response = await fetch("/api/hotspots", { signal, cache: "no-store" });
-  const body = (await response.json()) as HotspotApiResponse & { error?: string };
-
-  if (!response.ok) {
-    throw new Error(body.error ?? "Unable to load NASA FIRMS data.");
-  }
-
-  return body;
-}
-
-function requestErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unable to load NASA FIRMS data.";
-}
-
 /**
  * Real multi-year archive data from the Python pipeline (see src/app/api/historical/route.ts).
  * Never throws for an empty-but-valid store — `{ months: [], cells: [] }` is a legitimate
  * response, not an error (the caller treats that the same as a fetch failure: fall back to demo).
  */
-async function requestHistorical(signal?: AbortSignal): Promise<HistoricalCalendarResponse> {
-  const response = await fetch("/api/historical", { signal, cache: "no-store" });
+async function requestHistorical(
+  region: RegionOption,
+  aoiCode: string | null,
+  signal?: AbortSignal
+): Promise<HistoricalCalendarResponse> {
+  // A kabupaten/kecamatan area (exact polygon/cell intersection) narrows the province filter.
+  const query = aoiCode ? new URLSearchParams({ admin_code: aoiCode }).toString() : historicalQuery(region);
+  const response = await fetch(`/api/historical${query ? `?${query}` : ""}`, { signal, cache: "no-store" });
   const body = (await response.json()) as HistoricalCalendarResponse & { error?: string };
 
   if (!response.ok) {
@@ -171,51 +163,58 @@ function DemoBadge({ className = "" }: { className?: string }) {
   );
 }
 
+// VIIRS (Suomi-NPP) enters the FIRMS archive on 2012-01-20 and, with the nominal+high filter,
+// dominates every count after that (2011: 56k events, 2012: 307k). Multi-year comparisons below use
+// 2012+ only so a sensor change is never read as a change in fire activity; the heatmap still shows
+// every year, with a note.
+const VIIRS_ERA_START_YEAR = 2012;
+
 function CalendarPageContent() {
   const searchParams = useSearchParams();
   const activeRegion = getRegionOption(searchParams.get("region"));
   const activeRange = getRangeOption(searchParams.get("range"));
-  const hasActiveFilters = searchParams.has("region") || searchParams.has("range");
+  const hasActiveFilters = searchParams.has("region") || searchParams.has("range") || searchParams.has("aoi");
+  const router = useRouter();
+  const pathname = usePathname();
+  // Optional finer area of interest (kabupaten/kota or kecamatan p-code), kept in the URL so a
+  // calendar for one area can be shared as a link.
+  const aoiCode = searchParams.get("aoi");
+  const aoiLabel = searchParams.get("aoiLabel");
+  function setAoi(hit: AreaHit | null) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (hit) {
+      params.set("aoi", hit.code);
+      params.set("aoiLabel", hit.label);
+    } else {
+      params.delete("aoi");
+      params.delete("aoiLabel");
+    }
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
+  const areaKey = aoiCode ?? activeRegion.value;
 
-  const [allMarkers, setAllMarkers] = useState<HotspotApiResponse["markers"]>([]);
-  const [meta, setMeta] = useState<HotspotApiResponse["meta"] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Region filter on the one real data source this page shows — same client-side bbox check
-  // every other filterable page uses (src/lib/filters.ts).
-  const liveMarkers = useMemo(
-    () => allMarkers.filter((marker) => isWithinBounds(marker.lat, marker.lng, activeRegion.bounds)),
-    [allMarkers, activeRegion]
+  const archiveRange = isArchiveRange(searchParams.get("range"));
+  // The anomaly check compares per-cell live counts with a DAILY baseline, so the live side stays
+  // on the 24h window whatever range is picked — a 7d/30d sum against a daily mean would repeat
+  // the unit-mismatch bug fixed earlier (see historical.py's docstring).
+  const { data, error, loading } = useLiveHotspots("24h", { province: activeRegion.provinsi });
+  const meta = data?.meta ?? null;
+  const liveAreas = useMemo(
+    () =>
+      (data?.areas ?? []).filter((area) =>
+        aoiCode
+          ? // Live areas carry their dominant kecamatan; match it against the chosen area's p-code.
+            Boolean(area.admin?.kecamatanCode?.startsWith(aoiCode))
+          : matchesRegion(area.admin, activeRegion)
+      ),
+    [data, activeRegion, aoiCode]
   );
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const load = () => {
-      requestHotspots(controller.signal)
-        .then((body) => {
-          setAllMarkers(body.markers);
-          setMeta(body.meta);
-          setError(null);
-        })
-        .catch((requestError: unknown) => {
-          if (requestError instanceof DOMException && requestError.name === "AbortError") return;
-          setError(requestErrorMessage(requestError));
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setLoading(false);
-        });
-    };
-
-    load();
-    const interval = window.setInterval(load, REFRESH_INTERVAL_MS);
-
-    return () => {
-      controller.abort();
-      window.clearInterval(interval);
-    };
-  }, []);
+  // Exact total over every detection (markers are capped): raw MODIS + VIIRS per area.
+  const liveDetectionTotal = useMemo(
+    () => liveAreas.reduce((sum, area) => sum + (area.modisDetections ?? 0) + (area.viirsDetections ?? 0), 0),
+    [liveAreas]
+  );
 
   // Real multi-year archive data (months + per-cell baselines) — fetched once on mount. Falls
   // back to the DEMO_* constants below if this fails or comes back empty; see `hasRealMonths`.
@@ -223,30 +222,38 @@ function CalendarPageContent() {
   // shows a loading state rather than flashing DEMO_* data and then swapping to real data once
   // it arrives (historical was previously null during the fetch, which hasRealMonths read as
   // "no real data yet" and rendered the demo fallback for that whole window).
-  const [historical, setHistorical] = useState<HistoricalCalendarResponse | null>(null);
-  const [historicalLoading, setHistoricalLoading] = useState(true);
+  const [historicalState, setHistoricalState] = useState<{ key: string; data: HistoricalCalendarResponse } | null>(null);
+  const historicalLoading = historicalState?.key !== areaKey;
+  const historical = useMemo(() => {
+    if (historicalLoading || !historicalState) return null;
+    if (!archiveRange) return historicalState.data;
+    // Archive range: keep only Jan 2023 – Dec 2024 months (per-cell baselines stay multi-year).
+    return {
+      ...historicalState.data,
+      months: historicalState.data.months.filter((m) => m.year >= 2023 && m.year <= 2024),
+    };
+  }, [historicalLoading, historicalState, archiveRange]);
   // The one cell a user has clicked to inspect its exact underlying numbers — lets insights
   // ("September ini 20% di atas rata-rata") link to the real data that produced them, instead
   // of ending at a sentence with no way to verify it.
   const [selectedCell, setSelectedCell] = useState<{ year: number; month: number } | null>(null);
   const heatmapRef = useRef<HTMLDivElement>(null);
+  const [yearSpan, setYearSpan] = useState<5 | 10 | "all">(5);
 
   useEffect(() => {
     const controller = new AbortController();
 
-    requestHistorical(controller.signal)
-      .then((body) => setHistorical(body))
+    const key = areaKey;
+    requestHistorical(activeRegion, aoiCode, controller.signal)
+      .then((body) => setHistoricalState({ key, data: body }))
       .catch((requestError: unknown) => {
         if (requestError instanceof DOMException && requestError.name === "AbortError") return;
         console.error("Historical NASA FIRMS fetch failed, falling back to demo data", requestError);
-        setHistorical({ months: [], cells: [] });
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setHistoricalLoading(false);
+        setHistoricalState({ key, data: { months: [], cells: [] } });
       });
 
     return () => controller.abort();
-  }, []);
+  }, [activeRegion, aoiCode, areaKey]);
 
   // Real per-year month arrays built from `historical.months`, same shape as DEMO_MONTHLY_INTENSITY
   // (12-length array indexed by month - 1, `null` = no data for that month).
@@ -271,6 +278,8 @@ function CalendarPageContent() {
   // available, otherwise the illustrative DEMO_* fallback.
   const activeMonthlyIntensity = hasRealMonths ? realMonthlyIntensity! : DEMO_MONTHLY_INTENSITY;
   const activeYears = hasRealMonths ? realYears : DEMO_YEARS;
+  // Heatmap rows only — insights/baselines above still use every year in `activeYears`.
+  const heatmapYears = yearSpan === "all" ? activeYears : activeYears.slice(-yearSpan);
 
   // Real baseline: latest archive month vs the average of that same calendar month in prior
   // years — no invented numbers, pure arithmetic over `historical.months`.
@@ -278,7 +287,9 @@ function CalendarPageContent() {
     if (!historical || historical.months.length === 0) return null;
     const sorted = [...historical.months].sort((a, b) => a.year * 12 + a.month - (b.year * 12 + b.month));
     const latest = sorted[sorted.length - 1];
-    const sameMonthPrevYears = sorted.filter((entry) => entry.month === latest.month && entry.year < latest.year);
+    const sameMonthPrevYears = sorted.filter(
+      (entry) => entry.month === latest.month && entry.year < latest.year && entry.year >= VIIRS_ERA_START_YEAR
+    );
     if (sameMonthPrevYears.length === 0) return null;
 
     const baselineValue =
@@ -309,12 +320,13 @@ function CalendarPageContent() {
       cellByKey.set(`${cell.gridLat.toFixed(2)},${cell.gridLon.toFixed(2)}`, cell);
     }
 
+    // Live per-cell counts from the backend's areas: harmonized events (a MODIS+VIIRS pair counts
+    // once) over EVERY detection — the same counting basis as the archive's daily `detections`.
+    // (Counting raw markers here double-counted matched pairs, and markers are now capped.)
     const liveCountByKey = new Map<string, number>();
-    for (const marker of liveMarkers) {
-      const gridLat = Math.floor(marker.lat / 0.25) * 0.25;
-      const gridLon = Math.floor(marker.lng / 0.25) * 0.25;
-      const key = `${gridLat.toFixed(2)},${gridLon.toFixed(2)}`;
-      liveCountByKey.set(key, (liveCountByKey.get(key) ?? 0) + 1);
+    for (const area of liveAreas) {
+      if (area.detections === null) continue;
+      liveCountByKey.set(`${area.gridLat.toFixed(2)},${area.gridLon.toFixed(2)}`, area.detections);
     }
 
     let matchedCells = 0;
@@ -332,14 +344,14 @@ function CalendarPageContent() {
     }
 
     return { matchedCells, unusualCells };
-  }, [historical, liveMarkers]);
+  }, [historical, liveAreas]);
 
   // Real aggregate peak month across every real year available, used by the insight panel below
   // instead of the hardcoded "Agustus–September" demo claim.
   const realPeakMonthLabel = useMemo(() => {
     if (!hasRealMonths) return null;
     const totals = Array(12).fill(0);
-    for (const year of realYears) {
+    for (const year of realYears.filter((y) => y >= VIIRS_ERA_START_YEAR)) {
       activeMonthlyIntensity[year].forEach((value, index) => {
         if (value !== null) totals[index] += value;
       });
@@ -381,7 +393,7 @@ function CalendarPageContent() {
           : null;
       insights.push({
         icon: "insights",
-        text: `${realPeakMonthLabel} secara historis adalah bulan paling aktif, dihitung dari total deteksi seluruh arsip ${activeYears[0]}–${activeYears[activeYears.length - 1]}.`,
+        text: `${realPeakMonthLabel} secara historis adalah bulan paling aktif, dihitung dari total deteksi ${Math.max(activeYears[0], VIIRS_ERA_START_YEAR)}–${activeYears[activeYears.length - 1]} (era MODIS + VIIRS).`,
         target: peakMonthBestEntry ? { kind: "cell", year: peakMonthBestEntry.year, month: peakMonthBestEntry.month } : undefined,
       });
     }
@@ -411,8 +423,9 @@ function CalendarPageContent() {
     // sees whether the season is historically still climbing or past its peak.
     const nextMonthNum = (latest.month % 12) + 1;
     const nextMonthLabel = DEMO_MONTH_LABELS[nextMonthNum - 1];
-    const nextMonthEntries = sorted.filter((entry) => entry.month === nextMonthNum && entry.year <= latest.year);
-    const thisMonthEntries = sorted.filter((entry) => entry.month === latest.month && entry.year <= latest.year);
+    const inEra = (entry: { year: number }) => entry.year >= VIIRS_ERA_START_YEAR && entry.year <= latest.year;
+    const nextMonthEntries = sorted.filter((entry) => entry.month === nextMonthNum && inEra(entry));
+    const thisMonthEntries = sorted.filter((entry) => entry.month === latest.month && inEra(entry));
     if (nextMonthEntries.length > 0 && thisMonthEntries.length > 0) {
       const nextAvg = nextMonthEntries.reduce((sum, e) => sum + e.detections, 0) / nextMonthEntries.length;
       const thisAvg = thisMonthEntries.reduce((sum, e) => sum + e.detections, 0) / thisMonthEntries.length;
@@ -448,6 +461,9 @@ function CalendarPageContent() {
 
   function jumpToCell(year: number, month: number) {
     setSelectedCell({ year, month });
+    // An insight can point at a year outside the visible span — widen just enough to show it.
+    const latestYear = activeYears[activeYears.length - 1];
+    if (yearSpan !== "all" && latestYear - year >= yearSpan) setYearSpan("all");
     heatmapRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
@@ -481,10 +497,10 @@ function CalendarPageContent() {
         {/* Info pills — reflect the TopBar's real region/range selection (?region=, ?range=) */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="h-8 px-3 inline-flex items-center bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 shadow-sm">
-            Wilayah: {activeRegion.label}
+            Wilayah: {aoiCode ? aoiLabel ?? aoiCode : activeRegion.label}
           </span>
           <span className="h-8 px-3 inline-flex items-center bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 shadow-sm">
-            Window (live stat): {activeRange.label}
+            Periode arsip: {archiveRange ? activeRange.label : "Seluruh arsip (2000–2026)"}
           </span>
           <span className="h-8 px-3 inline-flex items-center bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 shadow-sm">
             Sensor: Unified (MODIS + VIIRS)
@@ -499,6 +515,41 @@ function CalendarPageContent() {
           )}
         </div>
 
+        {/* Area of interest — narrow the calendar to one kabupaten/kota or kecamatan */}
+        <Card className="p-4 flex flex-col md:flex-row md:items-center gap-3">
+          <div className="md:w-72 shrink-0">
+            <p className="text-sm font-bold text-gray-900">Area analisis</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {aoiCode
+                ? `${aoiLabel ?? aoiCode} — sel grid 0,25° yang beririsan dengan batas wilayahnya.`
+                : `${activeRegion.label}. Persempit ke kabupaten/kota atau kecamatan:`}
+            </p>
+          </div>
+          <div className="flex-1 min-w-0">
+            <AreaSearch onPick={(hit) => setAoi(hit)} />
+          </div>
+          {aoiCode && (
+            <button
+              type="button"
+              onClick={() => setAoi(null)}
+              className="shrink-0 h-9 px-3 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+            >
+              Kembali ke {activeRegion.label}
+            </button>
+          )}
+        </Card>
+
+        {activeRange.window !== null && activeRange.window !== "24h" && (
+          <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-xs text-blue-900">
+            <span className="material-symbols-outlined text-blue-600 text-base shrink-0">info</span>
+            <p>
+              Kalender ini menampilkan arsip bulanan, jadi rentang &quot;{activeRange.label}&quot; tidak mengubahnya.
+              Statistik live tetap 24 jam karena dibandingkan dengan baseline harian per sel. Rentang ini berlaku di
+              Dashboard, Map, Analytics, dan Priority Areas.
+            </p>
+          </div>
+        )}
+
         {/* Live stat (always real) + baseline/deviation/anomaly stats — real once `historical`
             loads with data, demo-labeled fallback otherwise. */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -506,7 +557,7 @@ function CalendarPageContent() {
             icon="local_fire_department"
             iconTone="red"
             label="Deteksi 24 Jam Terakhir (Live)"
-            value={loading ? "…" : liveMarkers.length.toLocaleString("id-ID")}
+            value={loading ? "…" : liveDetectionTotal.toLocaleString("id-ID")}
             caption={
               error
                 ? error
@@ -617,7 +668,7 @@ function CalendarPageContent() {
                   {/* No historical cluster/trend view exists yet for this page specifically — routes
                       to Analytics, the closest existing page that covers multi-area trend analysis. */}
                   <Link
-                    href="/analytics"
+                    href={withFilters("/analytics", searchParams)}
                     className="text-xs font-semibold text-blue-600 hover:text-blue-700 inline-flex items-center gap-1 shrink-0"
                   >
                     View details
@@ -698,7 +749,7 @@ function CalendarPageContent() {
                               </button>
                             )}
                             {insight.target?.kind === "map" && (
-                              <Link href="/map" className="font-semibold text-emerald-700 hover:text-emerald-900 underline underline-offset-2">
+                              <Link href={withFilters("/map", searchParams)} className="font-semibold text-emerald-700 hover:text-emerald-900 underline underline-offset-2">
                                 Lihat di peta →
                               </Link>
                             )}
@@ -759,10 +810,33 @@ function CalendarPageContent() {
                   </div>
                   <p className="text-xs text-gray-400 mt-1">
                     {hasRealMonths
-                      ? `Pola historis aktivitas kebakaran, ${activeYears[0]}–${activeYears[activeYears.length - 1]} (arsip NASA FIRMS nyata). Klik satu sel untuk melihat angka pastinya.`
+                      ? `Pola historis aktivitas kebakaran, ${heatmapYears[0]}–${heatmapYears[heatmapYears.length - 1]} (arsip NASA FIRMS nyata). Klik satu sel untuk melihat angka pastinya.`
                       : "Historical pattern of fire activity in this area."}
                   </p>
                 </div>
+                {activeYears.length > 5 && (
+                  <div role="group" aria-label="Rentang tahun" className="flex items-center gap-1 rounded-lg bg-gray-100 p-1 text-xs font-semibold">
+                    {([
+                      [5, "5 tahun"],
+                      [10, "10 tahun"],
+                      ["all", `Semua (${activeYears.length})`],
+                    ] as [5 | 10 | "all", string][])
+                      .filter(([span]) => span === "all" || span < activeYears.length)
+                      .map(([span, label]) => (
+                        <button
+                          key={String(span)}
+                          type="button"
+                          aria-pressed={yearSpan === span}
+                          onClick={() => setYearSpan(span)}
+                          className={`rounded-md px-2.5 py-1.5 transition-colors ${
+                            yearSpan === span ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                  </div>
+                )}
               </div>
 
               {hasRealMonths ? (
@@ -770,8 +844,9 @@ function CalendarPageContent() {
                   Data arsip NASA FIRMS nyata ({activeYears[0]}–{activeYears[activeYears.length - 1]}). Catatan metodologi:
                   filter tipe vegetasi (type==0) hanya berlaku pada baris arsip — baris NRT tidak memiliki kolom ini,
                   jadi bulan-bulan terbaru bisa menyertakan anomali termal non-vegetasi yang disaring di bulan-bulan
-                  lama. Filter kepercayaan tinggi juga ketat, terutama untuk VIIRS (~3.4% lolos), sehingga periode
-                  dominan-VIIRS bisa terlihat lebih jarang dari kondisi sebenarnya.
+                  lama. <strong>Mulai 20 Januari 2012 VIIRS ikut terhitung</strong> (sebelumnya hanya MODIS), sehingga
+                  angka sebelum 2012 jauh lebih kecil dan tidak bisa dibandingkan langsung dengan sesudahnya — semua
+                  perbandingan antar-tahun dan baseline per sel di halaman ini hanya memakai data 2012 ke atas.
                 </div>
               ) : (
                 <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50/60 px-3 py-2 mb-5 text-xs text-amber-800">
@@ -792,7 +867,7 @@ function CalendarPageContent() {
                   </div>
 
                   {/* Year rows */}
-                  {activeYears.map((year) => (
+                  {[...heatmapYears].reverse().map((year) => (
                     <div key={year} className="flex items-center mb-2 gap-2">
                       <span className="text-xs text-gray-500 w-8 font-semibold shrink-0">{year}</span>
                       <div className="flex gap-2 flex-1">

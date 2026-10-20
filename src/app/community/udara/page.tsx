@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLocationState } from "../lib/useLocation";
+import { useRegion } from "@/lib/useRegion";
+import { formatAdminFull } from "@/lib/adminRegion";
 import type { WeatherResponse } from "@/types";
 
 const BMKG_URL = "https://www.bmkg.go.id/";
@@ -33,7 +35,10 @@ export default function UdaraPage() {
 
   const activeLat = fix ? fix.lat : DEFAULT_LOCATION.lat;
   const activeLon = fix ? fix.lon : DEFAULT_LOCATION.lon;
-  const locationLabel = fix ? `Koordinat ${fix.lat.toFixed(3)}, ${fix.lon.toFixed(3)}` : DEFAULT_LOCATION.name;
+  const fixRegion = useRegion(fix?.lat, fix?.lon);
+  const locationLabel = fix
+    ? fix.label ?? formatAdminFull(fixRegion) ?? `Koordinat ${fix.lat.toFixed(3)}, ${fix.lon.toFixed(3)}`
+    : DEFAULT_LOCATION.name;
 
   useEffect(() => {
     let cancelled = false;

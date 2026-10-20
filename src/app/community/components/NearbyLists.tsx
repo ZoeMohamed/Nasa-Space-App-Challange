@@ -10,6 +10,7 @@ import {
   REPORT_STATUS_TONE_CLASSES,
 } from "../lib/reportStatus";
 import type { CommunityReport, HotspotMarker } from "@/types";
+import { formatAdminFull } from "@/lib/adminRegion";
 
 const MATCH_STATUS_LABEL: Record<string, string> = {
   MATCHED: "Cocok lintas sensor (MODIS + VIIRS)",
@@ -98,6 +99,10 @@ export function NearbyHotspotList({ items }: { items: NearbyHotspot[] }) {
                         (typeof marker.confidence === "number" ? `${marker.confidence}%` : "—")}
                     </dd>
                   </div>
+                  <div className="col-span-2">
+                    <dt className="text-[var(--community-ink-muted)]">Wilayah</dt>
+                    <dd className="font-medium">{formatAdminFull(marker.admin) ?? "Di luar batas wilayah tercatat"}</dd>
+                  </div>
                   <div>
                     <dt className="text-[var(--community-ink-muted)]">Koordinat</dt>
                     <dd className="font-medium font-mono">
@@ -172,6 +177,9 @@ export function NearbyReportList({ items }: { items: NearbyReportItem[] }) {
               {expanded && (
                 <div className="mt-2 pt-2 border-t border-[var(--community-border)] space-y-1 text-[11px]">
                   <p className="text-[var(--community-ink-muted)]">{REPORT_STATUS_DESCRIPTION[report.status]}</p>
+                  {formatAdminFull(report.admin) && (
+                    <p className="text-[var(--community-ink)]">{formatAdminFull(report.admin)}</p>
+                  )}
                   <p className="font-mono text-[var(--community-ink-muted)]">
                     {report.lat.toFixed(4)}, {report.lon.toFixed(4)}
                   </p>

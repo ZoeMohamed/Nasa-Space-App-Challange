@@ -7,8 +7,11 @@ import dynamic from "next/dynamic";
 import WorkstationLayout from "@/components/layout/WorkstationLayout";
 import Card from "@/components/ui/Card";
 import Badge, { type BadgeTone } from "@/components/ui/Badge";
-import { getRegionOption, getRangeOption, isDemoRange, isWithinBounds } from "@/lib/filters";
-import type { AreaSummary, CommunityReport, HotspotApiResponse, HotspotMarker } from "@/types";
+import { getRegionOption, getRangeOption, historicalQuery, isArchiveRange, liveWindowFor, matchesRegion, type RegionOption, withFilters } from "@/lib/filters";
+import { windowLoadingNote } from "@/lib/hotspots";
+import { useLiveHotspots } from "@/lib/useLiveHotspots";
+import type { AreaSummary, CommunityReport, HotspotMarker } from "@/types";
+import { areaRegionLabel, formatAdminFull } from "@/lib/adminRegion";
 
 const FireMap = dynamic(() => import("@/components/map/FireMap"), {
   ssr: false,
@@ -22,15 +25,9 @@ const FireMap = dynamic(() => import("@/components/map/FireMap"), {
 });
 
 const LAYERS = ["MODIS", "VIIRS", "HARMONIZED"] as const;
-const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_ATTENTION_AREAS = 3;
 type Layer = (typeof LAYERS)[number];
 type ExploreTab = "hotspot" | "data" | "filter";
-type MapDataResponse = HotspotApiResponse | { markers: HotspotMarker[] };
-
-function isLiveMapResponse(body: MapDataResponse): body is HotspotApiResponse {
-  return "areas" in body && "meta" in body && body.meta.provider === "NASA FIRMS";
-}
 
 // Same color scheme as the TIER_STYLE badges in src/app/priority-areas/page.tsx — reused here via
 // the shared Badge primitive so "high"/"medium"/"low" always look identical across the app.
@@ -46,34 +43,12 @@ const SEVERITY_BADGE_TONE: Record<HotspotMarker["severity"], BadgeTone> = {
   LOW: "low",
 };
 
-async function requestHotspots(signal?: AbortSignal, includeAllConfidence = false) {
-  const response = await fetch(`/api/hotspots${includeAllConfidence ? "?includeAllConfidence=true" : ""}`, {
-    signal,
-    cache: "no-store",
-  });
-  const body = (await response.json()) as HotspotApiResponse & { error?: string };
-
-  if (!response.ok) {
-    throw new Error(body.error ?? "Unable to load NASA FIRMS data.");
-  }
-
-  return body;
-}
-
-type HistoricalMapWindow = { days: 7 | 30 } | { startDate: string; endDate: string };
-
-async function requestHistoricalMap(window: HistoricalMapWindow, bounds: ReturnType<typeof getRegionOption>["bounds"], signal?: AbortSignal) {
-  const params = new URLSearchParams("days" in window ? { days: String(window.days) } : { start_date: window.startDate, end_date: window.endDate });
-  if (bounds) {
-    params.set("min_lat", String(bounds.minLat));
-    params.set("max_lat", String(bounds.maxLat));
-    params.set("min_lon", String(bounds.minLon));
-    params.set("max_lon", String(bounds.maxLon));
-  }
-  const response = await fetch(`/api/historical/map?${params.toString()}`, { signal, cache: "no-store" });
+async function requestArchiveMap(startDate: string, endDate: string, region: RegionOption, signal?: AbortSignal) {
+  const query = historicalQuery(region, { start_date: startDate, end_date: endDate });
+  const response = await fetch(`/api/historical/map?${query}`, { signal, cache: "no-store" });
   const body = (await response.json()) as { markers?: HotspotMarker[]; error?: string };
   if (!response.ok) throw new Error(body.error ?? "Unable to load historical NASA FIRMS map data.");
-  return { markers: body.markers ?? [] };
+  return body.markers ?? [];
 }
 
 function requestErrorMessage(error: unknown) {
@@ -106,8 +81,8 @@ function AttentionAreaRow({ area }: { area: AreaSummary }) {
   return (
     <div className="bg-[var(--color-bg-subtle,#f8fafc)] border border-[var(--color-border)] rounded-lg p-3">
       <div className="flex items-start justify-between gap-2 mb-1">
-        <span className="text-xs font-bold text-[var(--color-text-main)]">
-          Grid {area.gridLat.toFixed(2)}, {area.gridLon.toFixed(2)}
+        <span className="text-xs font-bold text-[var(--color-text-main)]" title={areaRegionLabel(area).caption}>
+          {areaRegionLabel(area).title}
         </span>
         <Badge tone={tone} className="shrink-0">
           {TIER_LABEL[area.priorityTier]}
@@ -191,6 +166,10 @@ function HotspotDetailPanel({ marker, onClose }: { marker: HotspotMarker; onClos
       {expanded && (
         <div className="space-y-3 pt-3 animate-fadeIn text-xs">
           <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-100 text-[11px]">
+            <div className="col-span-2">
+              <span className="text-gray-400 block text-[10px]">Wilayah</span>
+              <span className="text-gray-700 font-semibold">{formatAdminFull(marker.admin) ?? "Tidak tercatat"}</span>
+            </div>
             <div>
               <span className="text-gray-400 block text-[10px]">Koordinat</span>
               <span className="font-mono text-gray-700 font-semibold">{marker.lat.toFixed(4)}°, {marker.lng.toFixed(4)}°</span>
@@ -243,21 +222,33 @@ function HotspotDetailPanel({ marker, onClose }: { marker: HotspotMarker; onClos
   );
 }
 
+function SensorDonut({ modis, viirs }: { modis: number; viirs: number }) {
+  const total = modis + viirs;
+  const radius = 15.9155; // circumference = 100, so dash lengths read as percentages
+  const modisPct = total > 0 ? (modis / total) * 100 : 0;
+  return (
+    <svg viewBox="0 0 42 42" className="h-20 w-20 shrink-0 -rotate-90" role="img" aria-label={`MODIS ${modis}, VIIRS ${viirs}`}>
+      <circle cx="21" cy="21" r={radius} fill="none" stroke="#f3f4f6" strokeWidth="6" />
+      {total > 0 && (
+        <>
+          <circle cx="21" cy="21" r={radius} fill="none" stroke="#fbbf24" strokeWidth="6" strokeDasharray="100 0" />
+          <circle cx="21" cy="21" r={radius} fill="none" stroke="#ef4444" strokeWidth="6" strokeDasharray={`${modisPct} ${100 - modisPct}`} />
+        </>
+      )}
+    </svg>
+  );
+}
+
 function MapExplorerPageContent() {
   const searchParams = useSearchParams();
   const activeRegion = getRegionOption(searchParams.get("region"));
   const activeRange = getRangeOption(searchParams.get("range"));
-  const demoRange = isDemoRange(searchParams.get("range"));
+  const archiveRange = isArchiveRange(searchParams.get("range"));
+  const liveWindow = liveWindowFor(searchParams.get("range"));
 
   const [activeLayer, setActiveLayer] = useState<Layer>("HARMONIZED");
-  const [markers, setMarkers] = useState<HotspotMarker[]>([]);
-  const [areas, setAreas] = useState<AreaSummary[]>([]);
-  const [meta, setMeta] = useState<HotspotApiResponse["meta"] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedMarker, setSelectedMarker] = useState<HotspotMarker | null>(null);
   const [showControls, setShowControls] = useState(true);
-  const [showAttentionPanel, setShowAttentionPanel] = useState(true);
   const [exploreTab, setExploreTab] = useState<ExploreTab>("hotspot");
   const [onlyMatched, setOnlyMatched] = useState(false);
   const [onlyHighFrp, setOnlyHighFrp] = useState(false);
@@ -284,89 +275,52 @@ function MapExplorerPageContent() {
     };
   }, []);
 
+  const live = useLiveHotspots(liveWindow, { includeAllConfidence, province: activeRegion.provinsi });
+
+  // "2023–2024" comes from the offline daily archive: grid-cell totals, region-filtered server-side.
+  const archiveKey = archiveRange ? `${activeRange.value}|${activeRegion.value}` : "";
+  const [archive, setArchive] = useState<{ key: string; markers: HotspotMarker[]; error: string | null }>({
+    key: "",
+    markers: [],
+    error: null,
+  });
   useEffect(() => {
+    if (!archiveRange || !activeRange.startDate || !activeRange.endDate) return;
     const controller = new AbortController();
+    requestArchiveMap(activeRange.startDate, activeRange.endDate, activeRegion, controller.signal)
+      .then((archiveMarkers) => setArchive({ key: archiveKey, markers: archiveMarkers, error: null }))
+      .catch((requestError: unknown) => {
+        if (requestError instanceof DOMException && requestError.name === "AbortError") return;
+        setArchive({ key: archiveKey, markers: [], error: requestErrorMessage(requestError) });
+      });
+    return () => controller.abort();
+  }, [archiveRange, archiveKey, activeRange.startDate, activeRange.endDate, activeRegion]);
 
-    const load = () => {
-      const request = activeRange.value === "24h"
-        ? requestHotspots(controller.signal, includeAllConfidence)
-        : requestHistoricalMap(
-          activeRange.value === "7d" ? { days: 7 } : activeRange.value === "30d" ? { days: 30 } : { startDate: "2023-01-01", endDate: "2024-12-31" },
-          activeRegion.bounds,
-          controller.signal
-        );
-      request
-        .then((body) => {
-          setMarkers(body.markers);
-          if (isLiveMapResponse(body)) {
-            setAreas(body.areas);
-            setMeta(body.meta);
-          } else {
-            setAreas([]);
-            setMeta(null);
-          }
-          setError(null);
-          setSelectedMarker((prev) => (prev ? (body.markers.find((m) => m.id === prev.id) ?? prev) : null));
-        })
-        .catch((requestError: unknown) => {
-          if (requestError instanceof DOMException && requestError.name === "AbortError") return;
-          setError(requestErrorMessage(requestError));
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setLoading(false);
-        });
-    };
+  const archiveCurrent = archive.key === archiveKey;
+  const markers = useMemo<HotspotMarker[]>(
+    () => (archiveRange ? (archiveCurrent ? archive.markers : []) : (live.data?.markers ?? [])),
+    [archiveRange, archiveCurrent, archive.markers, live.data]
+  );
+  const areas = useMemo<AreaSummary[]>(() => (archiveRange ? [] : (live.data?.areas ?? [])), [archiveRange, live.data]);
+  const meta = archiveRange ? null : (live.data?.meta ?? null);
+  const loading = archiveRange ? !archiveCurrent : live.loading;
+  const error = archiveRange ? (archiveCurrent ? archive.error : null) : live.error;
+  const refreshHotspots = live.refresh;
 
-    load();
-    const interval = window.setInterval(load, REFRESH_INTERVAL_MS);
-
-    return () => {
-      controller.abort();
-      window.clearInterval(interval);
-    };
-  }, [activeRange.value, activeRegion.bounds, includeAllConfidence]);
-
-  async function refreshHotspots() {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const body = activeRange.value === "24h"
-        ? await requestHotspots(undefined, includeAllConfidence)
-        : await requestHistoricalMap(
-          activeRange.value === "7d" ? { days: 7 } : activeRange.value === "30d" ? { days: 30 } : { startDate: "2023-01-01", endDate: "2024-12-31" },
-          activeRegion.bounds
-        );
-      setMarkers(body.markers);
-      if (isLiveMapResponse(body)) {
-        setAreas(body.areas);
-        setMeta(body.meta);
-      } else {
-        setAreas([]);
-        setMeta(null);
-      }
-      setSelectedMarker((prev) => (prev ? (body.markers.find((m) => m.id === prev.id) ?? prev) : null));
-    } catch (requestError) {
-      setError(requestErrorMessage(requestError));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Region + sensor-layer filter — both are real client-side filters over already-fetched live
-  // data (region bbox from src/lib/filters.ts is approximate, "Seluruh Indonesia" is a no-op).
+  // Live markers are region-matched on their own province; archive cells were already filtered
+  // server-side and carry no per-point admin data.
   const visibleMarkers = useMemo(() => {
-    const byLayer = activeRange.value !== "24h" || activeLayer === "HARMONIZED"
+    const byLayer = archiveRange || activeLayer === "HARMONIZED"
       ? markers
       : markers.filter((marker) => marker.sensor === activeLayer);
     return byLayer
-      .filter((marker) => isWithinBounds(marker.lat, marker.lng, activeRegion.bounds))
+      .filter((marker) => archiveRange || matchesRegion(marker.admin, activeRegion))
       .filter((marker) => !onlyMatched || marker.matchStatus === "MATCHED")
       .filter((marker) => !onlyHighFrp || marker.frp > 50);
-  }, [activeLayer, activeRange.value, markers, activeRegion, onlyMatched, onlyHighFrp]);
+  }, [activeLayer, archiveRange, markers, activeRegion, onlyMatched, onlyHighFrp]);
 
   const visibleAreas = useMemo(
-    () => areas.filter((area) => isWithinBounds(area.gridLat, area.gridLon, activeRegion.bounds)),
+    () => areas.filter((area) => matchesRegion(area.admin, activeRegion)),
     [areas, activeRegion]
   );
 
@@ -377,14 +331,23 @@ function MapExplorerPageContent() {
         .slice(0, MAX_ATTENTION_AREAS),
     [visibleAreas]
   );
-  const sensorCounts = useMemo(
-    () => ({
+  // Exact counts over every detection from the daily summary (markers on the map are capped);
+  // the archive range has no daily summary, so it falls back to the shown cells.
+  const sensorCounts = useMemo(() => {
+    const daily = live.data?.daily;
+    if (!archiveRange && daily) {
+      const rows = daily.filter((row) => !activeRegion.provinsi || row.provinsi === activeRegion.provinsi);
+      return rows.reduce(
+        (acc, row) => ({ modis: acc.modis + row.modis, viirs: acc.viirs + row.viirs, matched: acc.matched + row.matched }),
+        { modis: 0, viirs: 0, matched: 0 }
+      );
+    }
+    return {
       modis: visibleMarkers.filter((marker) => marker.sensor === "MODIS").length,
       viirs: visibleMarkers.filter((marker) => marker.sensor === "VIIRS").length,
       matched: visibleMarkers.filter((marker) => marker.matchStatus === "MATCHED").length,
-    }),
-    [visibleMarkers]
-  );
+    };
+  }, [archiveRange, live.data, activeRegion.provinsi, visibleMarkers]);
 
   return (
     <WorkstationLayout activeTab="Map" fullBleed>
@@ -415,241 +378,216 @@ function MapExplorerPageContent() {
           <button
             type="button"
             onClick={() => setShowControls(true)}
-            aria-label="Tampilkan kontrol peta"
-            className="absolute left-4 top-4 z-[1200] inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/70 bg-white/90 text-gray-700 shadow-lg backdrop-blur hover:bg-white"
+            aria-label="Buka panel Explore Map"
+            className="absolute left-4 top-4 z-[1200] inline-flex items-center gap-2 rounded-xl border border-white/70 bg-white/95 px-3 py-2 text-sm font-bold text-gray-800 shadow-lg backdrop-blur hover:bg-white"
           >
-            <span className="material-symbols-outlined text-[20px]">tune</span>
+            <span className="material-symbols-outlined text-[18px] text-red-600">travel_explore</span>
+            Explore Map
+            <span className="material-symbols-outlined text-[18px] text-gray-500">last_page</span>
           </button>
         )}
 
         {showControls && (
-          <Card className="absolute left-4 top-4 z-[1100] w-[min(430px,calc(100%-2rem))] p-4 shadow-xl backdrop-blur-sm bg-white/95">
-            <div className="flex items-start justify-between gap-3 border-b border-gray-200 pb-3">
-              <div>
-                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
-                  <span className="material-symbols-outlined text-[16px]">explore</span>
-                  Spatial satellite intelligence
-                </div>
-                <h1 className="mt-1 text-xl font-bold text-gray-900">Map Explorer</h1>
-                <p className="mt-1 text-xs leading-relaxed text-gray-500">
-                  Live NASA FIRMS observations cleaned and prioritized by the Python fire pipeline.
-                </p>
-              </div>
+          <Card className="absolute left-4 top-4 z-[1100] flex w-[min(360px,calc(100%-2rem))] max-h-[calc(100%-2rem)] flex-col p-4 shadow-xl backdrop-blur-sm bg-white/95">
+            <div className="flex items-center gap-2 border-b border-gray-200 pb-3">
+              <span className="material-symbols-outlined text-[20px] text-red-600">travel_explore</span>
+              <h1 className="text-lg font-bold text-gray-900">Explore Map</h1>
               <button
                 type="button"
                 onClick={() => setShowControls(false)}
-                aria-label="Sembunyikan kontrol peta"
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100"
+                aria-label="Ciutkan panel"
+                title="Ciutkan panel"
+                className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100"
               >
-                <span className="material-symbols-outlined text-[18px]">close</span>
+                <span className="material-symbols-outlined text-[18px]">first_page</span>
               </button>
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1 rounded-lg bg-gray-100 p-1 text-xs font-semibold">
-                {LAYERS.map((layer) => (
-                  <button
-                    key={layer}
-                    type="button"
-                    onClick={() => setActiveLayer(layer)}
-                    className={`rounded-md px-2.5 py-1.5 transition-colors ${
-                      activeLayer === layer ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"
-                    }`}
-                  >
-                    {layer}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAttentionPanel((value) => !value)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-              >
-                <span className="material-symbols-outlined text-[16px]">{showAttentionPanel ? "visibility_off" : "visibility"}</span>
-                {showAttentionPanel ? "Sembunyikan panel" : "Tampilkan panel"}
-              </button>
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-medium text-gray-600">
-              <span className="rounded-md bg-gray-100 px-2.5 py-1.5">{activeRange.label}</span>
-              <span className="rounded-md bg-gray-100 px-2.5 py-1.5">{activeRegion.label}</span>
-              <span className="rounded-md bg-gray-100 px-2.5 py-1.5">Confidence: High</span>
-              <button
-                type="button"
-                onClick={() => void refreshHotspots()}
-                disabled={loading}
-                className="rounded-md bg-emerald-700 px-2.5 py-1.5 font-semibold text-white hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-60"
-              >
-                Refresh
-              </button>
-            </div>
-
-            <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3 text-[11px]" aria-live="polite">
-              <span className={`h-2 w-2 rounded-full ${error ? "bg-red-500" : loading ? "animate-pulse bg-amber-400" : "bg-emerald-500"}`} />
-              <span className={error ? "text-red-600" : "text-gray-500"}>
-                {error
-                  ? error
-                  : loading
-                    ? "NASA live → Python processing…"
-                    : `${visibleMarkers.length.toLocaleString()} ${activeLayer === "HARMONIZED" ? "combined" : activeLayer} observations`}
-              </span>
-              {!loading && !error && meta && (
-                <span
-                  className={meta.degraded ? "text-amber-600" : "text-gray-400"}
-                  title="Jumlah ini berasal langsung dari NASA FIRMS dan bisa naik-turun antar pemuatan karena jadwal lintasan satelit yang sesungguhnya — bukan bug."
-                >
-                  •{" "}
-                  {Object.entries(
-                    meta.sources.reduce<Record<string, { count: number; allAvailable: boolean }>>((acc, source) => {
-                      const entry = acc[source.sensor] ?? { count: 0, allAvailable: true };
-                      entry.count += source.available ? source.highConfidenceCount : 0;
-                      entry.allAvailable = entry.allAvailable && source.available;
-                      acc[source.sensor] = entry;
-                      return acc;
-                    }, {})
-                  )
-                    .map(([sensor, { count, allAvailable }]) => `${sensor} ${count}${allAvailable ? "" : " (sebagian gagal)"}`)
-                    .join(" · ")}
-                </span>
-              )}
-            </div>
-          </Card>
-        )}
-
-        {demoRange && (
-          <div className="absolute bottom-4 left-1/2 z-[1050] flex max-w-[min(620px,calc(100%-2rem))] -translate-x-1/2 items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/95 px-4 py-3 text-xs text-amber-900 shadow-lg backdrop-blur">
-            <span className="material-symbols-outlined shrink-0 text-[17px] text-amber-600">info</span>
-            <span>Rentang “{activeRange.label}” memakai agregat grid historis. Marker mewakili aktivitas sel 0,25°, bukan titik satelit individual.</span>
-          </div>
-        )}
-
-        {showAttentionPanel && (
-          <Card className="absolute bottom-4 left-4 z-[1100] w-[min(360px,calc(100%-2rem))] max-h-[calc(100%-8rem)] overflow-y-auto p-4 shadow-xl backdrop-blur-sm bg-white/95">
-            <div className="flex items-center gap-2 pb-3 border-b border-gray-200">
-              <span className="material-symbols-outlined text-[18px] text-red-600">explore</span>
-              <h2 className="text-base font-bold text-gray-900">Explore Map</h2>
-              <button
-                type="button"
-                onClick={() => setShowAttentionPanel(false)}
-                aria-label="Sembunyikan panel explore map"
-                className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-              >
-                <span className="material-symbols-outlined text-[17px]">close</span>
-              </button>
-            </div>
-
-            <div className="mt-3 grid grid-cols-3 gap-1 rounded-lg bg-[#f1f2ff] p-1 text-[11px] font-bold">
+            <div role="tablist" aria-label="Isi panel" className="mt-3 grid grid-cols-3 gap-1 rounded-lg bg-[#f1f2ff] p-1 text-xs font-bold">
               {([
                 ["hotspot", "local_fire_department", "Hotspot"],
-                ["data", "layers", "data"],
-                ["filter", "tune", "filter"],
+                ["data", "layers", "Data"],
+                ["filter", "tune", "Filter"],
               ] as [ExploreTab, string, string][]).map(([tab, icon, label]) => (
                 <button
                   key={tab}
                   type="button"
+                  role="tab"
+                  aria-selected={exploreTab === tab}
                   onClick={() => setExploreTab(tab)}
-                  className={`flex items-center justify-center gap-1 rounded-md px-2 py-2 capitalize transition-colors ${
+                  className={`flex items-center justify-center gap-1 rounded-md px-2 py-2 transition-colors ${
                     exploreTab === tab ? "bg-white text-emerald-700 shadow-sm" : "text-gray-500 hover:text-gray-800"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[14px]">{icon}</span>
+                  <span className="material-symbols-outlined text-[15px]">{icon}</span>
                   {label}
                 </button>
               ))}
             </div>
 
-            {exploreTab === "hotspot" && (
-              <div className="mt-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="material-symbols-outlined text-[17px] text-red-600">crisis_alert</span>
-                  <h3 className="text-sm font-bold text-gray-900">Areas Requiring Attention</h3>
-                </div>
-                <p className="text-xs text-gray-500 mb-3">Prioritized by multi-satellite consensus and FRP severity.</p>
-                <div className="space-y-2 mb-3">
-                  {loading && topAttentionAreas.length === 0 && <div className="text-xs text-gray-500 py-2">Memuat area prioritas…</div>}
-                  {!loading && topAttentionAreas.length === 0 && <div className="text-xs text-gray-500 py-2">Tidak ada area dengan deteksi pada periode ini.</div>}
-                  {topAttentionAreas.map((area) => <AttentionAreaRow key={area.areaId} area={area} />)}
-                </div>
-                <Link href="/priority-areas" className="text-xs font-bold text-emerald-700 hover:text-emerald-800 inline-flex items-center gap-1">
-                  View all <span aria-hidden="true">→</span>
-                </Link>
-              </div>
-            )}
-
-            {exploreTab === "data" && (
-              <div className="mt-4 space-y-4">
+            <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
+              {exploreTab === "hotspot" && (
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900">Data layer</h3>
-                  <p className="mt-1 text-xs text-gray-500">Ringkasan observasi yang sedang terlihat di peta.</p>
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[18px] text-red-600">crisis_alert</span>
+                    <h2 className="text-base font-bold text-gray-900">Areas Requiring Attention</h2>
+                  </div>
+                  <p className="mb-3 text-xs text-gray-500">Diurutkan dari skor prioritas tertinggi · {activeRegion.label} · {activeRange.label}</p>
+                  <div className="mb-3 space-y-2">
+                    {loading && topAttentionAreas.length === 0 && (
+                      <div className="py-2 text-xs text-gray-500">
+                        {windowLoadingNote(liveWindow) ?? "Memuat area prioritas…"}
+                      </div>
+                    )}
+                    {!loading && archiveRange && (
+                      <div className="py-2 text-xs text-gray-500">Arsip historis tidak punya skor prioritas — pilih rentang live (24 jam / 7 / 30 hari).</div>
+                    )}
+                    {!loading && !archiveRange && topAttentionAreas.length === 0 && (
+                      <div className="py-2 text-xs text-gray-500">Tidak ada area dengan deteksi pada periode ini.</div>
+                    )}
+                    {topAttentionAreas.map((area) => <AttentionAreaRow key={area.areaId} area={area} />)}
+                  </div>
+                  <Link href={withFilters("/priority-areas", searchParams)} className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800">
+                    View all <span aria-hidden="true">→</span>
+                  </Link>
                 </div>
-                {(["MODIS", "VIIRS", "Harmonized"] as const).map((label) => {
-                  const value = label === "MODIS" ? sensorCounts.modis : label === "VIIRS" ? sensorCounts.viirs : sensorCounts.matched;
-                  const max = Math.max(visibleMarkers.length, 1);
-                  return (
-                    <div key={label}>
-                      <div className="mb-1 flex items-center justify-between text-xs font-semibold text-gray-700">
-                        <span>{label}</span><span>{value}</span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-                        <div className={`h-full rounded-full ${label === "MODIS" ? "bg-red-500" : label === "VIIRS" ? "bg-amber-400" : "bg-emerald-600"}`} style={{ width: `${(value / max) * 100}%` }} />
-                      </div>
+              )}
+
+              {exploreTab === "data" && (
+                <div className="space-y-4">
+                  <div>
+                    <div className="mb-1 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[18px] text-red-600">layers</span>
+                      <h2 className="text-base font-bold text-gray-900">Data</h2>
                     </div>
-                  );
-                })}
-                <p className="border-t border-gray-100 pt-3 text-[11px] text-gray-400">Sumber: NASA FIRMS · Python fire pipeline · snapshot 24 jam.</p>
-              </div>
-            )}
+                    <p className="text-xs text-gray-500">Deteksi yang sedang terlihat di peta.</p>
+                  </div>
 
-            {exploreTab === "filter" && (
-              <div className="mt-4 space-y-3">
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900">Layer</h3>
-                  <p className="mt-1 text-xs text-gray-500">Atur lapisan &amp; filter yang terlihat di peta.</p>
+                  <div className="flex items-center gap-5">
+                    <SensorDonut modis={sensorCounts.modis} viirs={sensorCounts.viirs} />
+                    <dl className="flex-1 space-y-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <dt className="flex items-center gap-2 text-gray-700"><span className="h-2 w-2 rounded-full bg-red-500" />MODIS</dt>
+                        <dd className="font-bold text-gray-900">{sensorCounts.modis.toLocaleString()}</dd>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <dt className="flex items-center gap-2 text-gray-700"><span className="h-2 w-2 rounded-full bg-amber-400" />VIIRS</dt>
+                        <dd className="font-bold text-gray-900">{sensorCounts.viirs.toLocaleString()}</dd>
+                      </div>
+                      <div className="flex items-center justify-between" title="Pasangan MODIS–VIIRS yang dicocokkan sebagai satu kejadian">
+                        <dt className="flex items-center gap-2 text-gray-700"><span className="h-2 w-2 rounded-full bg-emerald-600" />Harmonized</dt>
+                        <dd className="font-bold text-gray-900">{Math.round(sensorCounts.matched / 2).toLocaleString()}</dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  <div className="space-y-2 border-t border-gray-100 pt-3 text-[11px]" aria-live="polite">
+                    <div className="flex items-center gap-2">
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${error ? "bg-red-500" : loading ? "animate-pulse bg-amber-400" : meta?.degraded ? "bg-amber-500" : "bg-emerald-500"}`} />
+                      <span className={error ? "text-red-600" : "text-gray-500"}>
+                        {error
+                          ? error
+                          : loading
+                            ? (archiveRange ? "Memuat arsip historis…" : (windowLoadingNote(liveWindow) ?? "Memuat data NASA FIRMS…"))
+                            : meta
+                              ? `Diperbarui ${new Date(meta.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}${meta.degraded ? " · sebagian feed gagal" : ""}`
+                              : `${visibleMarkers.length.toLocaleString()} sel grid arsip`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={refreshHotspots}
+                        disabled={loading || archiveRange}
+                        className="ml-auto rounded-md border border-gray-200 px-2 py-1 font-semibold text-emerald-700 hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        Refresh
+                      </button>
+                    </div>
+                    <p className="text-gray-400">
+                      Sumber: NASA FIRMS · {activeRange.label} · {activeRegion.label} · {includeAllConfidence ? "semua tingkat confidence" : "confidence sedang + tinggi"}
+                    </p>
+                  </div>
                 </div>
-                <label className="flex items-start gap-2 rounded-lg border border-gray-200 p-3 text-xs text-gray-700 hover:bg-gray-50">
-                  <input type="checkbox" checked={showReports} onChange={(event) => setShowReports(event.target.checked)} className="mt-0.5 h-4 w-4 accent-emerald-600" />
-                  <span><strong className="font-semibold">Laporan warga</strong><br /><span className="text-gray-500">Tampilkan titik laporan dari Community View.</span></span>
-                </label>
-                <label className="flex items-start gap-2 rounded-lg border border-gray-200 p-3 text-xs text-gray-700 hover:bg-gray-50">
-                  <input type="checkbox" checked={onlyMatched} onChange={(event) => setOnlyMatched(event.target.checked)} className="mt-0.5 h-4 w-4 accent-emerald-600" />
-                  <span><strong className="font-semibold">Hanya matched</strong><br /><span className="text-gray-500">MODIS dan VIIRS memiliki pasangan terdekat.</span></span>
-                </label>
-                <label className="flex items-start gap-2 rounded-lg border border-gray-200 p-3 text-xs text-gray-700 hover:bg-gray-50">
-                  <input type="checkbox" checked={onlyHighFrp} onChange={(event) => setOnlyHighFrp(event.target.checked)} className="mt-0.5 h-4 w-4 accent-emerald-600" />
-                  <span><strong className="font-semibold">FRP tinggi (&gt;50 MW)</strong><br /><span className="text-gray-500">Tampilkan anomali panas dengan intensitas lebih tinggi.</span></span>
-                </label>
-                <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs text-gray-700 hover:bg-amber-50">
-                  <input
-                    type="checkbox"
-                    checked={includeAllConfidence}
-                    onChange={(event) => setIncludeAllConfidence(event.target.checked)}
-                    className="mt-0.5 h-4 w-4 accent-amber-600"
-                  />
-                  <span>
-                    <strong className="font-semibold">Sertakan confidence rendah/menengah</strong>
-                    <br />
-                    <span className="text-gray-500">
-                      Default-nya hanya deteksi confidence tinggi (MODIS &gt;80%, VIIRS &quot;high&quot;). Opsi ini
-                      menambahkan deteksi yang lebih longgar — lebih banyak titik, tapi lebih besar kemungkinan
-                      false positive. Marker confidence rendah/menengah ditandai beda di peta.
-                    </span>
-                  </span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOnlyMatched(false);
-                    setOnlyHighFrp(false);
-                    setShowReports(true);
-                    setIncludeAllConfidence(false);
-                  }}
-                  className="text-xs font-semibold text-emerald-700 hover:text-emerald-800"
-                >
-                  Reset filter
-                </button>
-              </div>
-            )}
+              )}
+
+              {exploreTab === "filter" && (
+                <div className="space-y-3">
+                  <div>
+                    <div className="mb-1 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[18px] text-red-600">tune</span>
+                      <h2 className="text-base font-bold text-gray-900">Filter</h2>
+                    </div>
+                    <p className="text-xs text-gray-500">Atur apa yang tampil di peta.</p>
+                  </div>
+
+                  <div>
+                    <p className="mb-1.5 text-xs font-semibold text-gray-700">Sensor</p>
+                    <div className="grid grid-cols-3 gap-1 rounded-lg bg-gray-100 p-1 text-xs font-semibold">
+                      {LAYERS.map((layer) => (
+                        <button
+                          key={layer}
+                          type="button"
+                          aria-pressed={activeLayer === layer}
+                          onClick={() => setActiveLayer(layer)}
+                          className={`rounded-md px-2 py-1.5 transition-colors ${
+                            activeLayer === layer ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"
+                          }`}
+                        >
+                          {layer === "HARMONIZED" ? "Semua" : layer}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {([
+                    [showReports, setShowReports, "Laporan warga"],
+                    [onlyMatched, setOnlyMatched, "Hanya yang cocok MODIS + VIIRS"],
+                    [onlyHighFrp, setOnlyHighFrp, "FRP tinggi (> 50 MW)"],
+                    [includeAllConfidence, setIncludeAllConfidence, "Sertakan confidence rendah"],
+                  ] as [boolean, (value: boolean) => void, string][]).map(([checked, setChecked, label]) => (
+                    <label key={label} className="flex items-center gap-2.5 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) => setChecked(event.target.checked)}
+                        className="h-4 w-4 accent-emerald-600"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                  {includeAllConfidence && (
+                    <p className="rounded-md bg-amber-50 px-2.5 py-2 text-[11px] text-amber-900">
+                      Lebih banyak titik, tapi lebih besar kemungkinan false positive. Titik confidence rendah ditandai berbeda di peta.
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveLayer("HARMONIZED");
+                      setOnlyMatched(false);
+                      setOnlyHighFrp(false);
+                      setShowReports(true);
+                      setIncludeAllConfidence(false);
+                    }}
+                    className="text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+                  >
+                    Reset filter
+                  </button>
+                </div>
+              )}
+            </div>
           </Card>
+        )}
+
+        {(archiveRange || meta?.markers?.truncated) && (
+          <div className="absolute bottom-4 left-1/2 z-[1050] flex max-w-[min(620px,calc(100%-2rem))] -translate-x-1/2 items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/95 px-4 py-3 text-xs text-amber-900 shadow-lg backdrop-blur">
+            <span className="material-symbols-outlined shrink-0 text-[17px] text-amber-600">info</span>
+            <span>
+              {archiveRange
+                ? `Rentang “${activeRange.label}” memakai agregat grid historis. Marker mewakili aktivitas sel 0,25°, bukan titik satelit individual.`
+                : `Menampilkan ${meta?.markers?.shown.toLocaleString()} deteksi dengan FRP tertinggi dari ${meta?.markers?.total.toLocaleString()} deteksi ${activeRange.label.toLowerCase()} (seluruh Indonesia). Panel area tetap dihitung dari semua deteksi.`}
+            </span>
+          </div>
         )}
 
         {selectedMarker && <HotspotDetailPanel marker={selectedMarker} onClose={() => setSelectedMarker(null)} />}

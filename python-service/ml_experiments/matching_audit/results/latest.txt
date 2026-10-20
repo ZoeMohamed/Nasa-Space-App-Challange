@@ -1,0 +1,36 @@
+Total quality-filtered detections in window: 10866 (MODIS=7054, VIIRS=3812)
+
+=== Nearest cross-sensor neighbor distribution (cap 50km/48h) ===
+MODIS (n=6938): distance_km median=0.95 p75=4.16 p90=15.02 | time_diff_min median=874 p75=1642 p90=2685
+VIIRS (n=3788): distance_km median=0.54 p75=2.72 p90=11.11 | time_diff_min median=765 p75=1484 p90=2364
+
+=== Sensitivity sweep (distance x time) ===
+ dist_km  time_min  matched_pairs  pct_modis_matched  ambiguous_modis
+       1        60            870              12.3%              466
+       1       180           1067              15.1%              680
+       1       360           1221              17.3%              855
+       1       720           1587              22.5%             1285
+       5        60           1233              17.5%             1263
+       5       180           1450              20.6%             1843
+       5       360           1609              22.8%             2263
+       5       720           2083              29.5%             2982
+      10        60           1363              19.3%             1552
+      10       180           1600              22.7%             2239
+      10       360           1766              25.0%             2738
+      10       720           2285              32.4%             3578
+      20        60           1541              21.8%             2041
+      20       180           1796              25.5%             2866
+      20       360           1994              28.3%             3584
+      20       720           2589              36.7%             4468
+
+=== 12h vs 24h at current production radius (10km) ===
+720 min: 2285 pairs (32.4% of MODIS), 3578 ambiguous MODIS, 2283 total pairs, 248 (10.9%) with >10x FRP ratio
+1440 min: 2581 pairs (36.6% of MODIS), 4531 ambiguous MODIS, 2579 total pairs, 256 (9.9%) with >10x FRP ratio
+
+=== Ambiguity spread: are competing candidates close together (same fire) or scattered (risky)? ===
+(at current production settings: 10km / 720min)
+MODIS detections with >=2 candidates: 3578
+  max pairwise distance among candidates (km): median=6.16 p75=10.01 p90=13.72 max=19.84
+  max pairwise time diff among candidates (min): median=0 p75=662 p90=762 max=1421
+  candidate sets where ALL candidates are within 2km of each other (likely same fire, low-risk ambiguity): 887/3578 (24.8%)
+  candidate sets with a pairwise spread >10km (candidates could plausibly be different fires -- higher-risk ambiguity): 896/3578 (25.0%)

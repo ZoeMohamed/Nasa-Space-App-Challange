@@ -7,12 +7,29 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from fire_pipeline import reports as reports_store
+from fire_pipeline.admin_lookup import get_admin_index
 from fire_pipeline.correlation import correlate_report
 from fire_pipeline.historical import load_calendar_summary, load_map_summary
-from fire_pipeline.live import LiveDataError, default_historical_db_path, load_live_hotspots
+from fire_pipeline.live import (
+    WINDOW_HOURS_BY_KEY,
+    LiveDataError,
+    default_historical_db_path,
+    enabled_windows,
+    load_live_hotspots,
+    start_cache_warmer,
+)
 from fire_pipeline.weather import fetch_weather_and_air_quality
 
-app = FastAPI(title="FireWatch Live Processing API", version="1.0.0")
+app = FastAPI(title="AGNIBHUMI Live Processing API", version="1.1.0")
+
+
+@app.on_event("startup")
+def _warm_live_caches() -> None:
+    """With NASA_FIRMS_MAP_KEY set on the backend and WARM_CACHE=1, pre-process every enabled
+    window at startup and keep it fresh, so a demo never waits for a cold 7d/30d fetch."""
+    key = os.getenv("NASA_FIRMS_MAP_KEY")
+    if key and os.getenv("WARM_CACHE", "0") == "1":
+        start_cache_warmer(key, enabled_windows())
 
 MAX_PHOTO_BYTES = 5 * 1024 * 1024
 _IMAGE_SIGNATURES = {
@@ -89,9 +106,42 @@ def health() -> dict[str, str]:
 def live_hotspots(
     map_key: str | None = Header(default=None, alias="X-FIRMS-Map-Key"),
     include_all_confidence: bool = False,
+    window: str = "24h",
+    province: str | None = None,
+    near_lat: float | None = None,
+    near_lon: float | None = None,
+    near_km: float | None = None,
+    marker_id: str | None = None,
+    limit: int = 3000,
+    order: str = "frp",
 ) -> dict:
+    """Live harmonized hotspots for `window` ("24h" default, "7d", "30d").
+
+    Default confidence = FIRMS nominal + high; `include_all_confidence` adds "low". Filters
+    (`province`, `near_lat`/`near_lon`/`near_km` up to 200 km, `marker_id`) are applied before
+    the marker cap (`limit`, max 5000; `order` = "frp" or "recent"), so filtered requests get
+    every matching marker. `meta.markers` reports total vs shown.
+    """
+    if window not in WINDOW_HOURS_BY_KEY:
+        raise HTTPException(status_code=422, detail=f"window must be one of {sorted(WINDOW_HOURS_BY_KEY)}")
+    if window not in enabled_windows():
+        raise HTTPException(status_code=422, detail=f"window {window} is not enabled on this server (LIVE_WINDOWS)")
+    if order not in {"frp", "recent"}:
+        raise HTTPException(status_code=422, detail='order must be "frp" or "recent"')
+    near = None
+    if near_lat is not None and near_lon is not None:
+        near = (near_lat, near_lon, min(max(near_km or 25.0, 0.1), 200.0))
     try:
-        return load_live_hotspots(map_key, include_all_confidence=include_all_confidence)
+        return load_live_hotspots(
+            map_key,
+            include_all_confidence=include_all_confidence,
+            window=window,
+            province=province,
+            near=near,
+            marker_id=marker_id,
+            limit=max(1, min(limit, 5000)),
+            order=order,
+        )
     except LiveDataError as exc:
         status = 503 if "not configured" in str(exc) else 502
         raise HTTPException(status_code=status, detail=str(exc)) from exc
@@ -103,6 +153,8 @@ def historical_calendar(
     max_lat: float | None = None,
     min_lon: float | None = None,
     max_lon: float | None = None,
+    province: str | None = None,
+    admin_code: str | None = None,
 ) -> dict:
     """Monthly aggregated historical totals plus per-grid-cell monthly
     baseline stats, read from the offline historical SQLite store (see
@@ -114,7 +166,7 @@ def historical_calendar(
     bounds = None
     if None not in (min_lat, max_lat, min_lon, max_lon):
         bounds = (min_lat, max_lat, min_lon, max_lon)
-    return load_calendar_summary(default_historical_db_path(), bounds=bounds)
+    return load_calendar_summary(default_historical_db_path(), bounds=bounds, province=province, admin_code=admin_code)
 
 
 @app.get("/api/historical/map")
@@ -126,6 +178,8 @@ def historical_map(
     max_lat: float | None = None,
     min_lon: float | None = None,
     max_lon: float | None = None,
+    province: str | None = None,
+    admin_code: str | None = None,
 ) -> dict:
     if days not in {None, 7, 30} or (days is None and (start_date is None or end_date is None)):
         raise HTTPException(status_code=400, detail="Historical map range must be 7 or 30 days, or include start_date and end_date")
@@ -133,7 +187,7 @@ def historical_map(
     if None not in (min_lat, max_lat, min_lon, max_lon):
         bounds = (min_lat, max_lat, min_lon, max_lon)
     try:
-        return load_map_summary(default_historical_db_path(), days=days, bounds=bounds, start_date=start_date, end_date=end_date)
+        return load_map_summary(default_historical_db_path(), days=days, bounds=bounds, start_date=start_date, end_date=end_date, province=province, admin_code=admin_code)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid historical map date range") from exc
 
@@ -146,6 +200,34 @@ def weather(lat: float, lon: float) -> dict:
     null and `errors` lists what failed instead.
     """
     return fetch_weather_and_air_quality(lat, lon)
+
+
+@app.get("/api/region/search")
+def region_search(q: str, limit: int = 8) -> dict:
+    """Place-name search (kecamatan / kabupaten-kota) for picking a location without GPS."""
+    index = get_admin_index()
+    if index is None:
+        return {"available": False, "results": []}
+    return {"available": True, "results": index.search(q, limit=max(1, min(limit, 20)))}
+
+
+@app.get("/api/region")
+def region(lat: float, lon: float) -> dict:
+    """Offline point-in-polygon lookup -> kecamatan / kabupaten-kota / provinsi.
+    `admin` is null when the point is outside Indonesia's boundaries or the
+    boundary store hasn't been built (`available: false`)."""
+    index = get_admin_index()
+    if index is None:
+        return {"available": False, "admin": None, "source": None}
+    return {
+        "available": True,
+        "admin": index.lookup(lat, lon),
+        "source": {
+            "name": index.meta.get("source"),
+            "license": index.meta.get("license"),
+            "validOn": index.meta.get("dataset_valid_on"),
+        },
+    }
 
 
 @app.post("/api/reports", status_code=201)
@@ -189,7 +271,8 @@ def submit_report(payload: ReportCreateRequest) -> dict:
 
     correlation_warning = None
     try:
-        live_data = load_live_hotspots()
+        # Every marker near the report (not the capped national list), so correlation is complete.
+        live_data = load_live_hotspots(near=(report["lat"], report["lon"], 10.0), limit=None)
         links = correlate_report(
             {"lat": report["lat"], "lon": report["lon"], "observed_at": report["observedAt"]},
             live_data.get("markers", []),

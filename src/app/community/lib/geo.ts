@@ -53,6 +53,45 @@ export interface LocationFix extends LatLon {
   source: LocationSource;
   /** Only present for GPS fixes, purely for this session's display — never persisted. */
   accuracyMeters?: number;
+  /** Place name chosen from the search list (manual picks only). */
+  label?: string;
+}
+
+/**
+ * A MANUAL pick (searched place / typed coordinates) is a location the user chose on purpose, so
+ * it is remembered on this device until they change it. A GPS coordinate is never stored — with
+ * permission already granted, the device is simply asked again on the next visit.
+ */
+const MANUAL_FIX_KEY = "agnibhumi_manual_location";
+
+export function loadManualFix(): LocationFix | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(MANUAL_FIX_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<LocationFix>;
+    if (typeof parsed.lat !== "number" || typeof parsed.lon !== "number") return null;
+    if (parsed.source !== "manual-coords" && parsed.source !== "manual-area") return null;
+    return { lat: parsed.lat, lon: parsed.lon, source: parsed.source, label: parsed.label };
+  } catch {
+    return null;
+  }
+}
+
+export function saveManualFix(fix: LocationFix | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (fix && fix.source !== "gps") {
+      window.localStorage.setItem(
+        MANUAL_FIX_KEY,
+        JSON.stringify({ lat: fix.lat, lon: fix.lon, source: fix.source, label: fix.label })
+      );
+    } else {
+      window.localStorage.removeItem(MANUAL_FIX_KEY);
+    }
+  } catch {
+    // Best-effort only.
+  }
 }
 
 /**
@@ -83,17 +122,35 @@ export function rememberLocationGrantedOnce(): void {
   }
 }
 
+/** Initial great-circle bearing from `from` to `to`, degrees clockwise from north (0–360). */
+export function bearingDeg(from: LatLon, to: LatLon): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const lat1 = toRad(from.lat);
+  const lat2 = toRad(to.lat);
+  const dLon = toRad(to.lon - from.lon);
+  const y = Math.sin(dLon) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+const COMPASS_ID = ["Utara", "Timur Laut", "Timur", "Tenggara", "Selatan", "Barat Daya", "Barat", "Barat Laut"];
+
+export function compassLabel(deg: number): string {
+  return COMPASS_ID[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+}
+
+/** Smallest absolute difference between two compass bearings (0–180). */
+export function angleDiffDeg(a: number, b: number): number {
+  const diff = Math.abs((((a - b) % 360) + 360) % 360);
+  return diff > 180 ? 360 - diff : diff;
+}
+
 /**
- * Known-area fallback for users who deny/lack geolocation. Reuses the exact
- * province bounding boxes already established in src/lib/filters.ts
- * (REGION_OPTIONS) rather than inventing a new list, so the "approximate,
- * not an official boundary" caveat already documented there stays the single
- * source of truth. The "Seluruh Indonesia" (no-bounds) option is excluded
- * here since it has no single point to center on.
+ * Open-Meteo's wind direction is meteorological: the direction the wind blows FROM. Smoke from a
+ * hotspot reaches you when that hotspot lies on the side the wind comes from, i.e. the bearing
+ * from you to the hotspot is within ±toleranceDeg of the wind-from direction. Single-point, current
+ * wind only — a rough indication, not a smoke-dispersion model.
  */
-export function regionCenter(bounds: { minLat: number; maxLat: number; minLon: number; maxLon: number }): LatLon {
-  return {
-    lat: (bounds.minLat + bounds.maxLat) / 2,
-    lon: (bounds.minLon + bounds.maxLon) / 2,
-  };
+export function isUpwind(user: LatLon, hotspot: LatLon, windFromDeg: number, toleranceDeg = 45): boolean {
+  return angleDiffDeg(bearingDeg(user, hotspot), windFromDeg) <= toleranceDeg;
 }

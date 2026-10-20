@@ -9,20 +9,40 @@ import sqlite3
 
 import pandas as pd
 
+from .admin_lookup import filter_frame_to_admin, filter_frame_to_province
+
 TABLE = "daily_area_activity"
+# First VIIRS (Suomi-NPP) day in the FIRMS archive. Since the default filter keeps nominal VIIRS,
+# VIIRS dominates every count after this date (2011: 56k events, 2012: 307k), so per-cell baselines
+# are computed from this date on only -- mixing MODIS-only years in would drag baselines down and
+# flag ordinary days as "unusual". `months` (the heatmap series) still covers every year.
+VIIRS_ERA_START = "2012-01-20"
+
+
+_table_cache: dict[str, tuple[float, pd.DataFrame]] = {}
 
 
 def _read_table(sqlite_path):
+    """Whole daily table, cached in memory per (path, file mtime): the nominal+high archive is ~1M
+    rows and re-reading it cost ~2.5 s per request. Rebuilding the store changes the mtime, which
+    invalidates the cache. Callers get a copy because they add/overwrite columns."""
     if not sqlite_path or not os.path.exists(sqlite_path):
         return pd.DataFrame()
-    connection = sqlite3.connect(sqlite_path)
-    try:
-        return pd.read_sql_query(f"SELECT * FROM {TABLE}", connection)
-    finally:
-        connection.close()
+    key = os.path.abspath(sqlite_path)
+    mtime = os.path.getmtime(key)
+    cached = _table_cache.get(key)
+    if cached is None or cached[0] != mtime:
+        connection = sqlite3.connect(key)
+        try:
+            frame = pd.read_sql_query(f"SELECT * FROM {TABLE}", connection)
+        finally:
+            connection.close()
+        _table_cache[key] = (mtime, frame)
+        cached = _table_cache[key]
+    return cached[1].copy()
 
 
-def load_calendar_summary(sqlite_path, bounds=None):
+def load_calendar_summary(sqlite_path, bounds=None, province=None, admin_code=None):
     """Build the `/api/historical/calendar` response payload.
 
     `bounds`, if given, is (min_lat, max_lat, min_lon, max_lon) and filters
@@ -61,6 +81,7 @@ def load_calendar_summary(sqlite_path, bounds=None):
       bug in the first consumer of this endpoint -- see
       `src/app/calendar/page.tsx`'s `unusualAreas`, now fixed to use the
       daily fields here instead.
+    Cell stats use only VIIRS-era days (>= VIIRS_ERA_START); `months` keeps every year.
     `*StdDetections` is null when fewer than 2 samples exist at that
     granularity (std of 0/1 samples is undefined) -- callers must treat
     null as "not enough history," not as zero variance.
@@ -73,6 +94,8 @@ def load_calendar_summary(sqlite_path, bounds=None):
     if bounds:
         min_lat, max_lat, min_lon, max_lon = bounds
         data = data[data.grid_lat.between(min_lat, max_lat) & data.grid_lon.between(min_lon, max_lon)]
+    data = filter_frame_to_province(data, province)
+    data = filter_frame_to_admin(data, admin_code)
     if data.empty:
         return {"months": [], "cells": []}
 
@@ -101,7 +124,8 @@ def load_calendar_summary(sqlite_path, bounds=None):
         for row in months_df.itertuples()
     ]
 
-    cell_monthly = data.groupby(["grid_lat", "grid_lon", "year", "month"], as_index=False).detections.sum()
+    baseline = data[data.date >= pd.Timestamp(VIIRS_ERA_START)]
+    cell_monthly = baseline.groupby(["grid_lat", "grid_lon", "year", "month"], as_index=False).detections.sum()
     monthly_stats = cell_monthly.groupby(["grid_lat", "grid_lon"], as_index=False).detections.agg(
         monthly_mean="mean", monthly_std="std", sample_months="count"
     )
@@ -110,7 +134,7 @@ def load_calendar_summary(sqlite_path, bounds=None):
     # `detections` count (that's the table's native granularity), so this is
     # a direct groupby -- no intermediate per-period sum needed, unlike the
     # monthly case above which has to sum-within-month first.
-    daily_stats = data.groupby(["grid_lat", "grid_lon"], as_index=False).detections.agg(
+    daily_stats = baseline.groupby(["grid_lat", "grid_lon"], as_index=False).detections.agg(
         daily_mean="mean", daily_std="std", sample_days="count"
     )
 
@@ -132,7 +156,7 @@ def load_calendar_summary(sqlite_path, bounds=None):
     return {"months": months, "cells": cells}
 
 
-def load_map_summary(sqlite_path, days=None, bounds=None, start_date=None, end_date=None):
+def load_map_summary(sqlite_path, days=None, bounds=None, start_date=None, end_date=None, province=None, admin_code=None):
     """Return historical grid summaries suitable for the map overlay.
 
     Historical storage contains daily grid aggregates rather than individual
@@ -147,6 +171,8 @@ def load_map_summary(sqlite_path, days=None, bounds=None, start_date=None, end_d
     if bounds:
         min_lat, max_lat, min_lon, max_lon = bounds
         data = data[data.grid_lat.between(min_lat, max_lat) & data.grid_lon.between(min_lon, max_lon)]
+    data = filter_frame_to_province(data, province)
+    data = filter_frame_to_admin(data, admin_code)
     if data.empty:
         return {"markers": [], "meta": {"source": "historical", "days": days, "endDate": None}}
 

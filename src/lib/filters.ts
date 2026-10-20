@@ -1,61 +1,56 @@
 /**
- * Shared Region + Time Range URL-filter definitions, consumed by TopBar.tsx (the dropdowns that
- * write `?region=` / `?range=` to the URL) and by the 4 pages that read them back via
- * `useSearchParams()` to filter real data client-side.
+ * Shared Region + Time Range URL filters (`?region=` / `?range=`), written by TopBar.tsx and read
+ * back by every Operator page via useSearchParams(). Sidebar links carry the query string along,
+ * so a choice made on one page stays applied on the next.
  *
- * Region bounding boxes below are intentionally approximate rectangles for FILTERING already-
- * fetched hotspot data (lat/lng on markers, gridLat/gridLon on areas) — they are NOT official
- * administrative polygons. Label them as such anywhere they're shown to a user
- * ("batas provinsi perkiraan, bukan batas administratif resmi").
+ * Region = a real province name from the offline boundary store (OCHA COD-AB / BPS 2020, 34
+ * provinces — see python-service/fire_pipeline/admin_lookup.py). Live markers/areas are matched on
+ * their own `admin.provinsi`; historical grid cells are filtered server-side via `?province=`.
  *
- * "Seluruh Indonesia" (the default, no `region` param) intentionally matches the exact
- * bounding box the backend already fetches from NASA FIRMS — see INDONESIA_BOUNDS in
- * python-service/fire_pipeline/live.py ("95,-11,141,6" -> minLon,minLat,maxLon,maxLat). Since
- * the backend never returns anything outside that box, this option is a no-op filter, which is
- * the honest behavior for "the real default".
+ * Time range: 24h / 7d / 30d are live NASA FIRMS NRT windows run through the full pipeline
+ * (`/api/hotspots?window=`). "2023–2024" comes from the offline daily archive, which has no
+ * per-detection data or priority scores.
  */
-
-export interface LatLonBounds {
-  minLat: number;
-  maxLat: number;
-  minLon: number;
-  maxLon: number;
-}
+import type { AdminRegion } from "@/types";
 
 export interface RegionOption {
   value: string;
   label: string;
-  /** null = no filtering (Seluruh Indonesia / default) */
-  bounds: LatLonBounds | null;
+  /** Exact `provinsi` string from the boundary store; null = Seluruh Indonesia (no filter). */
+  provinsi: string | null;
+  fireProne?: boolean;
+}
+
+const FIRE_PRONE = [
+  "Riau",
+  "Jambi",
+  "Sumatera Selatan",
+  "Kalimantan Barat",
+  "Kalimantan Tengah",
+  "Kalimantan Selatan",
+  "Kalimantan Timur",
+];
+
+const OTHER_PROVINCES = [
+  "Aceh", "Bali", "Banten", "Bengkulu", "Daerah Istimewa Yogyakarta", "Dki Jakarta", "Gorontalo",
+  "Jawa Barat", "Jawa Tengah", "Jawa Timur", "Kalimantan Utara", "Kepulauan Bangka Belitung",
+  "Kepulauan Riau", "Lampung", "Maluku", "Maluku Utara", "Nusa Tenggara Barat", "Nusa Tenggara Timur",
+  "Papua", "Papua Barat", "Sulawesi Barat", "Sulawesi Selatan", "Sulawesi Tengah", "Sulawesi Tenggara",
+  "Sulawesi Utara", "Sumatera Barat", "Sumatera Utara",
+];
+
+function slug(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+function displayName(name: string) {
+  return name === "Dki Jakarta" ? "DKI Jakarta" : name;
 }
 
 export const REGION_OPTIONS: RegionOption[] = [
-  { value: "indonesia", label: "Seluruh Indonesia", bounds: null },
-  {
-    value: "kalimantan-tengah",
-    label: "Kalimantan Tengah",
-    bounds: { minLat: -3.5, maxLat: 0.5, minLon: 110.5, maxLon: 114.5 },
-  },
-  {
-    value: "riau",
-    label: "Riau",
-    bounds: { minLat: -1.5, maxLat: 2.5, minLon: 100.0, maxLon: 103.5 },
-  },
-  {
-    value: "sumatera-selatan",
-    label: "Sumatera Selatan",
-    bounds: { minLat: -4.5, maxLat: -1.0, minLon: 102.0, maxLon: 106.0 },
-  },
-  {
-    value: "jambi",
-    label: "Jambi",
-    bounds: { minLat: -2.5, maxLat: -0.5, minLon: 101.5, maxLon: 104.5 },
-  },
-  {
-    value: "kalimantan-selatan",
-    label: "Kalimantan Selatan",
-    bounds: { minLat: -4.5, maxLat: -1.0, minLon: 114.0, maxLon: 116.5 },
-  },
+  { value: "indonesia", label: "Seluruh Indonesia", provinsi: null },
+  ...FIRE_PRONE.map((p) => ({ value: slug(p), label: displayName(p), provinsi: p, fireProne: true })),
+  ...OTHER_PROVINCES.map((p) => ({ value: slug(p), label: displayName(p), provinsi: p })),
 ];
 
 export const DEFAULT_REGION = REGION_OPTIONS[0].value;
@@ -64,23 +59,29 @@ export function getRegionOption(value: string | null): RegionOption {
   return REGION_OPTIONS.find((option) => option.value === value) ?? REGION_OPTIONS[0];
 }
 
-export function isWithinBounds(lat: number, lon: number, bounds: LatLonBounds | null): boolean {
-  if (!bounds) return true;
-  return lat >= bounds.minLat && lat <= bounds.maxLat && lon >= bounds.minLon && lon <= bounds.maxLon;
+/** Items without a resolved region are excluded once a province is selected (never guessed in). */
+export function matchesRegion(admin: AdminRegion | null | undefined, region: RegionOption): boolean {
+  if (!region.provinsi) return true;
+  return admin?.provinsi === region.provinsi;
 }
+
+export type LiveWindow = "24h" | "7d" | "30d";
 
 export interface TimeRangeOption {
   value: string;
   label: string;
-  /** Only "24h" is backed by real data — see python-service/fire_pipeline/live.py (NRT-only, no historical store). */
-  isLive: boolean;
+  /** Live FIRMS window for /api/hotspots; null = offline archive range. */
+  window: LiveWindow | null;
+  /** Archive-only ranges: inclusive dates for /api/historical/map. */
+  startDate?: string;
+  endDate?: string;
 }
 
 export const TIME_RANGE_OPTIONS: TimeRangeOption[] = [
-  { value: "24h", label: "24 Jam Terakhir", isLive: true },
-  { value: "7d", label: "7 Hari Terakhir", isLive: false },
-  { value: "30d", label: "30 Hari Terakhir", isLive: false },
-  { value: "2023-2024", label: "Jan 2023 – Des 2024", isLive: false },
+  { value: "24h", label: "24 Jam Terakhir", window: "24h" },
+  { value: "7d", label: "7 Hari Terakhir", window: "7d" },
+  { value: "30d", label: "30 Hari Terakhir", window: "30d" },
+  { value: "2023-2024", label: "Jan 2023 – Des 2024 (arsip)", window: null, startDate: "2023-01-01", endDate: "2024-12-31" },
 ];
 
 export const DEFAULT_RANGE = TIME_RANGE_OPTIONS[0].value;
@@ -89,7 +90,29 @@ export function getRangeOption(value: string | null): TimeRangeOption {
   return TIME_RANGE_OPTIONS.find((option) => option.value === value) ?? TIME_RANGE_OPTIONS[0];
 }
 
-/** True when the selected range is anything other than the live-backed 24h default. */
-export function isDemoRange(value: string | null): boolean {
-  return !getRangeOption(value).isLive;
+/** True for the offline-archive range (no per-detection markers, no priority scores). */
+export function isArchiveRange(value: string | null): boolean {
+  return getRangeOption(value).window === null;
+}
+
+/** Live window to request; archive ranges fall back to 24h for pages that also show live context. */
+export function liveWindowFor(value: string | null): LiveWindow {
+  return getRangeOption(value).window ?? "24h";
+}
+
+export function historicalQuery(region: RegionOption, extra: Record<string, string> = {}): string {
+  const params = new URLSearchParams(extra);
+  if (region.provinsi) params.set("province", region.provinsi);
+  return params.toString();
+}
+
+/** `path` + the current ?region=&range= so in-app links keep the TopBar selection. */
+export function withFilters(path: string, searchParams: { get(name: string): string | null }): string {
+  const params = new URLSearchParams();
+  for (const key of ["region", "range"]) {
+    const value = searchParams.get(key);
+    if (value) params.set(key, value);
+  }
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
 }

@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 const PYTHON_API = process.env.PYTHON_PROCESSING_API_URL ?? "http://127.0.0.1:8000";
-const FORWARDED_PARAMS = ["days", "start_date", "end_date", "min_lat", "max_lat", "min_lon", "max_lon"];
+const FORWARDED_PARAMS = ["days", "start_date", "end_date", "min_lat", "max_lat", "min_lon", "max_lon", "province", "admin_code"];
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

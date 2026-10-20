@@ -7,8 +7,11 @@ import WorkstationLayout from "@/components/layout/WorkstationLayout";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import StatTile from "@/components/ui/StatTile";
-import { getRegionOption, getRangeOption, isWithinBounds } from "@/lib/filters";
-import type { AreaSummary, HistoricalCalendarResponse, HotspotApiResponse } from "@/types";
+import { getRegionOption, getRangeOption, historicalQuery, isArchiveRange, liveWindowFor, matchesRegion, type RegionOption, withFilters } from "@/lib/filters";
+import { windowLoadingNote } from "@/lib/hotspots";
+import { useLiveHotspots } from "@/lib/useLiveHotspots";
+import type { AreaSummary, HistoricalCalendarResponse } from "@/types";
+import { areaRegionLabel } from "@/lib/adminRegion";
 
 /**
  * Figma source: file wasTTtlmYfsjK1ZkH1Kzim, node 169:7795 ("Desktop - 9"), the loose group of
@@ -36,7 +39,6 @@ import type { AreaSummary, HistoricalCalendarResponse, HotspotApiResponse } from
  *    python-service/fire_pipeline/features.py aggregate_grid(cell_size=0.25)).
  */
 
-const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_CLUSTERS_SHOWN = 20;
 
 type ClusterFilter = "all" | "highFrp";
@@ -47,30 +49,12 @@ const TIER_STYLE: Record<AreaSummary["priorityTier"], { label: string; tone: "hi
   low: { label: "LOW / WATCH", tone: "low", dot: "bg-gray-400" },
 };
 
-async function requestHotspots(signal?: AbortSignal) {
-  const response = await fetch("/api/hotspots", { signal, cache: "no-store" });
-  const body = (await response.json()) as HotspotApiResponse & { error?: string };
-
-  if (!response.ok) {
-    throw new Error(body.error ?? "Unable to load NASA FIRMS data.");
-  }
-
-  return body;
-}
-
 function requestErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unable to load NASA FIRMS data.";
 }
 
-async function requestHistorical(bounds: ReturnType<typeof getRegionOption>["bounds"], signal?: AbortSignal) {
-  const params = new URLSearchParams();
-  if (bounds) {
-    params.set("min_lat", String(bounds.minLat));
-    params.set("max_lat", String(bounds.maxLat));
-    params.set("min_lon", String(bounds.minLon));
-    params.set("max_lon", String(bounds.maxLon));
-  }
-  const query = params.toString();
+async function requestHistorical(region: RegionOption, signal?: AbortSignal) {
+  const query = historicalQuery(region);
   const response = await fetch(`/api/historical${query ? `?${query}` : ""}`, { signal, cache: "no-store" });
   const body = (await response.json()) as HistoricalCalendarResponse & { error?: string };
   if (!response.ok) throw new Error(body.error ?? "Unable to load historical NASA FIRMS data.");
@@ -101,6 +85,7 @@ function SensorCoverageBar({ modis, viirs }: { modis: number; viirs: number }) {
 }
 
 function ClusterRow({ area, rank }: { area: AreaSummary; rank: number }) {
+  const searchParams = useSearchParams();
   const [expanded, setExpanded] = useState(false);
   const tier = TIER_STYLE[area.priorityTier] ?? TIER_STYLE.low;
   const modis = area.modisDetections ?? 0;
@@ -114,9 +99,9 @@ function ClusterRow({ area, rank }: { area: AreaSummary; rank: number }) {
             <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${tier.dot}`} />
             <div>
               <div className="font-bold text-gray-900 text-[11px]">
-                CL-{String(rank).padStart(2, "0")} &middot; Grid {area.gridLat.toFixed(2)}, {area.gridLon.toFixed(2)}
+                CL-{String(rank).padStart(2, "0")} &middot; {areaRegionLabel(area).title}
               </div>
-              <div className="text-gray-400 text-[11px] mt-0.5">{area.areaId}</div>
+              <div className="text-gray-400 text-[11px] mt-0.5">{areaRegionLabel(area).caption}</div>
             </div>
           </div>
         </td>
@@ -139,7 +124,7 @@ function ClusterRow({ area, rank }: { area: AreaSummary; rank: number }) {
         <td className="py-3 pl-3 text-right">
           <div className="flex items-center justify-end gap-1.5">
             <Link
-              href="/map"
+              href={withFilters("/map", searchParams)}
               className="px-2.5 py-1 rounded-md bg-gray-900 text-white text-[10px] font-semibold hover:bg-gray-700 whitespace-nowrap"
             >
               Peta
@@ -191,63 +176,32 @@ function AnalyticsPageContent() {
   const activeRegion = getRegionOption(searchParams.get("region"));
   const activeRange = getRangeOption(searchParams.get("range"));
 
-  const [allMarkers, setAllMarkers] = useState<HotspotApiResponse["markers"]>([]);
-  const [allAreas, setAllAreas] = useState<AreaSummary[]>([]);
-  const [meta, setMeta] = useState<HotspotApiResponse["meta"] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const archiveRange = isArchiveRange(searchParams.get("range"));
+  const liveWindow = liveWindowFor(searchParams.get("range"));
+  const periodLabel = archiveRange ? "24 Jam Terakhir" : activeRange.label;
+  const { data, error, loading, refresh } = useLiveHotspots(liveWindow, { province: activeRegion.provinsi });
+  const meta = data?.meta ?? null;
   const [clusterFilter, setClusterFilter] = useState<ClusterFilter>("all");
   const [historical, setHistorical] = useState<HistoricalCalendarResponse | null>(null);
   const [historicalLoadedKey, setHistoricalLoadedKey] = useState<string | null>(null);
   const [historicalErrorState, setHistoricalErrorState] = useState<{ key: string; message: string } | null>(null);
 
-  // Region filter — client-side bbox check against the already-fetched live markers/areas.
-  // Bounding boxes are approximate (see src/lib/filters.ts), "Seluruh Indonesia" is a no-op.
-  const markers = useMemo(
-    () => allMarkers.filter((marker) => isWithinBounds(marker.lat, marker.lng, activeRegion.bounds)),
-    [allMarkers, activeRegion]
-  );
   const areas = useMemo(
-    () => allAreas.filter((area) => isWithinBounds(area.gridLat, area.gridLon, activeRegion.bounds)),
-    [allAreas, activeRegion]
+    () => (data?.areas ?? []).filter((area) => matchesRegion(area.admin, activeRegion)),
+    [data, activeRegion]
+  );
+  // Raw MODIS + VIIRS counts per area cover every detection, unlike the API's `markers`, which
+  // are capped to the highest-FRP ones for 7d/30d windows.
+  const totalDetections = useMemo(
+    () => areas.reduce((sum, area) => sum + (area.modisDetections ?? 0) + (area.viirsDetections ?? 0), 0),
+    [areas]
   );
 
   useEffect(() => {
     const controller = new AbortController();
+    const regionKey = activeRegion.value;
 
-    const load = () => {
-      requestHotspots(controller.signal)
-        .then((body) => {
-          setAllMarkers(body.markers);
-          setAllAreas(body.areas);
-          setMeta(body.meta);
-          setError(null);
-        })
-        .catch((requestError: unknown) => {
-          if (requestError instanceof DOMException && requestError.name === "AbortError") return;
-          setError(requestErrorMessage(requestError));
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setLoading(false);
-        });
-    };
-
-    load();
-    const interval = window.setInterval(load, REFRESH_INTERVAL_MS);
-
-    return () => {
-      controller.abort();
-      window.clearInterval(interval);
-    };
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const regionKey = activeRegion.bounds
-      ? `${activeRegion.bounds.minLat},${activeRegion.bounds.maxLat},${activeRegion.bounds.minLon},${activeRegion.bounds.maxLon}`
-      : "all";
-
-    requestHistorical(activeRegion.bounds, controller.signal)
+    requestHistorical(activeRegion, controller.signal)
       .then((body) => {
         setHistorical(body);
         setHistoricalLoadedKey(regionKey);
@@ -261,22 +215,7 @@ function AnalyticsPageContent() {
       });
 
     return () => controller.abort();
-  }, [activeRegion.bounds]);
-
-  async function refresh() {
-    setLoading(true);
-    setError(null);
-    try {
-      const body = await requestHotspots();
-      setAllMarkers(body.markers);
-      setAllAreas(body.areas);
-      setMeta(body.meta);
-    } catch (requestError) {
-      setError(requestErrorMessage(requestError));
-    } finally {
-      setLoading(false);
-    }
-  }
+  }, [activeRegion]);
 
   const sortedAreas = useMemo(
     () => [...areas].sort((a, b) => (a.priorityRank ?? Number.MAX_SAFE_INTEGER) - (b.priorityRank ?? Number.MAX_SAFE_INTEGER)),
@@ -291,16 +230,47 @@ function AnalyticsPageContent() {
   const shownAreas = filteredAreas.slice(0, MAX_CLUSTERS_SHOWN);
   const topArea = sortedAreas[0] ?? null;
   const highTierCount = areas.filter((area) => area.priorityTier === "high").length;
-  const avgPerGrid = areas.length > 0 ? markers.length / areas.length : null;
+  const avgPerGrid = areas.length > 0 ? totalDetections / areas.length : null;
   const sourcesAvailable = meta?.sources.filter((source) => source.available).length ?? 0;
-  const historicalKey = activeRegion.bounds
-    ? `${activeRegion.bounds.minLat},${activeRegion.bounds.maxLat},${activeRegion.bounds.minLon},${activeRegion.bounds.maxLon}`
-    : "all";
+  const historicalKey = activeRegion.value;
   const historicalError = historicalErrorState?.key === historicalKey ? historicalErrorState.message : null;
   const historicalLoading = historicalLoadedKey !== historicalKey && historicalError === null;
-  const historicalMonths = historical?.months ?? [];
+  const historicalMonths = (historical?.months ?? []).filter(
+    (month) => !archiveRange || (month.year >= 2023 && month.year <= 2024)
+  );
   const historicalHasData = historicalMonths.length > 0;
-  const historicalMax = historicalHasData ? Math.max(...historicalMonths.map((month) => month.detections), 1) : 1;
+  // > 36 months can't fit as monthly bars (the full archive is ~311), so roll up to yearly totals.
+  const trendBars = useMemo(() => {
+    if (historicalMonths.length <= 36) {
+      return historicalMonths.map((month) => ({
+        key: `${month.year}-${month.month}`,
+        label: `${String(month.month).padStart(2, "0")}/${String(month.year).slice(2)}`,
+        title: `${month.year}-${String(month.month).padStart(2, "0")}: ${month.detections.toLocaleString()} deteksi`,
+        value: month.detections,
+        partial: false,
+        modisOnly: month.year < 2012,
+      }));
+    }
+    const byYear = new Map<number, { total: number; months: number }>();
+    for (const month of historicalMonths) {
+      const entry = byYear.get(month.year) ?? { total: 0, months: 0 };
+      entry.total += month.detections;
+      entry.months += 1;
+      byYear.set(month.year, entry);
+    }
+    return [...byYear.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([year, { total, months }]) => ({
+        key: String(year),
+        label: `'${String(year).slice(2)}`,
+        title: `${year}: ${total.toLocaleString()} deteksi${months < 12 ? ` (data parsial, ${months} bulan)` : ""}${year < 2012 ? " — hanya MODIS" : ""}`,
+        value: total,
+        partial: months < 12,
+        modisOnly: year < 2012,
+      }));
+  }, [historicalMonths]);
+  const trendIsYearly = historicalMonths.length > 36;
+  const historicalMax = Math.max(...trendBars.map((bar) => bar.value), 1);
 
   return (
     <WorkstationLayout activeTab="Analytics">
@@ -320,7 +290,7 @@ function AnalyticsPageContent() {
           </div>
           <button
             type="button"
-            onClick={() => void refresh()}
+            onClick={refresh}
             disabled={loading}
             className="h-9 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium text-blue-600 shadow-sm hover:bg-gray-50 disabled:text-gray-400"
           >
@@ -331,7 +301,7 @@ function AnalyticsPageContent() {
         {/* Info pills — now reflect the TopBar's region/range selection (?region=, ?range=) */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="h-8 px-3 inline-flex items-center bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 shadow-sm">
-            Window: {activeRange.label}
+            Periode: {activeRange.label}
           </span>
           <span className="h-8 px-3 inline-flex items-center bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 shadow-sm">
             Wilayah: {activeRegion.label}
@@ -350,12 +320,22 @@ function AnalyticsPageContent() {
             {error
               ? error
               : loading
-                ? "NASA live → Python processing…"
+                ? (windowLoadingNote(liveWindow) ?? "NASA live → Python processing…")
                 : meta
-                  ? `${meta.processing.areasAnalyzed.toLocaleString()} area dianalisis • ${sourcesAvailable}/4 feed NASA FIRMS aktif • diperbarui ${new Date(meta.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                  ? `${areas.length.toLocaleString()} area • ${sourcesAvailable}/4 feed NASA FIRMS aktif • diperbarui ${new Date(meta.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
                   : ""}
           </span>
         </div>
+
+        {archiveRange && (
+          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-900">
+            <span className="material-symbols-outlined text-amber-600 text-base shrink-0">info</span>
+            <p>
+              Grafik trend memakai arsip Jan 2023 – Des 2024. Statistik &amp; klaster di bawah tetap dari data live 24 jam
+              terakhir, karena arsip hanya berisi total harian per grid (tanpa skor prioritas).
+            </p>
+          </div>
+        )}
 
         {/* Stat cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -363,7 +343,7 @@ function AnalyticsPageContent() {
             icon="priority_high"
             iconTone="red"
             label="Area Prioritas Tertinggi"
-            value={topArea ? `${topArea.gridLat.toFixed(2)}, ${topArea.gridLon.toFixed(2)}` : "—"}
+            value={topArea ? areaRegionLabel(topArea).title : "—"}
             caption={
               topArea
                 ? `${topArea.detections ?? 0} deteksi · ${TIER_STYLE[topArea.priorityTier].label}`
@@ -373,8 +353,8 @@ function AnalyticsPageContent() {
           <StatTile
             icon="local_fire_department"
             iconTone="amber"
-            label="Total Hotspot (24 Jam)"
-            value={markers.length.toLocaleString()}
+            label={`Total Deteksi (${periodLabel})`}
+            value={totalDetections.toLocaleString()}
             caption={meta ? `${sourcesAvailable}/4 feed NASA FIRMS aktif` : "Memuat sumber data…"}
           />
           <StatTile
@@ -388,11 +368,14 @@ function AnalyticsPageContent() {
 
         {/* Grafik Trend + Insight */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-stretch">
-          <Card className="p-6 flex flex-col gap-4 lg:col-span-3">
+          <Card className="p-6 flex flex-col gap-4 lg:col-span-3 min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-gray-900">Grafik Trend</h2>
             </div>
-            <p className="text-xs text-gray-400 -mt-2">Total hotspot per bulan dari arsip NASA FIRMS untuk wilayah terpilih.</p>
+            <p className="text-xs text-gray-400 -mt-2">
+              Total hotspot per bulan dari arsip NASA FIRMS untuk wilayah terpilih
+              {archiveRange ? " (Jan 2023 – Des 2024)" : " (seluruh arsip)"}.
+            </p>
             {historicalLoading ? (
               <div className="flex-1 min-h-[200px] rounded-lg border border-dashed border-gray-200 bg-gray-50 flex items-center justify-center text-sm text-gray-500">
                 Memuat data historis…
@@ -402,26 +385,27 @@ function AnalyticsPageContent() {
                 {historicalError}
               </div>
             ) : historicalHasData ? (
-              <div className="flex-1 min-h-[200px] rounded-lg border border-gray-200 bg-gray-50 px-4 py-4">
-                <div className="h-[170px] flex items-end gap-1.5">
-                  {historicalMonths.map((month) => (
-                    <div
-                      key={`${month.year}-${month.month}`}
-                      className="flex-1 h-full flex flex-col justify-end gap-1"
-                      title={`${month.year}-${String(month.month).padStart(2, "0")}: ${month.detections.toLocaleString()} deteksi`}
-                    >
+              <div className="flex-1 min-h-[200px] min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-4 py-4">
+                <div className="h-[170px] flex items-end gap-[3px]">
+                  {trendBars.map((bar, index) => (
+                    <div key={bar.key} className="flex-1 min-w-0 h-full flex flex-col justify-end gap-1" title={bar.title}>
                       <div
-                        className="w-full rounded-t bg-emerald-400"
-                        style={{ height: `${Math.max((month.detections / historicalMax) * 100, 2)}%` }}
+                        className={`w-full rounded-t ${bar.modisOnly ? "bg-slate-300" : bar.partial ? "bg-emerald-200" : "bg-emerald-500"}`}
+                        style={{ height: `${Math.max((bar.value / historicalMax) * 100, 2)}%` }}
                       />
-                      <span className="text-[9px] text-gray-400 text-center truncate">
-                        {String(month.year).slice(2)}-{String(month.month).padStart(2, "0")}
+                      <span className="h-3 text-[9px] leading-3 text-gray-400 text-center overflow-hidden">
+                        {/* Label every other bar so labels never overlap at narrow widths. */}
+                        {index % 2 === 0 || index === trendBars.length - 1 ? bar.label : ""}
                       </span>
                     </div>
                   ))}
                 </div>
                 <p className="mt-3 text-[11px] text-gray-500">
-                  {historicalMonths.length} bulan tersedia · filter wilayah: {activeRegion.label}
+                  {trendIsYearly ? `Total per tahun (${trendBars.length} tahun)` : `Total per bulan (${trendBars.length} bulan)`} ·
+                  wilayah: {activeRegion.label}
+                  {trendBars.some((bar) => bar.partial) && " · batang pucat = tahun dengan data tidak lengkap"}
+                  {trendBars.some((bar) => bar.modisOnly) &&
+                    " · batang abu-abu = sebelum 2012 (hanya MODIS; VIIRS mulai 20 Jan 2012, jadi lonjakan 2012 adalah perubahan sensor, bukan kebakaran)"}
                 </p>
               </div>
             ) : (
@@ -446,9 +430,9 @@ function AnalyticsPageContent() {
               <p className="text-xs text-emerald-900 leading-relaxed">
                 {loading
                   ? "Memuat data NASA FIRMS…"
-                  : markers.length > 0
-                    ? `Dalam 24 jam terakhir, terdeteksi ${markers.length} hotspot tersebar di ${areas.length} grid area 0.25°. ${highTierCount} area berada pada klasifikasi risiko tinggi dan memerlukan perhatian segera.`
-                    : "Tidak ada hotspot terdeteksi pada window 24 jam terakhir."}
+                  : totalDetections > 0
+                    ? `Dalam ${periodLabel.toLowerCase()}, terdeteksi ${totalDetections.toLocaleString()} hotspot tersebar di ${areas.length} grid area 0.25°${activeRegion.provinsi ? ` di ${activeRegion.label}` : ""}. ${highTierCount} area berada pada klasifikasi risiko tinggi dan memerlukan perhatian segera.`
+                    : `Tidak ada hotspot terdeteksi dalam ${periodLabel.toLowerCase()}.`}
               </p>
               <ul className="space-y-3">
                 <li className="flex gap-3 items-start text-[13px] text-emerald-900">

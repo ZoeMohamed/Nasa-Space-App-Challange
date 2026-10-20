@@ -35,9 +35,12 @@ export default function SekitarPage() {
 
   const [markers, setMarkers] = useState<HotspotMarker[] | null>(null);
 
+  const activeLat = fix ? fix.lat : DEFAULT_LOCATION.lat;
+  const activeLon = fix ? fix.lon : DEFAULT_LOCATION.lon;
+
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/hotspots", { cache: "no-store" })
+    fetch(`/api/hotspots?nearLat=${activeLat}&nearLon=${activeLon}&nearKm=${NEARBY_RADIUS_KM}&limit=5000`, { cache: "no-store" })
       .then(async (res) => {
         if (!res.ok) throw new Error("Gagal memuat titik panas");
         return (await res.json()) as HotspotApiResponse;
@@ -51,10 +54,7 @@ export default function SekitarPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  const activeLat = fix ? fix.lat : DEFAULT_LOCATION.lat;
-  const activeLon = fix ? fix.lon : DEFAULT_LOCATION.lon;
+  }, [activeLat, activeLon]);
 
   const nearbyCount = useMemo(() => {
     if (!markers) return null;

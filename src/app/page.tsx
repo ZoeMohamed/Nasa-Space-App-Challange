@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import LanguageToggle from "@/components/LanguageToggle";
+import HotspotCarousel from "@/components/landing/HotspotCarousel";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 import type {
   AreaSummary,
   CommunityReport,
@@ -9,6 +12,7 @@ import type {
   HotspotMarker,
   ReportsListResponse,
 } from "@/types";
+import { areaRegionLabel, placeLabel } from "@/lib/adminRegion";
 
 /**
  * Public landing page for "/" — the entry point before picking a role.
@@ -109,13 +113,14 @@ function StatCard({
   loading: boolean;
   unavailable: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="rounded-2xl border border-[var(--color-border)] bg-white p-6">
       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-2">{label}</p>
       {loading ? (
-        <p className="text-2xl font-bold text-[var(--color-text-muted)] animate-pulse">Memuat…</p>
+        <p className="text-2xl font-bold text-[var(--color-text-muted)] animate-pulse">{t("stats.loading")}</p>
       ) : unavailable ? (
-        <p className="text-sm text-[var(--color-text-muted)]">Data belum tersedia</p>
+        <p className="text-sm text-[var(--color-text-muted)]">{t("stats.unavailable")}</p>
       ) : (
         <p className="text-2xl sm:text-3xl font-bold text-[var(--color-text-main)]">{value}</p>
       )}
@@ -124,15 +129,18 @@ function StatCard({
   );
 }
 
-function formatDateTime(value: string | undefined | null): string {
-  if (!value) return "Waktu tidak tercatat";
+function formatDateTime(value: string | undefined | null, language: "id" | "en", unrecordedLabel: string): string {
+  if (!value) return unrecordedLabel;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Waktu tidak tercatat";
-  return `${date.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" })} WIB`;
+  if (Number.isNaN(date.getTime())) return unrecordedLabel;
+  const locale = language === "en" ? "en-US" : "id-ID";
+  const formatted = date.toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" });
+  return language === "en" ? `${formatted} (WIB)` : `${formatted} WIB`;
 }
 
 async function fetchHotspots(signal?: AbortSignal): Promise<HotspotApiResponse> {
-  const response = await fetch("/api/hotspots", { signal, cache: "no-store" });
+  // Latest 10 by acquisition time, picked server-side from ALL detections (not the FRP-capped list).
+  const response = await fetch("/api/hotspots?order=recent&limit=10", { signal, cache: "no-store" });
   const body = (await response.json()) as HotspotApiResponse & { error?: string };
   if (!response.ok) throw new Error(body.error ?? "Gagal memuat data titik panas.");
   return body;
@@ -146,7 +154,9 @@ async function fetchReports(signal?: AbortSignal): Promise<CommunityReport[]> {
 }
 
 export default function LandingPage() {
+  const { t, language } = useTranslation();
   const [markers, setMarkers] = useState<HotspotMarker[]>([]);
+  const [totalDetections, setTotalDetections] = useState(0);
   const [areas, setAreas] = useState<AreaSummary[]>([]);
   const [hotspotsLoading, setHotspotsLoading] = useState(true);
   const [hotspotsUnavailable, setHotspotsUnavailable] = useState(false);
@@ -161,6 +171,7 @@ export default function LandingPage() {
     fetchHotspots(controller.signal)
       .then((body) => {
         setMarkers(body.markers ?? []);
+        setTotalDetections(body.meta?.markers?.total ?? (body.markers ?? []).length);
         setAreas(body.areas ?? []);
         setHotspotsUnavailable(Boolean(body.meta?.degraded) && (body.markers ?? []).length === 0);
       })
@@ -192,10 +203,11 @@ export default function LandingPage() {
     .slice()
     .sort((a, b) => (b.priorityScore ?? -Infinity) - (a.priorityScore ?? -Infinity))[0];
 
+  // "Latest" = most recently acquired, not highest priority.
   const recentMarkers = markers
-    .slice()
-    .sort((a, b) => (b.priorityScore ?? b.attentionScore ?? 0) - (a.priorityScore ?? a.attentionScore ?? 0))
-    .slice(0, 3);
+    .filter((marker) => marker.acquiredAt)
+    .sort((a, b) => (b.acquiredAt ?? "").localeCompare(a.acquiredAt ?? ""))
+    .slice(0, 10);
 
   const recentReports = reports
     .slice()
@@ -216,12 +228,16 @@ export default function LandingPage() {
         </div>
         <nav className="hidden sm:flex items-center gap-6 text-sm font-medium text-[var(--color-text-muted)]">
           <Link href="/data-model" className="hover:text-[var(--color-text-main)] transition-colors">
-            Tentang data
+            {t("nav.aboutData")}
           </Link>
           <Link href="/operator" className="hover:text-[var(--color-text-main)] transition-colors">
-            Masuk sebagai petugas
+            {t("nav.loginOfficer")}
           </Link>
+          <LanguageToggle />
         </nav>
+        <div className="sm:hidden">
+          <LanguageToggle />
+        </div>
       </header>
 
       {/* Hero — Figma-reference pattern: eyebrow label, headline, paragraph, CTA, illustration —
@@ -231,15 +247,13 @@ export default function LandingPage() {
         <div className="max-w-[1280px] mx-auto px-6 sm:px-10 py-14 sm:py-20 grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 lg:gap-14 items-center">
           <div>
             <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-emerald-200/80 bg-white/[0.06] border border-white/10 rounded-full px-3 py-1.5 mb-6">
-              Intelijen satelit &amp; komunitas
+              {t("hero.eyebrow")}
             </span>
             <h1 className="text-4xl sm:text-5xl lg:text-[3.2rem] font-bold leading-[1.08] text-[var(--color-sidebar-foreground)] mb-6">
-              Memahami api dari luar angkasa, hingga ke lapangan.
+              {t("hero.headline")}
             </h1>
             <p className="text-base sm:text-lg leading-relaxed text-[var(--color-sidebar-foreground)]/75 max-w-xl mb-10">
-              AGNIBHŪMI menggabungkan deteksi anomali termal NASA FIRMS (MODIS &amp; VIIRS) dengan
-              laporan warga di lapangan, untuk membantu siapa pun memantau dan memverifikasi
-              potensi kebakaran lahan dan hutan secara lebih cepat.
+              {t("hero.body")}
             </p>
 
             {/* Role selection — the centerpiece of this page */}
@@ -248,7 +262,7 @@ export default function LandingPage() {
                 href="/community"
                 className="inline-flex items-center justify-center gap-2 rounded-lg px-6 py-3.5 text-sm font-semibold text-[#06281e] bg-amber-400 hover:bg-amber-300 transition-colors"
               >
-                Jelajahi sebagai Masyarakat
+                {t("hero.ctaCommunity")}
                 <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
                   arrow_forward
                 </span>
@@ -257,7 +271,7 @@ export default function LandingPage() {
                 href="/operator"
                 className="inline-flex items-center justify-center gap-2 rounded-lg px-6 py-3.5 text-sm font-semibold text-white bg-white/10 border border-white/25 hover:bg-white/15 transition-colors"
               >
-                Lanjutkan sebagai Petugas
+                {t("hero.ctaOperator")}
                 <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
                   arrow_forward
                 </span>
@@ -269,13 +283,13 @@ export default function LandingPage() {
                 <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
                   satellite_alt
                 </span>
-                Data NASA FIRMS langsung
+                {t("hero.badgeFirms")}
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
                   groups
                 </span>
-                Laporan komunitas
+                {t("hero.badgeCommunity")}
               </span>
             </div>
           </div>
@@ -286,109 +300,109 @@ export default function LandingPage() {
 
       {/* Live stat strip — Figma reference's "Burn Activity" / "Most Burning Area" pattern,
           with real counts from /api/hotspots (or an honest unavailable state). */}
+      {/* What the NASA challenge asks for -> where it lives in the app. */}
+      <section className="max-w-[1280px] mx-auto px-6 sm:px-10 pt-14 sm:pt-16">
+        <h2 className="text-xl sm:text-2xl font-bold text-[var(--color-text-main)] mb-6">{t("challenge.title")}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {(
+            [
+              ["merge", "challenge.harmonize.title", "challenge.harmonize.body", "/map"],
+              ["calendar_month", "challenge.calendar.title", "challenge.calendar.body", "/calendar"],
+              ["crisis_alert", "challenge.unusual.title", "challenge.unusual.body", "/priority-areas"],
+            ] as const
+          ).map(([icon, title, body, href]) => (
+            <Link
+              key={href}
+              href={href}
+              className="group rounded-2xl border border-[var(--color-border)] bg-white p-6 hover:border-[var(--color-primary)] transition-colors"
+            >
+              <span className="material-symbols-outlined text-[26px] text-[var(--color-primary)]" aria-hidden="true">
+                {icon}
+              </span>
+              <h3 className="mt-3 text-base font-bold text-[var(--color-text-main)]">{t(title)}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-[var(--color-text-muted)]">{t(body)}</p>
+              <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[var(--color-primary)]">
+                {t("challenge.open")}
+                <span className="material-symbols-outlined text-[16px] transition-transform group-hover:translate-x-0.5" aria-hidden="true">
+                  arrow_forward
+                </span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <section className="max-w-[1280px] mx-auto px-6 sm:px-10 py-14 sm:py-16">
         <h2 className="text-xl sm:text-2xl font-bold text-[var(--color-text-main)] mb-6">
-          Aktivitas titik panas hari ini
+          {t("stats.title")}
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
-            label="Total deteksi aktif"
-            value={String(markers.length)}
-            caption="Titik panas dari MODIS & VIIRS, 24 jam terakhir"
+            label={t("stats.totalDetections")}
+            value={totalDetections.toLocaleString(language === "en" ? "en-US" : "id-ID")}
+            caption={t("stats.totalDetectionsCaption")}
             loading={hotspotsLoading}
             unavailable={hotspotsUnavailable}
           />
           <StatCard
-            label="Wilayah prioritas tertinggi"
+            label={t("stats.priorityArea")}
             value={
               highestPriorityArea
-                ? `${highestPriorityArea.gridLat.toFixed(2)}, ${highestPriorityArea.gridLon.toFixed(2)}`
+                ? areaRegionLabel(highestPriorityArea).title
                 : "—"
             }
             caption={
               highestPriorityArea
-                ? `Grid 0,25° · skor prioritas ${highestPriorityArea.priorityScore?.toFixed(1) ?? "—"}`
-                : "Belum ada area dengan skor prioritas"
+                ? `Grid 0.25° · ${language === "en" ? "priority score" : "skor prioritas"} ${highestPriorityArea.priorityScore?.toFixed(1) ?? "—"}`
+                : t("stats.priorityAreaNone")
             }
             loading={hotspotsLoading}
             unavailable={hotspotsUnavailable || !highestPriorityArea}
           />
           <StatCard
-            label="Area teranalisis"
+            label={t("stats.analyzedAreas")}
             value={String(areas.length)}
-            caption="Grid sel 0,25° yang dianalisis pipeline"
+            caption={t("stats.analyzedAreasCaption")}
             loading={hotspotsLoading}
             unavailable={hotspotsUnavailable}
           />
         </div>
         {hotspotsUnavailable && !hotspotsLoading && (
           <p className="mt-3 text-xs text-[var(--color-text-muted)]">
-            Sumber data NASA FIRMS sedang tidak tersedia (kemungkinan kunci API belum dikonfigurasi) — angka
-            di atas tidak ditampilkan sebagai gantinya, karena ini bukan data sungguhan.
+            {t("stats.unavailableNote")}
           </p>
         )}
       </section>
 
-      {/* New hotspot — adapts the Figma reference's live-feed carousel card with real marker
-          fields (id/date/source/sensor), not fabricated hotspot IDs. */}
+      {/* Latest hotspots — auto-advancing carousel of real detections (see HotspotCarousel). */}
       <section className="max-w-[1280px] mx-auto px-6 sm:px-10 py-6 sm:py-10">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold text-[var(--color-text-main)]">Titik panas terbaru</h2>
-          <Link href="/map" className="text-sm font-semibold text-[var(--color-primary)] hover:underline">
-            Lihat peta lengkap
-          </Link>
-        </div>
-
-        {hotspotsLoading ? (
-          <p className="text-sm text-[var(--color-text-muted)]">Memuat titik panas…</p>
-        ) : recentMarkers.length === 0 ? (
-          <div className="rounded-2xl border border-[var(--color-border)] bg-white p-7 text-sm text-[var(--color-text-muted)]">
-            {hotspotsUnavailable
-              ? "Data belum tersedia — sumber NASA FIRMS sedang tidak dapat diakses."
-              : "Tidak ada deteksi titik panas aktif saat ini."}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {recentMarkers.map((marker) => (
-              <div key={marker.id} className="rounded-2xl border border-[var(--color-border)] bg-white p-5">
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] mb-1">{marker.id}</p>
-                <p className="text-sm font-bold text-[var(--color-text-main)] mb-2">
-                  {marker.label || `${marker.lat.toFixed(3)}, ${marker.lng.toFixed(3)}`}
-                </p>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  Sumber: {marker.source ?? marker.sensor ?? "Tidak tercatat"}
-                </p>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  Diambil: {formatDateTime(marker.acquiredAt)}
-                </p>
-                <p className="mt-2 text-xs font-semibold" style={{ color: "var(--color-primary)" }}>
-                  Tingkat: {marker.severity}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
+        <HotspotCarousel
+          markers={recentMarkers}
+          loading={hotspotsLoading}
+          unavailable={hotspotsUnavailable}
+          windowLabel={t("recentHotspots.window24h")}
+        />
       </section>
 
       {/* Citizen report preview — adapts the Figma reference's photo-card pattern with real
           reports from /api/reports (or an honest empty state if none exist yet). */}
       <section className="max-w-[1280px] mx-auto px-6 sm:px-10 py-14 sm:py-16 border-t border-[var(--color-border)]">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold text-[var(--color-text-main)]">Laporan warga terbaru</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--color-text-main)]">{t("recentReports.title")}</h2>
           <Link href="/community" className="text-sm font-semibold text-[var(--color-primary)] hover:underline">
-            Lihat semua laporan
+            {t("recentReports.viewAll")}
           </Link>
         </div>
 
         {reportsLoading ? (
-          <p className="text-sm text-[var(--color-text-muted)]">Memuat laporan warga…</p>
+          <p className="text-sm text-[var(--color-text-muted)]">{t("recentReports.loading")}</p>
         ) : reportsError ? (
           <div className="rounded-2xl border border-[var(--color-border)] bg-white p-7 text-sm text-[var(--color-text-muted)]">
             {reportsError}
           </div>
         ) : recentReports.length === 0 ? (
           <div className="rounded-2xl border border-[var(--color-border)] bg-white p-7 text-sm text-[var(--color-text-muted)]">
-            Belum ada laporan warga yang masuk.
+            {t("recentReports.empty")}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -409,12 +423,14 @@ export default function LandingPage() {
                   </div>
                 )}
                 <div className="p-5 flex-1 flex flex-col">
-                  <p className="text-xs text-[var(--color-text-muted)] mb-1">{formatDateTime(report.observedAt)}</p>
+                  <p className="text-xs text-[var(--color-text-muted)] mb-1">
+                    {formatDateTime(report.observedAt, language, t("recentHotspots.unrecorded"))}
+                  </p>
                   <p className="text-sm text-[var(--color-text-main)] leading-relaxed mb-3 flex-1">
                     {report.description}
                   </p>
                   <p className="text-xs text-[var(--color-text-muted)]">
-                    {report.lat.toFixed(3)}, {report.lon.toFixed(3)}
+                    {placeLabel(report.admin, report.lat, report.lon)}
                   </p>
                   <span className="mt-2 inline-flex w-fit items-center rounded-md bg-[var(--color-primary-light)] px-2.5 py-1 text-xs font-medium text-[var(--color-primary)]">
                     {report.status}
@@ -433,18 +449,14 @@ export default function LandingPage() {
             info
           </span>
           <p className="leading-relaxed">
-            <strong className="font-semibold">
-              Titik panas satelit adalah indikator anomali termal, bukan konfirmasi kebakaran.
-            </strong>{" "}
-            Setiap deteksi — baik dari satelit maupun laporan komunitas — tetap memerlukan
-            verifikasi lapangan sebelum dijadikan dasar tindakan. Ini bukan konfirmasi kebakaran.
+            <strong className="font-semibold">{t("disclaimer.strong")}</strong>{" "}
+            {t("disclaimer.body")}
           </p>
         </div>
       </section>
 
       <footer className="border-t border-[var(--color-border)] py-8 px-6 sm:px-10 text-center text-xs text-[var(--color-text-muted)]">
-        AGNIBHŪMI — Intelijen satelit &amp; komunitas untuk pemantauan kebakaran lahan dan hutan di
-        Indonesia.
+        {t("footer.tagline")}
       </footer>
     </main>
   );

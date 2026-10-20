@@ -27,11 +27,13 @@ Design choices:
   is cheap compared to the complexity of real incremental ingestion.
 
 - Reuses fire_pipeline.clean.harmonize() / add_quality_flags() and the
-  SAME confidence filter already used by the live request path
-  (fire_pipeline.clean.high_confidence_mask, called internally by
-  fire_pipeline.live._fetch_source) -- deliberately NOT re-implemented or
-  changed here, so the historical baseline is apples-to-apples with what
-  the live pipeline itself considers "high confidence".
+  SAME default confidence filter as the live request path
+  (fire_pipeline.clean.usable_confidence_mask: FIRMS nominal + high, used
+  by fire_pipeline.live.build_live_result) -- deliberately NOT
+  re-implemented here, so the historical baseline stays apples-to-apples
+  with the live detections it is compared against. (Until 2026-10-20 both
+  used the stricter high_confidence_mask, which kept only saturated VIIRS
+  pixels; the store must be rebuilt whenever this filter changes.)
 
 - `type == 0` (presumed vegetation fire) filtering is applied ONLY to the
   archive files, because only the archive FIRMS exports include a `type`
@@ -54,7 +56,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fire_pipeline.clean import add_quality_flags, deduplicate_detections, harmonize, high_confidence_mask  # noqa: E402
+from fire_pipeline.clean import add_quality_flags, deduplicate_detections, harmonize, usable_confidence_mask  # noqa: E402
 from fire_pipeline.harmonize_events import daily_grid_activity  # noqa: E402
 from fire_pipeline.matching import match_modis_viirs  # noqa: E402
 
@@ -64,7 +66,7 @@ CELL_SIZE = 0.25
 
 def _read_source(path: str, sensor: str, source: str) -> pd.DataFrame:
     """Read one raw FIRMS CSV, tag it with sensor/source, and apply the
-    high-confidence filter (+ type==0 filter, archive only)."""
+    default nominal+high confidence filter (+ type==0 filter, archive only)."""
     header = pd.read_csv(path, nrows=0)
     columns = set(header.columns)
     wanted = ["latitude", "longitude", "acq_date", "acq_time", "confidence", "frp", "satellite"]
@@ -73,8 +75,7 @@ def _read_source(path: str, sensor: str, source: str) -> pd.DataFrame:
     usecols = [column for column in wanted if column in columns]
     frame = pd.read_csv(path, usecols=usecols)
 
-    high_confidence = high_confidence_mask(frame)
-    frame = frame.loc[high_confidence].copy()
+    frame = frame.loc[usable_confidence_mask(frame)].copy()
 
     if "type" in frame.columns:
         # Archive-only: restrict to presumed vegetation fire. NRT exports have

@@ -14,20 +14,16 @@
  * consistent with the rest of the design system.
  *
  * FUNCTIONAL NOTES:
- * Region + Time Range are real dropdowns backed by the URL (`?region=`, `?range=`), not React
- * Context — see src/lib/filters.ts for the option lists/bounding boxes and src/app/{page,
- * analytics, priority-areas, map}/page.tsx for where `useSearchParams()` reads these back to
- * filter real data / show demo-labeled states. Clicking an option calls
- * `router.push(`${pathname}?${params}`)` so it works no matter which page is currently mounted.
- *
- * Region bounding boxes are approximate rectangles for client-side filtering, not official
- * administrative polygons — see the "batas provinsi perkiraan" caption in the dropdown below.
+ * Region + Time Range are real dropdowns backed by the URL (`?region=`, `?range=`) — see
+ * src/lib/filters.ts for what each option means. Sidebar links carry the query along, so the
+ * selection persists across Operator pages.
  *
  * Search is still presentational/static — wiring it up is a separate follow-up task.
  */
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import LanguageToggle from "@/components/LanguageToggle";
 import {
   DEFAULT_REGION,
   DEFAULT_RANGE,
@@ -97,7 +93,7 @@ function SelectorDropdown({
       {open && (
         <div
           role="listbox"
-          className="absolute left-0 top-[calc(100%+6px)] z-[1300] w-64 rounded-xl border border-[var(--color-border)] bg-white shadow-lg py-1.5"
+          className="absolute left-0 top-[calc(100%+6px)] z-[1300] w-64 max-h-[60vh] overflow-y-auto rounded-xl border border-[var(--color-border)] bg-white shadow-lg py-1.5"
         >
           {options.map((option) => (
             <button
@@ -204,7 +200,7 @@ function TopBarInner() {
           activeLabel={activeRegion.label}
           activeValue={activeRegion.value}
           options={REGION_OPTIONS}
-          footnote="Batas provinsi perkiraan untuk penyaringan data, bukan batas administratif resmi."
+          footnote="7 provinsi teratas = rawan karhutla. Batas provinsi BPS 2020 (34 provinsi, sebelum pemekaran Papua 2022)."
           onSelect={(value) => updateParam("region", value, DEFAULT_REGION)}
         />
         <SelectorDropdown
@@ -213,13 +209,14 @@ function TopBarInner() {
           activeLabel={activeRange.label}
           activeValue={activeRange.value}
           options={TIME_RANGE_OPTIONS}
-          footnote="Hanya '24 Jam Terakhir' menampilkan data langsung. Rentang lain menampilkan contoh ilustratif."
+          footnote="24 jam, 7 hari & 30 hari = data live NASA FIRMS. 2023–2024 = arsip harian per grid 0,25° (tanpa skor prioritas)."
           onSelect={(value) => updateParam("range", value, DEFAULT_RANGE)}
         />
       </div>
 
       {/* Right actions */}
       <div className="flex items-center gap-4 shrink-0">
+        <LanguageToggle className="!text-[var(--color-sidebar-foreground)]/80 !border-white/20 hover:!bg-white/10" />
         <button type="button" aria-label="Notifications" className="text-[var(--color-sidebar-foreground)]/80 hover:text-[var(--color-sidebar-foreground)]">
           <span className="material-symbols-outlined text-[20px]">notifications</span>
         </button>

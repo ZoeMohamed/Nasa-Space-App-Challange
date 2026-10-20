@@ -20,17 +20,24 @@ const FireMap = dynamic(() => import("@/components/map/FireMap"), {
 interface RadarMapProps {
   markers: HotspotMarker[];
   locationLabel?: string;
-  userCoords?: { lat: number; lon: number };
+  /** Omitted when the user hasn't set a location yet — the map then shows all of Indonesia. */
+  userCoords?: { lat: number; lon: number } | null;
   reports?: CommunityReportPin[];
+  radiusKm?: number;
+  heightClass?: string;
 }
+
+const INDONESIA_CENTER: [number, number] = [-2.5, 118];
 
 type MapLayerFilter = "ALL" | "MATCHED" | "VIIRS" | "MODIS";
 
 export default function RadarMap({
   markers,
   locationLabel = "Lokasimu",
-  userCoords = { lat: -3.125, lon: 114.15 },
+  userCoords = null,
   reports = [],
+  radiusKm = 10,
+  heightClass = "h-[420px] md:h-[520px]",
 }: RadarMapProps) {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayerFilter>("ALL");
@@ -66,15 +73,14 @@ export default function RadarMap({
     return markers;
   }, [markers, activeLayer]);
 
-  const userLocationObj: UserLocationPin = useMemo(
-    () => ({
-      lat: userCoords.lat,
-      lng: userCoords.lon,
-      label: locationLabel,
-      radiusKm: 10,
-    }),
-    [userCoords, locationLabel]
+  const userLocationObj: UserLocationPin | undefined = useMemo(
+    () =>
+      userCoords
+        ? { lat: userCoords.lat, lng: userCoords.lon, label: locationLabel, radiusKm }
+        : undefined,
+    [userCoords, locationLabel, radiusKm]
   );
+  const center: [number, number] = userCoords ? [userCoords.lat, userCoords.lon] : INDONESIA_CENTER;
 
   return (
     <>
@@ -102,14 +108,16 @@ export default function RadarMap({
         </div>
 
         {/* Map Content Container — always the real map, never a decorative illustration */}
-        <div className="relative h-[290px] w-full bg-[#f1f6f2] overflow-hidden select-none">
+        <div className={`relative ${heightClass} w-full bg-[#f1f6f2] overflow-hidden select-none`}>
           <div className="h-full w-full">
+            {/* FireMap reads `center` only on mount — remount when the user's location changes. */}
             <FireMap
+              key={`${center[0]},${center[1]}`}
               markers={markers}
               userLocation={userLocationObj}
               reports={reports}
-              center={[userCoords.lat, userCoords.lon]}
-              zoom={10}
+              center={center}
+              zoom={userCoords ? 10 : 5}
               className="h-full w-full"
               showSeverityLegend={true}
               showSymbolLegend={true}
@@ -161,7 +169,7 @@ export default function RadarMap({
                   Peta Pemantauan Karhutla
                 </h1>
                 <p className="text-[10px] text-gray-500 truncate">
-                  {locationLabel} · Radius pantau 10 km
+                  {userCoords ? `${locationLabel} · Radius pantau ${radiusKm} km` : "Seluruh Indonesia"}
                 </p>
               </div>
             </div>
@@ -232,8 +240,8 @@ export default function RadarMap({
               markers={filteredMarkers}
               userLocation={userLocationObj}
               reports={reports}
-              center={[userCoords.lat, userCoords.lon]}
-              zoom={11}
+              center={center}
+              zoom={userCoords ? 11 : 5}
               className="h-full w-full"
               showSeverityLegend={true}
               showSymbolLegend={true}

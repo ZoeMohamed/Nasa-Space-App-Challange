@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Suspense } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { withFilters } from "@/lib/filters";
 
 /**
  * Nav structure, order, labels and icons are taken from the real Dashboard sidebar instance
@@ -63,8 +65,31 @@ function NavLink({ label, icon, href, active }: { label: string; icon: string; h
   );
 }
 
-export default function Sidebar() {
+function SidebarNav({ links }: { links: typeof PRIMARY_LINKS }) {
   const pathname = usePathname();
+  // Region/range live in the URL; carry them to the next page so the TopBar choice sticks.
+  const searchParams = useSearchParams();
+  return (
+    <>
+      {links.map(({ label, icon, href }) => (
+        <NavLink key={label} label={label} icon={icon} href={withFilters(href, searchParams)} active={pathname === href} />
+      ))}
+    </>
+  );
+}
+
+function SidebarNavFallback({ links }: { links: typeof PRIMARY_LINKS }) {
+  const pathname = usePathname();
+  return (
+    <>
+      {links.map(({ label, icon, href }) => (
+        <NavLink key={label} label={label} icon={icon} href={href} active={pathname === href} />
+      ))}
+    </>
+  );
+}
+
+export default function Sidebar() {
 
   return (
     <aside className="w-[230px] bg-[var(--color-sidebar)] flex flex-col justify-between h-full shrink-0 overflow-y-auto custom-scroll">
@@ -82,9 +107,9 @@ export default function Sidebar() {
         <div className="flex flex-col gap-5">
           {/* Primary nav */}
           <nav className="flex flex-col gap-1 px-4">
-            {PRIMARY_LINKS.map(({ label, icon, href }) => (
-              <NavLink key={label} label={label} icon={icon} href={href} active={pathname === href} />
-            ))}
+            <Suspense fallback={<SidebarNavFallback links={PRIMARY_LINKS} />}>
+              <SidebarNav links={PRIMARY_LINKS} />
+            </Suspense>
           </nav>
 
           <div className="h-px bg-white/[0.12]" />
@@ -95,9 +120,9 @@ export default function Sidebar() {
               DATABASE
             </div>
             <nav className="flex flex-col gap-1">
-              {DATABASE_LINKS.map(({ label, icon, href }) => (
-                <NavLink key={label} label={label} icon={icon} href={href} active={pathname === href} />
-              ))}
+              <Suspense fallback={<SidebarNavFallback links={DATABASE_LINKS} />}>
+                <SidebarNav links={DATABASE_LINKS} />
+              </Suspense>
             </nav>
           </div>
         </div>

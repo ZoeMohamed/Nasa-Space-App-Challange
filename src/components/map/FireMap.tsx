@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { HotspotMarker } from "@/types";
+import { formatAdminFull } from "@/lib/adminRegion";
 
 /** A community-submitted field report pin, rendered alongside satellite markers. */
 export interface CommunityReportPin {
@@ -262,7 +263,10 @@ export default function FireMap({
   // square (VIIRS) from 🔥 (harmonized) because this legend used to be
   // hidden behind a click. Still collapsible via the same button.
   const [showLegendModal, setShowLegendModal] = useState(true);
-  const hasAnyLowConfidenceMarker = useMemo(() => markers.some((m) => m.highConfidence === false), [markers]);
+  const hasAnyLowConfidenceMarker = useMemo(
+    () => markers.some((m) => (m.confidenceTier ? m.confidenceTier === "low" : m.highConfidence === false)),
+    [markers]
+  );
 
   const centerLat = center[0];
   const centerLng = center[1];
@@ -467,10 +471,10 @@ export default function FireMap({
               ? `<polygon points="${hexagonPoints(size)}" fill="${color}" stroke="${stroke}" stroke-width="${strokeWidth}" />`
               : `<polygon points="${size / 2},0 ${size},${size} 0,${size}" fill="${color}" stroke="${stroke}" stroke-width="${strokeWidth}" />`;
 
-        // Low/nominal-confidence detections (only present when the caller opted into
-        // includeAllConfidence) are rendered faded + dashed, never visually identical
-        // to a high-confidence detection — same data, honestly lower certainty.
-        const isLowConfidence = marker.highConfidence === false;
+        // FIRMS "low"-confidence detections (only present when the caller opted into
+        // includeAllConfidence) are rendered faded + dashed, never visually identical to a
+        // nominal/high detection. Nominal is a normal valid detection and is drawn normally.
+        const isLowConfidence = marker.confidenceTier ? marker.confidenceTier === "low" : marker.highConfidence === false;
         const opacity = isLowConfidence ? 0.5 : 1;
         const dashed = isLowConfidence ? ` stroke-dasharray="2,1.5"` : "";
 
@@ -756,7 +760,7 @@ export default function FireMap({
                   {hasAnyLowConfidenceMarker && (
                     <div className="flex items-center gap-2">
                       <span className="h-2.5 w-2.5 rounded-full border border-dashed border-gray-400 bg-gray-300 opacity-50" />
-                      <span>Marker pudar/putus-putus = confidence rendah/menengah</span>
+                      <span>Marker pudar/putus-putus = confidence rendah</span>
                     </div>
                   )}
                   {userLocation && (
@@ -954,6 +958,10 @@ export default function FireMap({
                     <span className="font-semibold text-gray-800">
                       {formatAcquiredAt(selectedEntity.marker.acquiredAt)}
                     </span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-400 block text-[10px]">Wilayah</span>
+                    <span className="text-gray-700">{formatAdminFull(selectedEntity.marker.admin) ?? "Tidak tercatat"}</span>
                   </div>
                   <div className="col-span-2">
                     <span className="text-gray-400 block text-[10px]">Koordinat Deteksi</span>

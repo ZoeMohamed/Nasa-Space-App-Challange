@@ -1,0 +1,11 @@
+.venv
+__pycache__
+**/__pycache__
+.pytest_cache
+tests
+ml_experiments
+scripts
+data/reports.sqlite
+data/report_photos
+data/historical_*.sqlite
+data/historical.sqlite

@@ -106,3 +106,31 @@ def test_historical_map_endpoint_returns_grid_markers_for_window(tmp_path, monke
     assert body["meta"]["days"] == 7
     assert len(body["markers"]) == 1
     assert body["markers"][0]["label"].startswith("Historical grid")
+
+
+def test_cell_baseline_uses_viirs_era_only_but_months_keep_every_year(tmp_path):
+    import sqlite3 as _sqlite3
+
+    from fire_pipeline.historical import load_calendar_summary
+
+    path = tmp_path / "era.sqlite"
+    con = _sqlite3.connect(path)
+    con.execute(
+        "CREATE TABLE daily_area_activity (date TEXT, area_id TEXT, grid_lat REAL, grid_lon REAL, detections INTEGER,"
+        " frp_sum REAL, frp_max REAL, modis_detections INTEGER, viirs_detections INTEGER, source TEXT)"
+    )
+    rows = [
+        ("2010-09-01", "a", 1.0, 2.0, 1, 1.0, 1.0, 1, 0, "x"),  # MODIS-only era -> excluded from baseline
+        ("2010-09-02", "a", 1.0, 2.0, 1, 1.0, 1.0, 1, 0, "x"),
+        ("2020-09-01", "a", 1.0, 2.0, 10, 1.0, 1.0, 2, 8, "x"),
+        ("2020-09-02", "a", 1.0, 2.0, 20, 1.0, 1.0, 2, 18, "x"),
+    ]
+    con.executemany("INSERT INTO daily_area_activity VALUES (?,?,?,?,?,?,?,?,?,?)", rows)
+    con.commit()
+    con.close()
+
+    result = load_calendar_summary(str(path))
+    assert {m["year"] for m in result["months"]} == {2010, 2020}
+    cell = result["cells"][0]
+    assert cell["sampleDays"] == 2
+    assert cell["dailyMeanDetections"] == pytest.approx(15.0)

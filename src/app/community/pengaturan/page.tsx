@@ -46,26 +46,33 @@ export default function PengaturanPage() {
       </section>
 
       <div className="space-y-2">
-        <h2 className="text-sm font-bold">Wilayah pemantauan</h2>
-        <div className="space-y-1.5">
-          {REGION_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => update({ region: opt.value })}
-              className={`w-full text-left rounded-xl border px-3 py-2.5 text-sm font-medium flex items-center justify-between ${
-                prefs.region === opt.value
-                  ? "border-[var(--community-accent)] bg-[var(--community-accent)]/10 text-[var(--community-accent)]"
-                  : "border-[var(--community-border)] bg-white"
-              }`}
-            >
-              {opt.label}
-              {prefs.region === opt.value && <span className="material-symbols-outlined text-[18px]">check</span>}
-            </button>
-          ))}
-        </div>
+        <label htmlFor="alert-region" className="text-sm font-bold">
+          Wilayah pemantauan
+        </label>
+        <select
+          id="alert-region"
+          value={prefs.region}
+          onChange={(event) => update({ region: event.target.value })}
+          className="w-full rounded-xl border border-[var(--community-border)] bg-white px-3 py-2.5 text-sm font-medium"
+        >
+          <option value="indonesia">Seluruh Indonesia</option>
+          <optgroup label="Provinsi rawan karhutla">
+            {REGION_OPTIONS.filter((opt) => opt.fireProne).map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Provinsi lainnya">
+            {REGION_OPTIONS.filter((opt) => opt.provinsi && !opt.fireProne).map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </optgroup>
+        </select>
         <p className="text-[11px] text-[var(--community-ink-muted)]">
-          Batas wilayah di atas adalah kotak perkiraan untuk penyaringan data, bukan batas administratif resmi.
+          Batas provinsi BPS 2020 (34 provinsi, sebelum pemekaran Papua 2022).
         </p>
       </div>
 

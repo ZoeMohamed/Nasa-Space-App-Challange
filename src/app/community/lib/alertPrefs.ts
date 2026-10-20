@@ -2,9 +2,10 @@
  * Local-only alert-area preferences ("07 Community — Atur Area Peringatan",
  * Figma node 185:3013). There is no backend endpoint for push-notification
  * targeting, so this is honestly a per-device preference persisted in
- * localStorage — it narrows which REGION_OPTIONS bounds + severity the
- * Notifikasi page treats as "relevant to me" when filtering the real
- * /api/hotspots feed, not a server-side subscription.
+ * localStorage — it narrows which province (REGION_OPTIONS, matched on each
+ * marker's admin.provinsi) + severity the Notifikasi page treats as "relevant
+ * to me" when filtering the real /api/hotspots feed, not a server-side
+ * subscription.
  */
 
 export interface AlertPrefs {

@@ -8,8 +8,11 @@ import WorkstationLayout from "@/components/layout/WorkstationLayout";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import StatTile from "@/components/ui/StatTile";
-import { getRegionOption, getRangeOption, isDemoRange, isWithinBounds } from "@/lib/filters";
-import type { AreaSummary, CommunityReport, HistoricalCalendarResponse, HistoricalMonth, HotspotApiResponse, HotspotMarker } from "@/types";
+import { getRegionOption, getRangeOption, historicalQuery, isArchiveRange, liveWindowFor, matchesRegion, withFilters } from "@/lib/filters";
+import { windowLoadingNote } from "@/lib/hotspots";
+import { useLiveHotspots } from "@/lib/useLiveHotspots";
+import type { CommunityReport, DailyActivity, HistoricalCalendarResponse, HistoricalMonth } from "@/types";
+import { areaRegionLabel } from "@/lib/adminRegion";
 
 
 /**
@@ -45,56 +48,37 @@ const FireMap = dynamic(() => import("@/components/map/FireMap"), {
   ),
 });
 
-const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
-
-async function requestHotspots(signal?: AbortSignal) {
-  const response = await fetch("/api/hotspots", { signal, cache: "no-store" });
-  const body = (await response.json()) as HotspotApiResponse & { error?: string };
-
-  if (!response.ok) {
-    throw new Error(body.error ?? "Unable to load NASA FIRMS data.");
+function sumDaily(rows: DailyActivity[]) {
+  const totals = { total: 0, MATCHED: 0, MODIS_ONLY: 0, VIIRS_ONLY: 0, UNMATCHED: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+  for (const row of rows) {
+    const total = row.modis + row.viirs;
+    totals.total += total;
+    totals.MATCHED += row.matched;
+    totals.MODIS_ONLY += row.modisOnly;
+    totals.VIIRS_ONLY += row.viirsOnly;
+    totals.UNMATCHED += total - row.matched - row.modisOnly - row.viirsOnly;
+    totals.HIGH += row.high;
+    totals.MEDIUM += row.medium;
+    totals.LOW += row.low;
   }
-
-  return body;
+  return totals;
 }
 
-function requestErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unable to load NASA FIRMS data.";
-}
-
-function countByMatchStatus(markers: HotspotMarker[]) {
-  const counts = { MATCHED: 0, MODIS_ONLY: 0, VIIRS_ONLY: 0, UNMATCHED: 0 };
-  for (const marker of markers) {
-    const key = marker.matchStatus ?? "UNMATCHED";
-    if (key in counts) counts[key as keyof typeof counts] += 1;
-  }
-  return counts;
-}
-
-function countBySeverity(markers: HotspotMarker[]) {
-  const counts = { HIGH: 0, MEDIUM: 0, LOW: 0 };
-  for (const marker of markers) {
-    counts[marker.severity] += 1;
-  }
-  return counts;
-}
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
 
 function DashboardPageContent() {
   const searchParams = useSearchParams();
   const activeRegion = getRegionOption(searchParams.get("region"));
   const activeRange = getRangeOption(searchParams.get("range"));
-  const demoRange = isDemoRange(searchParams.get("range"));
+  const archiveRange = isArchiveRange(searchParams.get("range"));
+  const liveWindow = liveWindowFor(searchParams.get("range"));
+  const periodLabel = archiveRange ? "24 Jam Terakhir" : activeRange.label;
 
-  const [allMarkers, setAllMarkers] = useState<HotspotMarker[]>([]);
-  const [allAreas, setAllAreas] = useState<AreaSummary[]>([]);
-  const [meta, setMeta] = useState<HotspotApiResponse["meta"] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, error, loading, refresh: refreshHotspots } = useLiveHotspots(liveWindow, { province: activeRegion.provinsi });
+  const meta = data?.meta ?? null;
   const [reports, setReports] = useState<CommunityReport[]>([]);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const [historicalMonths, setHistoricalMonths] = useState<HistoricalMonth[]>([]);
-  const [historicalLoading, setHistoricalLoading] = useState(false);
-
+  const [historical, setHistorical] = useState<{ key: string; months: HistoricalMonth[] } | null>(null);
 
   // Citizen reports, shown as person-pin markers on the dashboard map alongside
   // satellite detections — same shared backend as /map and /citizen-reports.
@@ -114,104 +98,52 @@ function DashboardPageContent() {
     };
   }, []);
 
-  // Fetch real multi-year monthly historical data when a non-24h demoRange is selected
+  // Archive range: monthly totals from the offline store, province-filtered server-side.
+  const historicalKey = archiveRange ? `${activeRange.value}|${activeRegion.value}` : "";
   useEffect(() => {
-    if (!demoRange) return;
+    if (!archiveRange) return;
     const controller = new AbortController();
-    // Avoid calling setState synchronously in the effect body (react-hooks/set-state-in-effect)
-    // — same pattern used elsewhere in this app (see src/app/priority-areas/page.tsx): defer
-    // the "started loading" flip into a microtask instead of setting it inline here.
-    queueMicrotask(() => {
-      if (!controller.signal.aborted) setHistoricalLoading(true);
-    });
-
-    const params = new URLSearchParams();
-    if (activeRegion.bounds) {
-      params.set("min_lat", activeRegion.bounds.minLat.toString());
-      params.set("max_lat", activeRegion.bounds.maxLat.toString());
-      params.set("min_lon", activeRegion.bounds.minLon.toString());
-      params.set("max_lon", activeRegion.bounds.maxLon.toString());
-    }
-
-    fetch(`/api/historical${params.toString() ? `?${params.toString()}` : ""}`, {
-      signal: controller.signal,
-      cache: "no-store",
-    })
+    const query = historicalQuery(activeRegion);
+    fetch(`/api/historical${query ? `?${query}` : ""}`, { signal: controller.signal, cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((body: HistoricalCalendarResponse | null) => {
-        if (!body?.months) return;
-        setHistoricalMonths(body.months.slice(-10));
+        const start = activeRange.startDate ?? "";
+        const end = activeRange.endDate ?? "9999";
+        const months = (body?.months ?? []).filter((m) => {
+          const ym = `${m.year}-${String(m.month).padStart(2, "0")}`;
+          return ym >= start.slice(0, 7) && ym <= end.slice(0, 7);
+        });
+        setHistorical({ key: historicalKey, months });
       })
       .catch((err) => {
         if (err instanceof DOMException && err.name === "AbortError") return;
-      })
-      .finally(() => {
-        setHistoricalLoading(false);
+        setHistorical({ key: historicalKey, months: [] });
       });
+    return () => controller.abort();
+  }, [archiveRange, historicalKey, activeRegion, activeRange.startDate, activeRange.endDate]);
+  const historicalMonths = useMemo(
+    () => (historical?.key === historicalKey ? historical.months : []),
+    [historical, historicalKey]
+  );
+  const historicalLoading = archiveRange && historical?.key !== historicalKey;
 
-    return () => {
-      controller.abort();
-    };
-  }, [demoRange, activeRegion]);
-
-  // Region filter — client-side bbox check against the already-fetched live markers/areas.
-  // Bounding boxes are approximate (see src/lib/filters.ts), "Seluruh Indonesia" is a no-op.
   const markers = useMemo(
-    () => allMarkers.filter((marker) => isWithinBounds(marker.lat, marker.lng, activeRegion.bounds)),
-    [allMarkers, activeRegion]
+    () => (data?.markers ?? []).filter((marker) => matchesRegion(marker.admin, activeRegion)),
+    [data, activeRegion]
   );
   const areas = useMemo(
-    () => allAreas.filter((area) => isWithinBounds(area.gridLat, area.gridLon, activeRegion.bounds)),
-    [allAreas, activeRegion]
+    () => (data?.areas ?? []).filter((area) => matchesRegion(area.admin, activeRegion)),
+    [data, activeRegion]
   );
+  // Exact counts over every detection (markers are capped for 7d/30d windows).
+  const dailyRows = useMemo(
+    () => (data?.daily ?? []).filter((row) => !activeRegion.provinsi || row.provinsi === activeRegion.provinsi),
+    [data, activeRegion]
+  );
+  const totals = useMemo(() => sumDaily(dailyRows), [dailyRows]);
+  const matchCounts = totals;
+  const severityCounts = totals;
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const load = () => {
-      requestHotspots(controller.signal)
-        .then((body) => {
-          setAllMarkers(body.markers);
-          setAllAreas(body.areas);
-          setMeta(body.meta);
-          setError(null);
-        })
-        .catch((requestError: unknown) => {
-          if (requestError instanceof DOMException && requestError.name === "AbortError") return;
-          setError(requestErrorMessage(requestError));
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setLoading(false);
-        });
-    };
-
-    load();
-    const interval = window.setInterval(load, REFRESH_INTERVAL_MS);
-
-    return () => {
-      controller.abort();
-      window.clearInterval(interval);
-    };
-  }, []);
-
-  async function refreshHotspots() {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const body = await requestHotspots();
-      setAllMarkers(body.markers);
-      setAllAreas(body.areas);
-      setMeta(body.meta);
-    } catch (requestError) {
-      setError(requestErrorMessage(requestError));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const matchCounts = useMemo(() => countByMatchStatus(markers), [markers]);
-  const severityCounts = useMemo(() => countBySeverity(markers), [markers]);
   const highPriorityAreaCount = useMemo(
     () => areas.filter((area) => area.priorityTier === "high").length,
     [areas]
@@ -225,18 +157,16 @@ function DashboardPageContent() {
   }, [areas]);
 
   const harmonizationSentence = useMemo(() => {
-    const total = markers.length;
+    const { total, MATCHED, MODIS_ONLY, VIIRS_ONLY, UNMATCHED } = matchCounts;
     if (total === 0) return null;
-    const { MATCHED, MODIS_ONLY, VIIRS_ONLY, UNMATCHED } = matchCounts;
-    return `Dari ${total.toLocaleString()} deteksi pada jendela 24 jam terakhir, ${MATCHED.toLocaleString()} cocok di dua sensor (MODIS + VIIRS), ${MODIS_ONLY.toLocaleString()} hanya terdeteksi MODIS, ${VIIRS_ONLY.toLocaleString()} hanya terdeteksi VIIRS, dan ${UNMATCHED.toLocaleString()} belum tertandai. Harmonisasi mengurangi penghitungan ganda, bukan mengonfirmasi kejadian kebakaran.`;
-  }, [markers, matchCounts]);
+    return `Dari ${total.toLocaleString()} deteksi dalam ${periodLabel.toLowerCase()}, ${MATCHED.toLocaleString()} cocok di dua sensor (MODIS + VIIRS), ${MODIS_ONLY.toLocaleString()} hanya terdeteksi MODIS, ${VIIRS_ONLY.toLocaleString()} hanya terdeteksi VIIRS, dan ${UNMATCHED.toLocaleString()} belum tertandai. Harmonisasi mengurangi penghitungan ganda, bukan mengonfirmasi kejadian kebakaran.`;
+  }, [matchCounts, periodLabel]);
 
   const timeSeriesData = useMemo(() => {
-    if (demoRange && historicalMonths.length > 0) {
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
+    if (archiveRange) {
       return historicalMonths.map((m) => ({
-        label: `${monthNames[m.month - 1]} '${String(m.year).slice(2)}`,
-        fullLabel: `${monthNames[m.month - 1]} ${m.year}`,
+        label: `${MONTH_NAMES[m.month - 1]} '${String(m.year).slice(2)}`,
+        fullLabel: `${MONTH_NAMES[m.month - 1]} ${m.year}`,
         harmonized: m.detections,
         modis: m.modisDetections,
         viirs: m.viirsDetections,
@@ -244,6 +174,25 @@ function DashboardPageContent() {
           ? Math.max(0, (m.modisDetections + m.viirsDetections) - m.detections)
           : 0,
       }));
+    }
+
+    // 7d / 30d: one bar per UTC day from the exact daily summary.
+    if (liveWindow !== "24h") {
+      const byDate = new Map<string, DailyActivity[]>();
+      for (const row of dailyRows) byDate.set(row.date, [...(byDate.get(row.date) ?? []), row]);
+      return [...byDate.keys()].sort().map((date) => {
+        const day = sumDaily(byDate.get(date) ?? []);
+        const [, month, dayOfMonth] = date.split("-").map(Number);
+        const matchedPairs = Math.round(day.MATCHED / 2);
+        return {
+          label: `${dayOfMonth} ${MONTH_NAMES[month - 1]}`,
+          fullLabel: `${dayOfMonth} ${MONTH_NAMES[month - 1]} (UTC)`,
+          harmonized: day.total - matchedPairs,
+          modis: (byDate.get(date) ?? []).reduce((sum, row) => sum + row.modis, 0),
+          viirs: (byDate.get(date) ?? []).reduce((sum, row) => sum + row.viirs, 0),
+          overlap: matchedPairs,
+        };
+      });
     }
 
     // 24h NRT Live Satellite Overpass Bins (8 x 3-hour windows in UTC)
@@ -282,7 +231,7 @@ function DashboardPageContent() {
         overlap: bin.matched > 0 ? matchedPairs : 0,
       };
     });
-  }, [demoRange, historicalMonths, markers]);
+  }, [archiveRange, historicalMonths, liveWindow, dailyRows, markers]);
 
   const timeSeriesSummary = useMemo(() => {
     let maxVal = 0;
@@ -333,7 +282,7 @@ function DashboardPageContent() {
           </div>
           <button
             type="button"
-            onClick={() => void refreshHotspots()}
+            onClick={refreshHotspots}
             disabled={loading}
             className="h-9 px-4 bg-white border border-[var(--color-border)] rounded-lg text-sm font-medium text-blue-600 shadow-sm hover:bg-gray-50 disabled:text-gray-400 shrink-0"
           >
@@ -349,9 +298,9 @@ function DashboardPageContent() {
             {error
               ? error
               : loading
-                ? "NASA live → Python processing…"
+                ? (windowLoadingNote(liveWindow) ?? "NASA live → Python processing…")
                 : meta
-                  ? `Wilayah: ${meta.area} • Jendela: ${meta.windowHours} jam terakhir • Diperbarui ${new Date(meta.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                  ? `Wilayah: ${activeRegion.label} • Periode: ${periodLabel} • Diperbarui ${new Date(meta.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
                   : ""}
           </span>
           {!loading && !error && meta && (
@@ -462,8 +411,8 @@ function DashboardPageContent() {
               icon="local_fire_department"
               iconTone="red"
               label="Total Hotspots"
-              value={markers.length.toLocaleString()}
-              caption={`Jendela ${meta?.windowHours ?? 24} jam terakhir`}
+              value={totals.total.toLocaleString()}
+              caption={periodLabel}
             />
             <StatTile
               icon="location_on"
@@ -517,9 +466,9 @@ function DashboardPageContent() {
                     <h3 className="font-bold text-[var(--color-text-main)] text-sm md:text-base flex items-center gap-2">
                       Time Series
                       <span className="text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
-                        {demoRange ? "Arsip Historis" : "NRT 24 Jam"}
+                        {archiveRange ? "Arsip Historis" : `NRT ${activeRange.label.replace(" Terakhir", "")}`}
                       </span>
-                      {demoRange && historicalLoading && (
+                      {historicalLoading && (
                         <span className="text-[10px] font-medium normal-case text-[var(--color-text-muted)] animate-pulse">
                           Memuat arsip…
                         </span>
@@ -545,7 +494,7 @@ function DashboardPageContent() {
               </div>
 
               <p className="text-xs text-[var(--color-text-muted)] mb-3">
-                Tren deteksi harian terharmonisasi (MODIS + VIIRS) • {demoRange ? `Agregasi bulanan ${activeRange.label}` : "Per jendela orbit satelit (UTC)"}
+                Tren deteksi harian terharmonisasi (MODIS + VIIRS) • {archiveRange ? `Agregasi bulanan ${activeRange.label}` : liveWindow === "24h" ? "Per jendela orbit satelit (UTC)" : "Per hari (UTC)"}
               </p>
 
               {/* Chart Canvas Area */}
@@ -713,7 +662,7 @@ function DashboardPageContent() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-bold text-[var(--color-text-main)]">
-                      Grid {topArea.gridLat.toFixed(2)}, {topArea.gridLon.toFixed(2)} — Prioritas Verifikasi
+                      {areaRegionLabel(topArea).title} — Prioritas Verifikasi
                     </h3>
                     <Badge tone="high">#{topArea.priorityRank}</Badge>
                   </div>
@@ -727,7 +676,7 @@ function DashboardPageContent() {
                 </div>
               </div>
               <Link
-                href="/priority-areas"
+                href={withFilters("/priority-areas", searchParams)}
                 className="shrink-0 px-5 py-2 bg-[#f04438] text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-red-600 transition-colors"
               >
                 Tinjau

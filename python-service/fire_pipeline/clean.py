@@ -72,3 +72,32 @@ def add_quality_flags(df):
         out["quality_ok"] &= out.frp.ge(0)
     out["quality_ok"] &= ~out["flag_missing_datetime"] & ~out["flag_invalid_coordinate"]
     return out
+
+
+def confidence_tier(frame, column="confidence"):
+    """Per-row confidence tier "low" / "nominal" / "high", using NASA FIRMS's own class ranges.
+
+    MODIS (0-100 %): low 0-29, nominal 30-79, high 80-100. VIIRS 375 m is categorical: "l", "n",
+    "h". Per FIRMS documentation, VIIRS "high" means *saturated* pixels only, while "nominal" means a
+    strong (>15 K) thermal anomaly free of sun-glint contamination -- i.e. a normal, valid detection.
+    Unparseable values are treated as "low" so they are never shown by default.
+    """
+    text = frame[column].astype(str).str.strip().str.lower()
+    number = pd.to_numeric(frame[column], errors="coerce")
+    tier = pd.Series("low", index=frame.index, dtype="object")
+    tier[number.ge(30)] = "nominal"
+    tier[number.ge(80)] = "high"
+    tier[text.eq("n")] = "nominal"
+    tier[text.eq("h")] = "high"
+    return tier
+
+
+def usable_confidence_mask(frame, column="confidence"):
+    """Default display/analysis filter (since 2026-10-20): nominal + high, i.e. drop only "low".
+
+    Replaced high_confidence_mask() as the default because that filter kept VIIRS "h" (saturated
+    pixels) only -- ~6% of VIIRS detections -- and so hid most valid VIIRS detections. Nominal + high
+    matches FIRMS's own guidance and the medium + high classes behind SiPongi's hotspot counts
+    (low 0-29 / medium 30-79 / high 80-100).
+    """
+    return confidence_tier(frame, column).ne("low")

@@ -25,6 +25,8 @@ import sqlite3
 import uuid
 from datetime import datetime, timezone
 
+from .admin_lookup import attach_admin
+
 ALLOWED_STATUSES = {"submitted", "under_review", "satellite_matched", "verified", "rejected"}
 
 
@@ -200,7 +202,9 @@ def list_reports(submitter_token=None, status=None, sqlite_path: str | None = No
         rows = connection.execute(query, params).fetchall()
     finally:
         connection.close()
-    return [_row_to_report(row) for row in rows]
+    reports = [_row_to_report(row) for row in rows]
+    attach_admin(reports, lat_key="lat", lon_key="lon")
+    return reports
 
 
 def get_report(report_id: str, sqlite_path: str | None = None) -> dict | None:
@@ -226,6 +230,7 @@ def get_report(report_id: str, sqlite_path: str | None = None) -> dict | None:
         connection.close()
 
     report = _row_to_report(row)
+    attach_admin([report], lat_key="lat", lon_key="lon")
     report["satelliteLinks"] = [
         {
             "markerId": link["marker_id"],

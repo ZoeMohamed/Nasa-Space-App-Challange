@@ -1,133 +1,155 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   type GeoPermissionStatus,
   type LocationFix,
   hasGrantedLocationBefore,
+  loadManualFix,
   rememberLocationGrantedOnce,
+  saveManualFix,
 } from "./geo";
 
 export interface LocationState {
   geoStatus: GeoPermissionStatus;
   errorMessage: string | null;
   fix: LocationFix | null;
+  /** False until the saved manual pick / auto-GPS check has run — avoids flashing "no location". */
+  ready: boolean;
   /** Requests the browser's geolocation with two-tier high->low accuracy fallback. */
   requestGeolocation: () => void;
-  /** Sets a manually-chosen point (typed coordinates or a known-area pick). */
+  /** Sets a manually-chosen point (searched place or typed coordinates). Remembered on this device. */
   setManualFix: (next: LocationFix) => void;
   clearFix: () => void;
 }
 
 /**
- * Shared geolocation state machine for the Community View.
- * Uses a two-tier strategy: attempts high-accuracy GPS with a 5s timeout,
- * and if that fails or times out (common on macOS / desktop browsers lacking GPS hardware),
- * immediately falls back to network/Wi-Fi positioning (enableHighAccuracy: false).
+ * One location for the whole Community View. Lives in community/layout.tsx so a location chosen on
+ * one page is the same on every other page (previously each page kept its own copy, so a pick on
+ * Beranda vanished on navigation). Two-tier GPS: high accuracy with a 6 s timeout, then
+ * network/Wi-Fi positioning — common on desktops without GPS hardware.
  */
-export function useLocationState(): LocationState {
+function useLocationStateInternal(): LocationState {
   const [geoStatus, setGeoStatus] = useState<GeoPermissionStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fix, setFix] = useState<LocationFix | null>(null);
-  const isAutoChecking = useRef(false);
+  const [ready, setReady] = useState(false);
+  const didInit = useRef(false);
 
   const requestGeolocation = useCallback(() => {
     if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
       setGeoStatus("unavailable");
-      setErrorMessage("Perangkat atau browser ini tidak mendukung layanan lokasi.");
+      setErrorMessage("Perangkat atau browser ini tidak mendukung layanan lokasi. Cari nama tempat Anda di bawah.");
       return;
     }
 
     setGeoStatus("loading");
     setErrorMessage(null);
 
-    // Fallback: standard network/Wi-Fi geolocation
+    const onSuccess = (position: GeolocationPosition) => {
+      const next: LocationFix = {
+        lat: position.coords.latitude,
+        lon: position.coords.longitude,
+        source: "gps",
+        accuracyMeters: position.coords.accuracy,
+      };
+      setFix(next);
+      saveManualFix(null); // GPS now wins over an older manual pick.
+      setGeoStatus("granted");
+      rememberLocationGrantedOnce();
+    };
+
     const fallbackToLowAccuracy = () => {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setFix({
-            lat: position.coords.latitude,
-            lon: position.coords.longitude,
-            source: "gps",
-            accuracyMeters: position.coords.accuracy,
-          });
-          setGeoStatus("granted");
-          rememberLocationGrantedOnce();
-        },
+        onSuccess,
         (error) => {
           if (error.code === error.PERMISSION_DENIED) {
             setGeoStatus("denied");
-            setErrorMessage("Izin lokasi ditolak di browser. Silakan izinkan akses lokasi di pengaturan browser atau pilih manual.");
-          } else if (error.code === error.TIMEOUT) {
-            setGeoStatus("unavailable");
-            setErrorMessage("Permintaan lokasi memakan waktu terlalu lama. Pastikan koneksi atau pilih lokasi manual.");
+            setErrorMessage("Izin lokasi ditolak di browser. Izinkan akses lokasi, atau cari nama tempat Anda di bawah.");
           } else {
             setGeoStatus("unavailable");
-            setErrorMessage("Lokasi tidak dapat ditentukan otomatis. Silakan pilih lokasi secara manual.");
+            setErrorMessage(
+              error.code === error.TIMEOUT
+                ? "Lokasi terlalu lama ditemukan. Cari nama tempat Anda di bawah."
+                : "Lokasi tidak bisa ditentukan otomatis (umum di laptop/desktop). Cari nama tempat Anda di bawah."
+            );
           }
         },
         { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 }
       );
     };
 
-    // Primary attempt: high-accuracy GPS (fast timeout 6s)
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setFix({
-          lat: position.coords.latitude,
-          lon: position.coords.longitude,
-          source: "gps",
-          accuracyMeters: position.coords.accuracy,
-        });
-        setGeoStatus("granted");
-        rememberLocationGrantedOnce();
-      },
+      onSuccess,
       (error) => {
-        // If explicitly denied by user, do not fallback
         if (error.code === error.PERMISSION_DENIED) {
           setGeoStatus("denied");
-          setErrorMessage("Izin lokasi ditolak. Anda tetap bisa memilih lokasi secara manual di bawah.");
+          setErrorMessage("Izin lokasi ditolak. Anda tetap bisa mencari nama tempat Anda di bawah.");
           return;
         }
-        // If POSITION_UNAVAILABLE or TIMEOUT, immediately fallback to low accuracy
         fallbackToLowAccuracy();
       },
       { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 }
     );
   }, []);
 
-  // Check if permission was already granted previously or in browser permissions
+  // Restore a saved manual pick, otherwise auto-request GPS only if permission was already given.
   useEffect(() => {
-    if (typeof window === "undefined" || !("geolocation" in navigator) || isAutoChecking.current) return;
-    isAutoChecking.current = true;
+    if (didInit.current) return;
+    didInit.current = true;
 
-    if (navigator.permissions && navigator.permissions.query) {
-      navigator.permissions
-        .query({ name: "geolocation" })
-        .then((permission) => {
-          if (permission.state === "granted" || (permission.state === "prompt" && hasGrantedLocationBefore())) {
-            requestGeolocation();
-          }
-        })
-        .catch(() => {
-          if (hasGrantedLocationBefore()) {
-            requestGeolocation();
-          }
-        });
-    } else if (hasGrantedLocationBefore()) {
-      queueMicrotask(() => requestGeolocation());
-    }
+    queueMicrotask(() => {
+      const saved = loadManualFix();
+      if (saved) {
+        setFix(saved);
+        setReady(true);
+        return;
+      }
+      setReady(true);
+      if (typeof navigator === "undefined" || !("geolocation" in navigator)) return;
+      if (navigator.permissions?.query) {
+        navigator.permissions
+          .query({ name: "geolocation" })
+          .then((permission) => {
+            if (permission.state === "granted" || (permission.state === "prompt" && hasGrantedLocationBefore())) {
+              requestGeolocation();
+            }
+          })
+          .catch(() => {
+            if (hasGrantedLocationBefore()) requestGeolocation();
+          });
+      } else if (hasGrantedLocationBefore()) {
+        requestGeolocation();
+      }
+    });
   }, [requestGeolocation]);
 
   const setManualFix = useCallback((next: LocationFix) => {
     setFix(next);
+    saveManualFix(next);
     setErrorMessage(null);
   }, []);
 
   const clearFix = useCallback(() => {
     setFix(null);
+    saveManualFix(null);
   }, []);
 
-  return { geoStatus, errorMessage, fix, requestGeolocation, setManualFix, clearFix };
+  return useMemo(
+    () => ({ geoStatus, errorMessage, fix, ready, requestGeolocation, setManualFix, clearFix }),
+    [geoStatus, errorMessage, fix, ready, requestGeolocation, setManualFix, clearFix]
+  );
 }
 
+const LocationContext = createContext<LocationState | null>(null);
+
+export function CommunityLocationProvider({ children }: { children: React.ReactNode }) {
+  const value = useLocationStateInternal();
+  return createElement(LocationContext.Provider, { value }, children);
+}
+
+export function useLocationState(): LocationState {
+  const ctx = useContext(LocationContext);
+  if (!ctx) throw new Error("useLocationState must be used inside CommunityLocationProvider");
+  return ctx;
+}

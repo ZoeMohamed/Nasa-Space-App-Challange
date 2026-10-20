@@ -7,8 +7,11 @@ import WorkstationLayout from "@/components/layout/WorkstationLayout";
 import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
 import StatTile from "@/components/ui/StatTile";
-import { getRegionOption, getRangeOption, isDemoRange, isWithinBounds } from "@/lib/filters";
-import type { AreaSummary, CommunityReport, HotspotApiResponse, HotspotMarker } from "@/types";
+import { getRegionOption, getRangeOption, isArchiveRange, liveWindowFor, matchesRegion } from "@/lib/filters";
+import { windowLoadingNote } from "@/lib/hotspots";
+import { useLiveHotspots } from "@/lib/useLiveHotspots";
+import type { AreaSummary, CommunityReport, HotspotMarker } from "@/types";
+import { areaRegionLabel, formatAdminFull } from "@/lib/adminRegion";
 
 const FireMap = dynamic(() => import("@/components/map/FireMap"), {
   ssr: false,
@@ -19,7 +22,6 @@ const FireMap = dynamic(() => import("@/components/map/FireMap"), {
   ),
 });
 
-const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_AREAS_SHOWN = 20;
 
 type DetailTab = "overview" | "detections" | "actionplan";
@@ -78,21 +80,6 @@ const TIER_STYLE: Record<AreaSummary["priorityTier"], { bar: string; badgeBg: st
   },
 };
 
-async function requestHotspots(signal?: AbortSignal) {
-  const response = await fetch("/api/hotspots", { signal, cache: "no-store" });
-  const body = (await response.json()) as HotspotApiResponse & { error?: string };
-
-  if (!response.ok) {
-    throw new Error(body.error ?? "Unable to load NASA FIRMS data.");
-  }
-
-  return body;
-}
-
-function requestErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unable to load NASA FIRMS data.";
-}
-
 function trendLabel(growth: number | null) {
   if (growth === null || Number.isNaN(growth)) {
     return { text: "Data belum cukup", icon: "remove", className: "text-gray-400" };
@@ -100,6 +87,18 @@ function trendLabel(growth: number | null) {
   if (growth > 0.1) return { text: "Meningkat", icon: "trending_up", className: "text-[#f04438]" };
   if (growth < -0.1) return { text: "Menurun", icon: "trending_down", className: "text-emerald-600" };
   return { text: "Stabil", icon: "trending_flat", className: "text-gray-500" };
+}
+
+/** Plain-language reasons, each read straight from this area's own pipeline fields. */
+function priorityReasons(area: AreaSummary): string[] {
+  const reasons: string[] = [];
+  if (area.detections) reasons.push(`${area.detections} deteksi dalam 24 jam terakhir`);
+  if (area.frpMax !== null && area.frpMax > 0) reasons.push(`Intensitas panas tertinggi ${area.frpMax.toFixed(0)} MW`);
+  if ((area.modisDetections ?? 0) > 0 && (area.viirsDetections ?? 0) > 0) reasons.push("Terlihat oleh MODIS dan VIIRS");
+  if (area.consecutiveActiveDays !== null && area.consecutiveActiveDays > 1)
+    reasons.push(`Aktif ${area.consecutiveActiveDays} hari berturut-turut`);
+  if (area.growth !== null && area.growth > 0.1) reasons.push("Aktivitas sedang meningkat");
+  return reasons.slice(0, 3);
 }
 
 function AreaCard({ area, onOpenDetail }: { area: AreaSummary; onOpenDetail: (areaId: string) => void }) {
@@ -123,12 +122,8 @@ function AreaCard({ area, onOpenDetail }: { area: AreaSummary; onOpenDetail: (ar
               </span>
             )}
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-1">
-            Grid {area.gridLat.toFixed(2)}, {area.gridLon.toFixed(2)}
-          </h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Belum ada data batas wilayah administratif — koordinat grid 0.25° ditampilkan apa adanya.
-          </p>
+          <h3 className="text-xl font-bold text-gray-900 mb-1">{areaRegionLabel(area).title}</h3>
+          <p className="text-sm text-gray-600 mb-4">{areaRegionLabel(area).caption}</p>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
@@ -156,11 +151,27 @@ function AreaCard({ area, onOpenDetail }: { area: AreaSummary; onOpenDetail: (ar
 
         <div className={`${style.panelBg} rounded-lg p-4 border ${style.panelBorder} w-full lg:w-72 flex flex-col justify-between shrink-0`}>
           <div>
-            <h4 className={`text-xs font-bold ${style.badgeText} mb-1 uppercase`}>Kriteria Prioritas</h4>
-            <p className="text-xs text-gray-700 mb-2 font-mono">{area.attentionCriteria}</p>
-            <p className="text-xs text-gray-600 mb-4">
-              Perlu verifikasi lapangan sebelum tindak lanjut. Ini bukan konfirmasi kebakaran.
+            <h4 className={`text-xs font-bold ${style.badgeText} mb-1 uppercase`}>Skor Prioritas</h4>
+            <p className="mb-3 flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-gray-900">
+                {area.priorityScore !== null ? Math.round(area.priorityScore * 100) : "—"}
+              </span>
+              <span className="text-xs text-gray-500">/ 100</span>
+              {area.priorityRank !== null && (
+                <span className="ml-auto text-xs font-semibold text-gray-600">Peringkat #{area.priorityRank}</span>
+              )}
             </p>
+            {priorityReasons(area).length > 0 && (
+              <ul className="space-y-1 mb-3">
+                {priorityReasons(area).map((reason) => (
+                  <li key={reason} className="flex items-start gap-1.5 text-xs text-gray-700">
+                    <span className="material-symbols-outlined text-[14px] text-gray-500">check_small</span>
+                    {reason}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="text-xs text-gray-600 mb-4">Langkah berikutnya: verifikasi lapangan.</p>
           </div>
           <div className="flex flex-col gap-2">
             <button
@@ -297,9 +308,8 @@ function AreaDetailPanel({
             <Badge tone={area.priorityTier}>{style.label}</Badge>
             <span className="text-xs text-gray-500 font-mono">{area.areaId}</span>
           </div>
-          <h2 className="text-lg font-bold text-gray-900">
-            Grid {area.gridLat.toFixed(2)}, {area.gridLon.toFixed(2)}
-          </h2>
+          <h2 className="text-lg font-bold text-gray-900">{areaRegionLabel(area).title}</h2>
+          <p className="text-xs text-gray-500">{areaRegionLabel(area).caption}</p>
         </div>
         <button
           type="button"
@@ -445,7 +455,7 @@ function AreaDetailPanel({
                         </Badge>
                       </div>
                       <p className="text-xs text-gray-500 truncate">
-                        ID: {marker.id} • Koordinat: {marker.lat.toFixed(4)}, {marker.lng.toFixed(4)}
+                        {formatAdminFull(marker.admin) ?? "Wilayah tidak tercatat"} • {marker.lat.toFixed(4)}, {marker.lng.toFixed(4)}
                       </p>
                     </div>
                     <div className="flex items-center gap-5 shrink-0 text-right">
@@ -543,13 +553,11 @@ function PriorityAreasPageContent() {
   const searchParams = useSearchParams();
   const activeRegion = getRegionOption(searchParams.get("region"));
   const activeRange = getRangeOption(searchParams.get("range"));
-  const demoRange = isDemoRange(searchParams.get("range"));
+  const archiveRange = isArchiveRange(searchParams.get("range"));
+  const liveWindow = liveWindowFor(searchParams.get("range"));
 
-  const [allAreas, setAllAreas] = useState<AreaSummary[]>([]);
-  const [allMarkers, setAllMarkers] = useState<HotspotMarker[]>([]);
-  const [meta, setMeta] = useState<HotspotApiResponse["meta"] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, error, loading, refresh } = useLiveHotspots(liveWindow, { province: activeRegion.provinsi });
+  const meta = data?.meta ?? null;
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [reports, setReports] = useState<CommunityReport[]>([]);
 
@@ -569,60 +577,14 @@ function PriorityAreasPageContent() {
     };
   }, []);
 
-  // Region filter — client-side bbox check against the already-fetched live areas/markers.
-  // Bounding boxes are approximate (see src/lib/filters.ts), "Seluruh Indonesia" is a no-op.
   const areas = useMemo(
-    () => allAreas.filter((area) => isWithinBounds(area.gridLat, area.gridLon, activeRegion.bounds)),
-    [allAreas, activeRegion]
+    () => (data?.areas ?? []).filter((area) => matchesRegion(area.admin, activeRegion)),
+    [data, activeRegion]
   );
   const markers = useMemo(
-    () => allMarkers.filter((marker) => isWithinBounds(marker.lat, marker.lng, activeRegion.bounds)),
-    [allMarkers, activeRegion]
+    () => (data?.markers ?? []).filter((marker) => matchesRegion(marker.admin, activeRegion)),
+    [data, activeRegion]
   );
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const load = () => {
-      requestHotspots(controller.signal)
-        .then((body) => {
-          setAllAreas(body.areas);
-          setAllMarkers(body.markers);
-          setMeta(body.meta);
-          setError(null);
-        })
-        .catch((requestError: unknown) => {
-          if (requestError instanceof DOMException && requestError.name === "AbortError") return;
-          setError(requestErrorMessage(requestError));
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setLoading(false);
-        });
-    };
-
-    load();
-    const interval = window.setInterval(load, REFRESH_INTERVAL_MS);
-
-    return () => {
-      controller.abort();
-      window.clearInterval(interval);
-    };
-  }, []);
-
-  async function refresh() {
-    setLoading(true);
-    setError(null);
-    try {
-      const body = await requestHotspots();
-      setAllAreas(body.areas);
-      setAllMarkers(body.markers);
-      setMeta(body.meta);
-    } catch (requestError) {
-      setError(requestErrorMessage(requestError));
-    } finally {
-      setLoading(false);
-    }
-  }
 
   const sorted = [...areas]
     .sort((a, b) => (a.priorityRank ?? Number.MAX_SAFE_INTEGER) - (b.priorityRank ?? Number.MAX_SAFE_INTEGER))
@@ -639,11 +601,6 @@ function PriorityAreasPageContent() {
               <span>Areas of Attention & Priority</span>
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Priority Areas</h1>
-            <p className="text-sm text-gray-500 max-w-2xl">
-              Sel grid 0,25° (bukan nama wilayah resmi) yang disarankan untuk verifikasi lapangan lebih dulu,
-              diurutkan dari skor prioritas tertinggi. Kriteria &amp; bobot ditampilkan apa adanya — ini bukan
-              prediksi atau konfirmasi kebakaran.
-            </p>
             <p className="text-xs text-gray-400 max-w-2xl mt-1.5">
               Skor = formula deterministik (50% attention score + 30% tren pertumbuhan + 20% jumlah deteksi), bukan
               AI atau model prediktif. Attention score sendiri = 45% FRP + 30% persistensi + 25% jumlah deteksi.
@@ -654,7 +611,7 @@ function PriorityAreasPageContent() {
           </div>
           <button
             type="button"
-            onClick={() => void refresh()}
+            onClick={refresh}
             disabled={loading}
             className="h-9 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium text-blue-600 shadow-sm hover:bg-gray-50 disabled:text-gray-400"
           >
@@ -670,29 +627,38 @@ function PriorityAreasPageContent() {
             {error
               ? error
               : loading
-                ? "NASA live → Python processing…"
+                ? (windowLoadingNote(liveWindow) ?? "NASA live → Python processing…")
                 : meta
-                  ? `${meta.processing.areasAnalyzed.toLocaleString()} area dianalisis • diperbarui ${new Date(meta.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                  ? `${areas.length.toLocaleString()} area • diperbarui ${new Date(meta.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
                   : ""}
           </span>
-          <span className="text-gray-400">• Wilayah: {activeRegion.label}</span>
+          <span className="text-gray-400">
+            • Wilayah: {activeRegion.label} • Periode: {archiveRange ? "24 Jam Terakhir" : activeRange.label}
+          </span>
         </div>
 
-        {/* Priority ranking is always derived from the live 24h NASA FIRMS window — there's no
-            historical priority store, so a non-24h range selection doesn't change this list.
-            Honest note instead of fabricating a historical ranking. */}
-        {demoRange && (
+        {/* The offline archive is daily grid totals with no per-detection data, so no priority
+            score can be computed for it — fall back to the live 24h window and say so. */}
+        {archiveRange && (
           <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-900">
             <span className="material-symbols-outlined text-amber-600 text-base shrink-0">info</span>
             <p>
-              Rentang waktu &quot;{activeRange.label}&quot; dipilih, tetapi Priority Areas selalu menampilkan data
-              langsung 24 jam terakhir — belum ada riwayat prioritas historis untuk rentang ini.
+              Skor prioritas hanya bisa dihitung dari data live (24 jam, 7 hari, atau 30 hari). Arsip
+              &quot;{activeRange.label}&quot; hanya berisi total harian per grid, jadi daftar ini menampilkan 24 jam
+              terakhir.
             </p>
           </div>
+        )}
+        {meta?.markers?.truncated && (
+          <p className="text-xs text-gray-500">
+            Skor area dihitung dari semua {meta.markers.total.toLocaleString()} deteksi; peta di detail area menampilkan{" "}
+            {meta.markers.shown.toLocaleString()} deteksi dengan FRP tertinggi.
+          </p>
         )}
 
         {selectedArea && (
           <AreaDetailPanel
+            key={selectedArea.areaId}
             area={selectedArea}
             markers={markers}
             reports={reports}

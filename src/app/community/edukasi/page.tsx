@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { loadCheckedItems } from "../lib/checklistProgress";
 import { TOTAL_CHECKLIST_ITEMS } from "./siaga/checklistData";
+import { HIGHLIGHT_FACTS, TONE_CLASSES } from "./facts";
 import {
   BagIllustration,
   SmokeEntryIllustration,
@@ -108,6 +109,35 @@ export default function EdukasiPage() {
           </div>
         </div>
       </Link>
+
+      {/* Sourced facts — numbers link to the reference list on /community/edukasi/fakta */}
+      <section className="space-y-3">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-[#123027]">Fakta karhutla yang perlu kamu tahu</h2>
+            <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5">Dari World Bank, jurnal ilmiah, BNPB, dan CDC.</p>
+          </div>
+          <Link href="/community/edukasi/fakta" className="shrink-0 text-xs font-bold text-[var(--community-accent)] hover:underline">
+            Semua fakta &amp; pustaka
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {HIGHLIGHT_FACTS.map((fact) => (
+            <Link
+              key={fact.title}
+              href="/community/edukasi/fakta"
+              className="rounded-2xl border border-[var(--community-border)] bg-white p-4 space-y-1.5 hover:border-emerald-300 transition"
+            >
+              <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${TONE_CLASSES[fact.tone]}`}>
+                <span className="material-symbols-outlined text-[18px]">{fact.icon}</span>
+              </span>
+              <p className="text-lg font-extrabold text-[#123027] leading-tight">{fact.value}</p>
+              <p className="text-xs font-semibold text-[#123027]">{fact.title}</p>
+              <p className="text-[11px] text-[var(--community-ink-muted)]">Sumber [{fact.refs.join(", ")}]</p>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {/* 4 entry cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">

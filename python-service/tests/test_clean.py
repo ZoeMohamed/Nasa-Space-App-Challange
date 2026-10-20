@@ -81,3 +81,13 @@ def test_deduplicate_detections_ignores_source_file():
     result = deduplicate_detections(frame)
 
     assert len(result) == 1
+
+
+def test_confidence_tier_uses_firms_class_ranges():
+    from fire_pipeline.clean import confidence_tier, usable_confidence_mask
+
+    frame = pd.DataFrame({"confidence": [10, 29, 30, 79, 80, 100, "l", "n", "h", "garbage"]})
+    assert confidence_tier(frame).tolist() == [
+        "low", "low", "nominal", "nominal", "high", "high", "low", "nominal", "high", "low",
+    ]
+    assert usable_confidence_mask(frame).tolist() == [False, False, True, True, True, True, False, True, True, False]

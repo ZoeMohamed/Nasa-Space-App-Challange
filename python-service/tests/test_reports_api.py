@@ -15,7 +15,7 @@ def _configure_storage(tmp_path, monkeypatch):
     monkeypatch.setenv("FIRE_REPORT_PHOTOS_DIR", str(tmp_path / "report_photos"))
 
 
-def _no_live_markers(map_key=None):
+def _no_live_markers(map_key=None, **_kwargs):
     return {"markers": [], "areas": [], "meta": {}}
 
 
@@ -117,7 +117,7 @@ def test_correlation_links_marker_within_window_and_excludes_marker_outside_it(t
         "acquiredAt": "2026-10-14T02:30:00Z",  # 3 days before observedAt -> outside 24h window
     }
 
-    def _fake_live(map_key=None):
+    def _fake_live(map_key=None, **_kwargs):
         return {"markers": [near_marker, far_marker, stale_marker], "areas": [], "meta": {}}
 
     monkeypatch.setattr(main, "load_live_hotspots", _fake_live)
@@ -193,7 +193,7 @@ def test_patch_nonexistent_report_returns_404(tmp_path, monkeypatch):
 def test_submit_report_when_live_fetch_unavailable_still_saves_with_no_links(tmp_path, monkeypatch):
     _configure_storage(tmp_path, monkeypatch)
 
-    def _raise_unavailable(map_key=None):
+    def _raise_unavailable(map_key=None, **_kwargs):
         raise LiveDataError("NASA_FIRMS_MAP_KEY is not configured")
 
     monkeypatch.setattr(main, "load_live_hotspots", _raise_unavailable)

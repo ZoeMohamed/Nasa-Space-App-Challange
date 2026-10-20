@@ -71,11 +71,30 @@ Warga mengirim laporan (foto, lokasi, deskripsi) lewat `/community/report`. Lapo
 
 **Cakupan**: AGNIBHŪMĪ diposisikan sebagai alat bantu keputusan untuk pemantauan dan triase verifikasi — bukan sistem deteksi real-time pengganti petugas lapangan, bukan sistem peringatan dini resmi, dan bukan pengganti layanan darurat.
 
+## Filter Region & Rentang Waktu (TopBar)
+
+Dua dropdown di header Operator menulis `?region=` dan `?range=` ke URL. Link sidebar dan link antar-halaman membawa keduanya, jadi pilihan tetap berlaku saat pindah halaman.
+
+- **Region** = provinsi asli (34 provinsi BPS 2020; 7 provinsi rawan karhutla di urutan teratas). Titik & area live dicocokkan dari `admin.provinsi` masing-masing; data arsip disaring di server (`?province=`) — sel grid 0,25° masuk bila salah satu dari 9 titik sampelnya jatuh di provinsi itu, jadi sel perbatasan bisa terhitung di dua provinsi.
+- **Rentang waktu**:
+
+| Pilihan | Sumber | Catatan |
+|---|---|---|
+| 24 Jam Terakhir | NASA FIRMS NRT live | Seperti sebelumnya |
+| 7 Hari / 30 Hari Terakhir | NASA FIRMS NRT live, pipeline penuh (matching, skor prioritas, nama wilayah) | API FIRMS hanya menerima 1–5 hari per request, jadi diambil per potongan 5 hari bertanggal (7 hari = 8 request, 30 hari = 28 request), di-cache per potongan. Pemuatan pertama 30 hari bisa ±2 menit. Peta menampilkan maks. 3.000 deteksi FRP tertinggi; area, total, dan grafik tetap dihitung dari semua deteksi |
+| Jan 2023 – Des 2024 (arsip) | `historical.sqlite` (total harian per grid) | Tanpa titik individual & tanpa skor prioritas — Priority Areas/Analytics menampilkan 24 jam live dengan catatan |
+
+`/calendar` sengaja tetap membandingkan data live **24 jam** dengan baseline harian per sel: menjumlah 7/30 hari lalu membandingkannya ke rata-rata harian adalah ketidakcocokan satuan.
+
+## Deploy
+
+Panduan lengkap demo publik (Vercel + Render, Docker, cache warmer, kebutuhan RAM, file data): **[DEPLOY.md](DEPLOY.md)**.
+
 ## Cara Angka Dihitung
 
 | Perhitungan | Formula / Aturan | Lokasi |
 |---|---|---|
-| Filter confidence tinggi | MODIS numerik >80, ATAU VIIRS kategori `"h"` (ambang sengaja tidak diubah tanpa tinjauan terpisah — lolos hanya ~3,4% baris VIIRS arsip) | `clean.py: high_confidence_mask()` |
+| Filter confidence (default) | Kelas resmi FIRMS **sedang + tinggi**: MODIS ≥ 30%, VIIRS `"n"`/`"h"`; hanya `"low"` disembunyikan. Sejak 20 Okt 2026 — sebelumnya hanya "tinggi" (VIIRS `"h"` = piksel jenuh saja), yang menyembunyikan ±94% deteksi VIIRS sah. Arsip historis dibangun ulang dengan filter yang sama | `clean.py: confidence_tier()`, `usable_confidence_mask()` |
 | Pencocokan MODIS↔VIIRS | Haversine ≤10km DAN selisih waktu ≤720 menit, greedy nearest-neighbor deterministik (bukan optimal secara global) | `matching.py: match_modis_viirs()` |
 | Harmonized event (anti dobel-hitung) | Pasangan MATCHED digabung jadi 1 event, FRP = maksimum pasangan (bukan dijumlahkan) | `harmonize_events.py` |
 | Attention score | `0.45 × rank(FRP) + 0.30 × persistensi + 0.25 × rank(jumlah deteksi)` | `features.py: attention_features()` |
@@ -110,7 +129,7 @@ Arsip FIRMS 2000–2026 (offline)  ──┘      fire_pipeline/                
                                            └── SQLite read-write: reports.sqlite (laporan warga, runtime)
 ```
 
-- **Aplikasi web**: Next.js (App Router), React, TypeScript, Tailwind CSS. Dua pengalaman terpisah tapi berbagi backend & peta yang sama: **Operator View** (`/operator`, `/map`, `/analytics`, `/calendar`, `/priority-areas`, `/citizen-reports`, `/data-model`) dan **Community View** (`/community` + subhalaman). **Tidak ada autentikasi di kedua sisi** — ini keputusan sadar yang didokumentasikan eksplisit sebagai keterbatasan prototipe, bukan oversight; endpoint `PATCH /api/reports/{id}` secara eksplisit menyebut di docstring-nya bahwa siapa pun yang bisa mengakses endpoint ini bisa mengubah status laporan.
+- **Aplikas web**: Next.js (App Router), React, TypeScript, Tailwind CSS. Dua pengalaman terpisah tapi berbagi backend & peta yang sama: **Operator View** (`/operator`, `/map`, `/analytics`, `/calendar`, `/priority-areas`, `/citizen-reports`, `/data-model`) dan **Community View** (`/community` + subhalaman). **Tidak ada autentikasi di kedua sisi** — ini keputusan sadar yang didokumentasikan eksplisit sebagai keterbatasan prototipe, bukan oversight; endpoint `PATCH /api/reports/{id}` secara eksplisit menyebut di docstring-nya bahwa siapa pun yang bisa mengakses endpoint ini bisa mengubah status laporan.
 - **Mesin hitung**: layanan Python/FastAPI terpisah (`python-service/`), diakses di `PYTHON_PROCESSING_API_URL` (bawaan `http://127.0.0.1:8000`). Menangani seluruh pipeline harmonisasi, baseline historis, korelasi laporan, dan cuaca/kualitas udara.
 - **Lapisan data**: SQLite (bukan database terkelola — proyek ini sengaja tidak menambah layanan eksternal hanya demi tampilan arsitektur). `historical.sqlite` dibangun sekali secara offline dari arsip FIRMS resmi dan dibundel sebagai aset read-only; `reports.sqlite` ditulis saat runtime. **Keterbatasan yang diketahui**: filesystem yang tidak persisten (mis. Vercel serverless) akan membuat `reports.sqlite` kehilangan data antar-deploy — untuk produksi sungguhan butuh database terkelola, belum diimplementasikan di sini.
 - **Identitas pelapor warga**: token anonim acak di `localStorage` browser, bukan akun/identitas terverifikasi — didokumentasikan jelas di UI.
@@ -135,9 +154,10 @@ Arsip FIRMS 2000–2026 (offline)  ──┘      fire_pipeline/                
 | Endpoint | Metode | Fungsi |
 |---|---|---|
 | `/api/health` | GET | Health check sederhana |
-| `/api/hotspots` (alias `/api/live/hotspots`) | GET | Deteksi live 24 jam terakhir, harmonized. Param opsional `include_all_confidence=true` untuk menyertakan confidence rendah/menengah (default: hanya tinggi) |
-| `/api/historical/calendar` | GET | Data bulanan + baseline per-sel (harian & bulanan) untuk `/calendar`. Param opsional `min_lat/max_lat/min_lon/max_lon` |
-| `/api/historical/map` | GET | Agregat grid historis untuk overlay peta (7/30 hari atau rentang tanggal kustom) |
+| `/api/hotspots` (alias `/api/live/hotspots`) | GET | Deteksi live harmonized. Param `window=24h` (default) / `7d` / `30d`; `include_all_confidence=true` untuk menyertakan confidence rendah/menengah (default: hanya tinggi). Respons juga berisi `daily` (jumlah per tanggal UTC × provinsi, dari semua deteksi) |
+| `/api/historical/calendar` | GET | Data bulanan + baseline per-sel (harian & bulanan) untuk `/calendar`. Param opsional `province=<nama provinsi>` atau `min_lat/max_lat/min_lon/max_lon` |
+| `/api/historical/map` | GET | Agregat grid historis untuk overlay peta (7/30 hari atau rentang tanggal kustom), param opsional `province` |
+| `/api/region` | GET | Titik → kecamatan / kab-kota / provinsi (offline, `lat`, `lon` wajib) |
 | `/api/weather` | GET | Cuaca & kualitas udara real-time untuk satu titik (`lat`, `lon` wajib) |
 | `/api/reports` | POST | Kirim laporan warga baru (otomatis dikorelasikan ke deteksi satelit) |
 | `/api/reports` | GET | Daftar laporan, filter opsional `submitterToken`/`status` |
@@ -155,8 +175,9 @@ Dokumentasi interaktif (Swagger) otomatis tersedia di `http://127.0.0.1:8000/doc
 | Backend | Python 3.12, FastAPI, pandas, numpy |
 | Data satelit | NASA FIRMS (MODIS Collection 6.1, VIIRS Collection 1 — SNPP/NOAA-20/NOAA-21), via API resmi `firms.modaps.eosdis.nasa.gov` |
 | Cuaca & kualitas udara | Open-Meteo (`api.open-meteo.com`, `air-quality-api.open-meteo.com`), gratis tanpa API key |
+| Batas wilayah administratif | OCHA COD-AB Indonesia (BPS, berlaku 2020-04-01, lisensi CC BY-IGO) — [data.humdata.org/dataset/cod-ab-idn](https://data.humdata.org/dataset/cod-ab-idn). Lookup kecamatan/kab-kota/provinsi dilakukan offline (point-in-polygon, `shapely`), tanpa API. 34 provinsi — belum memuat pemekaran Papua 2022. |
 | Penyimpanan | SQLite (`historical.sqlite` read-only, `reports.sqlite` read-write) — tanpa ORM, lewat `sqlite3` standar library |
-| Pengujian backend | pytest, **41 test produksi** (`python-service/tests/`) + **17 test riset terisolasi** (`python-service/ml_experiments/anomaly_detection/tests/`, dijalankan terpisah, tidak memengaruhi 41 test produksi) |
+| Pengujian backend | pytest, **86 test produksi** (`python-service/tests/`, termasuk test kesamaan output matching vs implementasi lama) + **22 test riset terisolasi** (`python-service/ml_experiments/`, dijalankan terpisah) |
 
 ## Struktur Repositori
 
@@ -170,7 +191,8 @@ Nasa-Space-App-Challange/
 │   ├── components/
 │   │   ├── map/FireMap.tsx     # Komponen peta bersama (shapes ★MODIS/⬡VIIRS/🔥harmonized/👤laporan)
 │   │   └── community/          # Ilustrasi & komponen khusus Community View
-│   ├── lib/filters.ts          # Definisi region & rentang waktu
+│   ├── lib/filters.ts          # Definisi region (provinsi) & rentang waktu, withFilters()
+│   ├── lib/useLiveHotspots.ts  # Hook bersama: /api/hotspots per rentang waktu
 │   └── types/index.ts          # Tipe bersama frontend
 ├── python-service/
 │   ├── fire_pipeline/
@@ -183,7 +205,8 @@ Nasa-Space-App-Challange/
 │   │   ├── historical.py       # Query arsip historis untuk /calendar
 │   │   ├── reports.py          # CRUD laporan warga (SQLite read-write)
 │   │   ├── correlation.py      # Korelasi laporan↔deteksi satelit
-│   │   └── weather.py          # Cuaca & kualitas udara (Open-Meteo)
+│   │   ├── weather.py          # Cuaca & kualitas udara (Open-Meteo)
+│   │   └── admin_lookup.py     # Titik → kecamatan/kab-kota/provinsi (offline, OCHA COD-AB)
 │   ├── scripts/build_historical_store.py   # Pembangun offline historical.sqlite dari CSV arsip FIRMS
 │   ├── ml_experiments/          # Riset terisolasi, TIDAK memengaruhi produksi (lihat bagian "Riset" di atas)
 │   │   ├── shared/dataset.py    # Loader read-only + definisi 5 wilayah (sama seperti src/lib/filters.ts)
@@ -250,10 +273,24 @@ python-service/.venv/bin/python python-service/scripts/build_historical_store.py
 
 Script ini idempotent — membangun ulang total `historical.sqlite` setiap dijalankan, bukan menambah baris secara inkremental.
 
+### (Opsional, tapi disarankan) Membangun Data Batas Wilayah
+
+Supaya lokasi tampil sebagai "Kec. X, Kab. Y, Provinsi Z" (bukan hanya koordinat), bangun `data/admin_boundaries.sqlite` sekali dari geodatabase OCHA COD-AB Indonesia (gratis, ±219 MB):
+
+```bash
+# 1. Unduh & unzip idn_admin_boundaries.gdb.zip dari https://data.humdata.org/dataset/cod-ab-idn
+# 2. pyogrio hanya dibutuhkan untuk build, tidak saat runtime
+python-service/.venv/bin/pip install pyogrio
+python-service/.venv/bin/python -I python-service/scripts/build_admin_boundaries.py \
+  <path_ke/idn_admin_boundaries.gdb> --out python-service/data/admin_boundaries.sqlite
+```
+
+Hasilnya ±20 MB (7.069 kecamatan, disederhanakan ±55 m). Tanpa file ini, aplikasi tetap jalan dan menampilkan koordinat saja.
+
 ### Menguji
 
 ```bash
-python-service/.venv/bin/python -m pytest -c python-service/pytest.ini   # 41 test produksi
+python-service/.venv/bin/python -m pytest -c python-service/pytest.ini   # 86 test produksi
 npm run lint
 npm run build
 
@@ -277,7 +314,7 @@ Semua klaim teknis di dokumen ini (skema data, skema confidence, karakteristik s
 - **Tidak ada autentikasi** di Operator maupun Community View — siapa pun dengan tautan bisa mengakses dan (untuk endpoint laporan) mengubah status laporan. Ditandai jelas di UI, bukan disembunyikan.
 - **`reports.sqlite` tidak persisten di filesystem serverless** (mis. Vercel) — butuh migrasi ke database terkelola untuk produksi sungguhan.
 - **Arsip VIIRS historis hanya mencakup Suomi-NPP**, belum NOAA-20/21 — perlu unduhan arsip tambahan untuk cakupan lebih lengkap. Catatan: NASA mengumumkan Suomi-NPP berhenti mengirim observasi VIIRS baru per 2 November 2026; live feed sudah memakai NOAA-20/21, hanya arsip historis offline yang masih SNPP-only.
-- **Filter confidence tinggi sangat ketat** (terutama VIIRS, ~3,4% baris arsip lolos) — ambang ini sengaja tidak diubah tanpa tinjauan produk terpisah; opsi "sertakan confidence rendah/menengah" tersedia sebagai pilihan eksplisit di `/map`, bukan default.
+- **Deteksi confidence "rendah" disembunyikan secara default** (kelas FIRMS "low": MODIS < 30%, VIIRS `"l"`); bisa disertakan lewat filter di `/map`. Peta menampilkan maksimal 3.000 titik dengan FRP tertinggi per permintaan; total, grafik, skor area, dan permintaan per provinsi/radius tetap dihitung dari semua deteksi.
 - **Skor `attention_score`/`priority_score` belum divalidasi** terhadap kriteria instansi pemadam kebakaran sungguhan atau dataset ground-truth berlabel — ini bobot rekayasa untuk memberi urutan triase yang masuk akal, bukan skor risiko terkalibrasi.
 - **US AQI, bukan ISPU Indonesia** — kategori kualitas udara di `/community/udara` memakai skala EPA Amerika karena itulah yang disediakan Open-Meteo secara gratis; ambang batasnya berbeda dari ISPU resmi Indonesia.
 - **Insight di `/calendar` belum bisa diklik untuk melihat data mentah di baliknya** — alur "pilih wilayah+periode → lihat kalender → temukan pola menonjol → periksa data yang mendasarinya" belum lengkap di titik terakhir: teks insight (mis. "September tahun ini 20% di atas rata-rata") belum punya tautan ke daftar deteksi mentah yang menghasilkan angka itu. Diverifikasi langsung di kode (`src/app/calendar/page.tsx`) — bukan asumsi. Ini gap nyata, bukan sekadar polish, kalau alur verifikasi/audit data historis ingin benar-benar lengkap ujung ke ujung.

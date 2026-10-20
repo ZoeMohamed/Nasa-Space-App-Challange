@@ -24,10 +24,28 @@ export interface FireActivity {
   status: string;
 }
 
+/** Offline point-in-polygon result (python-service/fire_pipeline/admin_lookup.py), OCHA COD-AB
+ * Indonesia / BPS boundaries valid 2020-04-01 — 34 provinces, predates the 2022 Papua split.
+ * `approximate` = point fell outside every polygon and was snapped to the nearest one (≤ ~2 km). */
+export interface AdminRegion {
+  kecamatan: string;
+  kecamatanCode: string;
+  kabupatenKota: string;
+  kabupatenKotaCode: string;
+  provinsi: string;
+  provinsiCode: string;
+  approximate: boolean;
+  /** Areas only: the kecamatan holding most of the cell's detections. */
+  adminBasis?: "dominant-detections";
+  dominantShare?: number;
+  kecamatanCount?: number;
+}
+
 export interface HotspotMarker {
   id: string;
   lat: number;
   lng: number;
+  admin?: AdminRegion | null;
   label: string;
   frp: number;
   severity: "HIGH" | "MEDIUM" | "LOW";
@@ -47,6 +65,8 @@ export interface HotspotMarker {
   /** False only when the request opted into `includeAllConfidence=true` and this
    * detection is low/nominal confidence — the default request never returns these. */
   highConfidence?: boolean;
+  /** NASA FIRMS class: MODIS 0–29 / 30–79 / 80–100 %, VIIRS l / n / h (h = saturated pixels only). */
+  confidenceTier?: "low" | "nominal" | "high";
 }
 
 export interface HotspotSourceSummary {
@@ -54,6 +74,8 @@ export interface HotspotSourceSummary {
   sensor: "MODIS" | "VIIRS";
   rawCount: number;
   highConfidenceCount: number;
+  /** Nominal + high — the default filter since 2026-10-20. */
+  usableConfidenceCount?: number;
   available: boolean;
   error?: string;
 }
@@ -67,6 +89,7 @@ export interface AreaSummary {
   areaId: string;
   gridLat: number;
   gridLon: number;
+  admin?: AdminRegion | null;
   detections: number | null;
   modisDetections: number | null;
   viirsDetections: number | null;
@@ -86,16 +109,41 @@ export interface AreaSummary {
   priorityTier: "high" | "medium" | "low";
 }
 
+export interface DailyActivity {
+  date: string;
+  provinsi: string | null;
+  modis: number;
+  viirs: number;
+  /** Markers in a MATCHED pair (both partners counted). */
+  matched: number;
+  modisOnly: number;
+  viirsOnly: number;
+  high: number;
+  medium: number;
+  low: number;
+}
+
 export interface HotspotApiResponse {
   markers: HotspotMarker[];
   areas: AreaSummary[];
+  /** Exact per-(UTC date, provinsi) counts over every detection — unaffected by the marker cap. */
+  daily?: DailyActivity[];
   meta: {
     provider: "NASA FIRMS";
     area: "Indonesia";
-    windowHours: 24;
+    /** 24, 168 (7d) or 720 (30d) — see `window` on /api/hotspots. */
+    windowHours: number;
     generatedAt: string;
     sources: HotspotSourceSummary[];
     degraded: boolean;
+    /** Every response keeps all areas/daily rows but caps markers (default 3000, highest FRP). */
+    markers?: {
+      total: number;
+      shown: number;
+      truncated: boolean;
+      selection: "all" | "highest-frp" | "recent";
+    };
+    confidenceFilter?: "nominal+high" | "all";
     processing: {
       engine: "Python fire_pipeline";
       qualityRows: number;
@@ -177,6 +225,7 @@ export interface CommunityReport {
   photoFilename: string | null;
   reviewNote: string | null;
   reviewedAt: string | null;
+  admin?: AdminRegion | null;
   satelliteLinks?: SatelliteLink[];
 }
 

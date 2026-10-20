@@ -4,7 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type CSSProperties } from "react";
 import BottomNav from "./components/BottomNav";
+import { CommunityLocationProvider } from "./lib/useLocation";
 import { getOrCreateSubmitterToken } from "./lib/submitterToken";
+import LanguageToggle from "@/components/LanguageToggle";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 import type { ReportsListResponse } from "@/types";
 
 /**
@@ -27,6 +30,7 @@ const COMMUNITY_THEME: CSSProperties = {
 
 export default function CommunityLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { t } = useTranslation();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -51,10 +55,10 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
   }, []);
 
   const navLinks = [
-    { href: "/community", label: "Beranda", icon: "home" },
-    { href: "/community/edukasi", label: "Edukasi", icon: "menu_book" },
-    { href: "/community/notifikasi", label: "Notifikasi", icon: "notifications", badge: unreadCount },
-    { href: "/community/saya", label: "Saya", icon: "person" },
+    { href: "/community", label: t("community.nav.home"), icon: "home" },
+    { href: "/community/edukasi", label: t("community.nav.education"), icon: "menu_book" },
+    { href: "/community/notifikasi", label: t("community.nav.notifications"), icon: "notifications", badge: unreadCount },
+    { href: "/community/saya", label: t("community.nav.me"), icon: "person" },
   ];
 
   return (
@@ -76,7 +80,7 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
                 AGNIBHŪMI
               </span>
               <span className="text-[10px] text-[var(--community-ink-muted)] font-medium tracking-tight">
-                Community View · Untuk Masyarakat
+                {t("community.subtitle")}
               </span>
             </div>
           </Link>
@@ -117,12 +121,16 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
               className="ml-2 flex items-center gap-2 rounded-xl bg-[#ba1a1a] hover:bg-[#a01616] text-white px-3.5 py-1.5 text-xs font-bold shadow-sm shadow-rose-950/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               <span className="material-symbols-outlined text-[18px]">photo_camera</span>
-              <span>Lapor Kebakaran</span>
+              <span>{t("community.reportFire")}</span>
             </Link>
+
+            <LanguageToggle className="ml-1" />
           </nav>
 
           {/* Right Header Utility / Switch */}
           <div className="flex items-center gap-3">
+            {/* Mobile-only language toggle */}
+            <LanguageToggle className="md:hidden" />
             {/* Mobile notification bell shortcut */}
             <Link
               href="/community/notifikasi"
@@ -139,9 +147,9 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
             <Link
               href="/"
               className="text-xs font-semibold text-[var(--community-ink-muted)] hover:text-[var(--community-accent)] transition flex items-center gap-1 py-1 px-2.5 rounded-lg hover:bg-black/5"
-              title="Kembali ke portal utama"
+              title={t("community.backToOperator")}
             >
-              <span className="hidden sm:inline">Portal Operator</span>
+              <span className="hidden sm:inline">{t("nav.operatorPortal")}</span>
               <span className="material-symbols-outlined text-[16px]">open_in_new</span>
             </Link>
           </div>
@@ -151,7 +159,7 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
 
       {/* Main content: Responsive max width for desktop / mobile */}
       <main className="flex-1 w-full max-w-md md:max-w-5xl lg:max-w-6xl mx-auto px-4 md:px-8 pt-4 md:pt-6 pb-24 md:pb-14">
-        {children}
+        <CommunityLocationProvider>{children}</CommunityLocationProvider>
       </main>
 
       {/* Mobile-only Bottom Navigation Bar */}

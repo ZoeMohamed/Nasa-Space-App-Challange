@@ -152,24 +152,25 @@ def test_empty_live_result_is_valid():
     assert result["meta"]["processing"]["areasAnalyzed"] == 0
 
 
-def test_include_all_confidence_toggle(monkeypatch, tmp_path):
-    # Mirrors what _fetch_source() actually produces: every row kept, plus a
-    # high_confidence column (not a pre-filtered frame) -- see live.py's
-    # comment on why filtering moved out of _fetch_source and into here.
+def test_default_shows_nominal_and_high_and_toggle_adds_low(monkeypatch, tmp_path):
+    # Default filter = FIRMS nominal + high (clean.usable_confidence_mask); "low" only with the toggle.
     monkeypatch.setenv("FIRE_HISTORICAL_DB_PATH", str(tmp_path / "no_such_store.sqlite"))
+    base = {"acq_date": TODAY, "acq_time": 300, "satellite": "Terra", "sensor": "MODIS", "source": "MODIS_NRT", "source_file": "MODIS_NRT"}
     frame = pd.DataFrame(
         [
-            {"latitude": -2.1, "longitude": 104.8, "acq_date": TODAY, "acq_time": 300, "satellite": "Terra", "confidence": 92, "frp": 80, "sensor": "MODIS", "source": "MODIS_NRT", "source_file": "MODIS_NRT", "high_confidence": True},
-            {"latitude": -5.0, "longitude": 110.0, "acq_date": TODAY, "acq_time": 300, "satellite": "Terra", "confidence": 55, "frp": 30, "sensor": "MODIS", "source": "MODIS_NRT", "source_file": "MODIS_NRT", "high_confidence": False},
+            {**base, "latitude": -2.1, "longitude": 104.8, "confidence": 92, "frp": 80, "high_confidence": True},
+            {**base, "latitude": -5.0, "longitude": 110.0, "confidence": 55, "frp": 30, "high_confidence": False},
+            {**base, "latitude": -6.0, "longitude": 111.0, "confidence": 20, "frp": 10, "high_confidence": False},
+            {**base, "latitude": -3.0, "longitude": 105.0, "confidence": "n", "frp": 12, "sensor": "VIIRS", "source": "VIIRS_SNPP_NRT", "high_confidence": False},
         ]
     )
-    summaries = [{"id": "MODIS_NRT", "sensor": "MODIS", "rawCount": 2, "highConfidenceCount": 1, "available": True}]
+    summaries = [{"id": "MODIS_NRT", "sensor": "MODIS", "rawCount": 4, "highConfidenceCount": 1, "available": True}]
 
     default_result = process_live_frames([frame], summaries)
-    assert len(default_result["markers"]) == 1
-    assert default_result["markers"][0]["highConfidence"] is True
+    tiers = sorted(marker["confidenceTier"] for marker in default_result["markers"])
+    assert tiers == ["high", "nominal", "nominal"]  # VIIRS "n" and MODIS 55% are valid detections
+    assert default_result["meta"]["confidenceFilter"] == "nominal+high"
 
-    all_confidence_result = process_live_frames([frame], summaries, include_all_confidence=True)
-    assert len(all_confidence_result["markers"]) == 2
-    high_conf_flags = sorted(marker["highConfidence"] for marker in all_confidence_result["markers"])
-    assert high_conf_flags == [False, True]
+    all_result = process_live_frames([frame], summaries, include_all_confidence=True)
+    assert sorted(marker["confidenceTier"] for marker in all_result["markers"]) == ["high", "low", "nominal", "nominal"]
+    assert sorted(marker["highConfidence"] for marker in all_result["markers"]) == [False, False, False, True]

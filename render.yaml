@@ -1,0 +1,18 @@
+# Render Blueprint for the AGNIBHUMI Python backend. The Next.js frontend deploys to Vercel.
+# Full steps and caveats: DEPLOY.md
+services:
+  - type: web
+    name: agnibhumi-api
+    runtime: docker
+    rootDir: python-service
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    # 24h + 7d fit in ~1 GB; the 30-day window needs ~1.5 GB+ (see LIVE_WINDOWS below).
+    plan: standard
+    envVars:
+      - key: NASA_FIRMS_MAP_KEY
+        sync: false            # paste your FIRMS MAP_KEY in the Render dashboard
+      - key: WARM_CACHE
+        value: "1"             # pre-process windows at startup so visitors never wait for a cold fetch
+      - key: LIVE_WINDOWS
+        value: "24h,7d,30d"    # use "24h,7d" on instances with < 2 GB RAM

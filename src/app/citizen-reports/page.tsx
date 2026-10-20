@@ -6,6 +6,7 @@ import WorkstationLayout from "@/components/layout/WorkstationLayout";
 import Card from "@/components/ui/Card";
 import StatTile from "@/components/ui/StatTile";
 import type { CommunityReport, HotspotApiResponse, HotspotMarker, ReportStatus, ReportsListResponse } from "@/types";
+import { formatAdminFull, placeLabel } from "@/lib/adminRegion";
 
 const FireMap = dynamic(() => import("@/components/map/FireMap"), { ssr: false });
 
@@ -84,9 +85,12 @@ async function fetchReportDetail(id: string, signal?: AbortSignal): Promise<Comm
   return body;
 }
 
-async function fetchHotspotMarkers(signal?: AbortSignal): Promise<HotspotMarker[]> {
+async function fetchHotspotMarkers(signal?: AbortSignal, near?: { lat: number; lon: number }): Promise<HotspotMarker[]> {
   try {
-    const response = await fetch("/api/hotspots", { cache: "no-store", signal });
+    // Near a report: every detection within 10 km (the correlation radius is 5 km), not the
+    // FRP-capped national list, so the report's linked detections are always resolvable.
+    const query = near ? `?nearLat=${near.lat}&nearLon=${near.lon}&nearKm=10&limit=5000` : "";
+    const response = await fetch(`/api/hotspots${query}`, { cache: "no-store", signal });
     if (!response.ok) return [];
     const body = (await response.json()) as HotspotApiResponse;
     return body.markers ?? [];
@@ -145,6 +149,7 @@ export default function CitizenReportsPage() {
   const [listError, setListError] = useState<string | null>(null);
 
   const [hotspotMarkers, setHotspotMarkers] = useState<HotspotMarker[]>([]);
+  const [nearDetailMarkers, setNearDetailMarkers] = useState<HotspotMarker[]>([]);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | ReportStatus>("all");
@@ -219,6 +224,7 @@ export default function CitizenReportsPage() {
     fetchReportDetail(selectedId, controller.signal)
       .then((data) => {
         setDetail(data);
+        fetchHotspotMarkers(controller.signal, { lat: data.lat, lon: data.lon }).then(setNearDetailMarkers);
         setDetailError(null);
         setPendingStatus(data.status);
         setReviewNote(data.reviewNote ?? "");
@@ -236,8 +242,9 @@ export default function CitizenReportsPage() {
   const hotspotById = useMemo(() => {
     const map = new Map<string, HotspotMarker>();
     hotspotMarkers.forEach((marker) => map.set(marker.id, marker));
+    nearDetailMarkers.forEach((marker) => map.set(marker.id, marker));
     return map;
-  }, [hotspotMarkers]);
+  }, [hotspotMarkers, nearDetailMarkers]);
 
   const filteredReports = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -431,7 +438,7 @@ export default function CitizenReportsPage() {
                   <p className="text-xs font-semibold text-gray-500">{detail.id}</p>
                   <h3 className="text-sm leading-relaxed text-gray-900">{detail.description}</h3>
                   <p className="mt-1 text-xs text-gray-500">
-                    Koordinat: {detail.lat.toFixed(4)}, {detail.lon.toFixed(4)}
+                    {formatAdminFull(detail.admin) ? `${formatAdminFull(detail.admin)} · ` : ""}Koordinat: {detail.lat.toFixed(4)}, {detail.lon.toFixed(4)}
                   </p>
                   <p className="text-xs text-gray-500">Dilaporkan: {formatDateTime(detail.observedAt)}</p>
                   <p className="text-xs text-gray-500">Diterima sistem: {formatDateTime(detail.createdAt)}</p>
@@ -560,9 +567,7 @@ export default function CitizenReportsPage() {
                       </td>
                       <td className="px-5 py-3">
                         <div className="max-w-xs truncate font-medium text-gray-900">{report.description}</div>
-                        <div className="text-gray-500">
-                          {report.lat.toFixed(3)}, {report.lon.toFixed(3)}
-                        </div>
+                        <div className="text-gray-500">{placeLabel(report.admin, report.lat, report.lon)}</div>
                       </td>
                       <td className="px-5 py-3 text-gray-700">{report.photoFilename ? "Ada" : "Tidak ada"}</td>
                       <td className="px-5 py-3">

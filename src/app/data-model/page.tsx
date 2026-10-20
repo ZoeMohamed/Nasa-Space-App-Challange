@@ -146,18 +146,25 @@ const SOURCES: { org: string; tag: string; name: string; desc: string; meta: str
     desc: "Kementerian Lingkungan Hidup dan Kehutanan bersama Badan Riset dan Inovasi Nasional untuk peta dasar tutupan lahan, batas konsesi HPH/HTI, dan lapisan kubah gambut — belum terintegrasi ke backend ini.",
     meta: "Peta Tematik: Skala 1:50.000 BIG",
   },
+  {
+    org: "OCHA / BPS",
+    tag: "CC BY-IGO",
+    name: "Batas Wilayah Administratif (COD-AB Indonesia)",
+    desc: "Poligon kecamatan/kabupaten-kota/provinsi dari BPS via OCHA (data.humdata.org/dataset/cod-ab-idn), dipakai offline untuk menamai lokasi titik panas & laporan. Berlaku per 1 April 2020: 34 provinsi, belum memuat pemekaran Papua 2022.",
+    meta: "7.069 kecamatan · disederhanakan ±55 m",
+  },
 ];
 
 const LIVE_ITEMS: { icon: string; label: string; body: string }[] = [
   {
     icon: "satellite_alt",
     label: "Deteksi MODIS/VIIRS (NRT, 24 jam terakhir)",
-    body: "Ditarik langsung dari 4 feed NASA FIRMS (MODIS_NRT, VIIRS_SNPP_NRT, VIIRS_NOAA20_NRT, VIIRS_NOAA21_NRT) untuk wilayah Indonesia, disaring ke confidence tinggi saja (>80% atau kategori \"h\").",
+    body: "Ditarik langsung dari 4 feed NASA FIRMS (MODIS_NRT, VIIRS_SNPP_NRT, VIIRS_NOAA20_NRT, VIIRS_NOAA21_NRT) untuk wilayah Indonesia, disaring ke confidence sedang + tinggi (kelas resmi FIRMS: MODIS ≥ 30%, VIIRS \"nominal\"/\"high\"); hanya kelas \"low\" yang disembunyikan secara default.",
   },
   {
     icon: "compare_arrows",
     label: "Pencocokan sensor (matched / MODIS-only / VIIRS-only)",
-    body: "Setiap deteksi MODIS dicocokkan ke deteksi VIIRS terdekat dalam radius 10 km dan selisih waktu 60 menit — aturan deterministik, satu pasangan per deteksi, bukan model machine learning.",
+    body: "Setiap deteksi MODIS dicocokkan ke deteksi VIIRS terdekat dalam radius 10 km dan selisih waktu 720 menit (12 jam) — aturan deterministik, satu pasangan per deteksi, bukan model machine learning.",
   },
   {
     icon: "priority_high",
@@ -456,11 +463,29 @@ export default function DataModelPage() {
                 <h3 className="text-sm font-bold text-gray-900">Harmonized — Mesin Pencocokan</h3>
               </div>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Setiap deteksi MODIS dicocokkan ke deteksi VIIRS terdekat (radius 10 km, selisih waktu ≤60 menit).
+                Setiap deteksi MODIS dicocokkan ke deteksi VIIRS terdekat (radius 10 km, selisih waktu ≤720 menit / 12 jam —
+                dipilih dari pengukuran data nyata karena jam lintas MODIS dan VIIRS berbeda beberapa jam).
                 Aturan deterministik tetangga terdekat, bukan model statistik — hasilnya diberi label
                 MATCHED / MODIS_ONLY / VIIRS_ONLY.
               </p>
             </Card>
+          </div>
+          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950 leading-relaxed">
+            <span className="material-symbols-outlined text-amber-600 text-base shrink-0">satellite_alt</span>
+            <p>
+              <strong>Suomi-NPP berhenti mengirim observasi VIIRS baru per 2 November 2026</strong> (pengumuman NASA Earthdata,{" "}
+              <a
+                href="https://www.earthdata.nasa.gov/data/tools/firms/active-fire-data-attributes-modis-viirs"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                Active Fire Data Attributes
+              </a>
+              ). Data live AGNIBHŪMĪ sudah mengambil VIIRS dari NOAA-20 dan NOAA-21 juga, dan sumber yang kosong tidak
+              menghentikan pipeline — jadi aplikasi tetap berjalan setelah tanggal itu. Arsip historis offline kami masih
+              VIIRS Suomi-NPP saja (2012–2026); arsip NOAA-20/21 perlu diunduh terpisah.
+            </p>
           </div>
         </section>
 
@@ -475,6 +500,28 @@ export default function DataModelPage() {
             {DISCREPANCY_REASONS.map((reason) => (
               <ReasonCard key={reason.step} reason={reason} />
             ))}
+          </div>
+          <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 space-y-2 text-xs text-blue-950 leading-relaxed max-w-4xl">
+            <h3 className="text-sm font-bold">Filter confidence: kenapa kami mengubahnya (20 Oktober 2026)</h3>
+            <p>
+              Sebelumnya peta hanya menampilkan deteksi &ldquo;confidence tinggi&rdquo; (MODIS &gt; 80%, VIIRS kelas
+              &ldquo;high&rdquo;). Menurut dokumentasi NASA FIRMS, kelas VIIRS &ldquo;high&rdquo; hanya berarti{" "}
+              <strong>piksel jenuh</strong> (api sangat panas), sedangkan &ldquo;nominal&rdquo; adalah deteksi normal yang sah
+              — anomali suhu kuat (&gt; 15 K) tanpa kontaminasi pantulan matahari. Filter lama menyembunyikan ±94% deteksi
+              VIIRS yang sah: pada 20 Oktober 2026 hanya 1.091 dari 19.130 deteksi yang tampil, sementara hitungan harian KLHK
+              (SiPongi) memakai kelas sedang + tinggi.
+            </p>
+            <p>
+              Sekarang default-nya <strong>sedang + tinggi</strong> (hanya kelas &ldquo;low&rdquo; yang disembunyikan; bisa
+              disertakan lewat filter di Explore Map). Hari yang sama: 17.803 deteksi, dan ±90% titik MODIS kini punya
+              pasangan VIIRS — label &ldquo;Hanya MODIS&rdquo; yang dulu banyak ternyata sebagian besar akibat filter, bukan
+              kurangnya harmonisasi. Arsip historis 2000–2026 dibangun ulang dengan filter yang sama supaya perbandingan
+              dengan baseline tetap setara.
+            </p>
+            <p className="text-blue-900/80">
+              Titik &ldquo;Hanya VIIRS&rdquo; tetap banyak, dan itu fisik: VIIRS (375 m) melihat banyak api kecil yang terlalu
+              kecil untuk MODIS (1 km), dan jam lintas satelit berbeda (Terra ±10.30, Aqua &amp; VIIRS ±13.30).
+            </p>
           </div>
         </section>
 

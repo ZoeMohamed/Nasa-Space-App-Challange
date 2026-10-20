@@ -38,7 +38,7 @@ export default function CommunityMapPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/hotspots", { cache: "no-store" })
+    fetch(`/api/hotspots?nearLat=${activeLat}&nearLon=${activeLon}&nearKm=100&limit=5000`, { cache: "no-store" })
       .then(async (res) => {
         if (!res.ok) throw new Error("Gagal memuat titik panas");
         return (await res.json()) as HotspotApiResponse;
@@ -55,7 +55,7 @@ export default function CommunityMapPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [activeLat, activeLon]);
 
   useEffect(() => {
     let cancelled = false;

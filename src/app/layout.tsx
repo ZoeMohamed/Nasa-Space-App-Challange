@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
 export const metadata: Metadata = {
-  title: "FIRESIGHT — NASA Fire Intelligence & Monitoring System",
+  title: "AGNIBHŪMI — Harmonized Satellite & Community Fire Intelligence",
   description:
-    "Harmonized Satellite Fire Intelligence — Multi-Sensor Recursive Thermal Tracking for Indonesian Peatland Monitoring.",
+    "Harmonized MODIS & VIIRS hotspot intelligence combined with community reports, for monitoring Indonesian forest and land fires (karhutla).",
 };
 
 export default function RootLayout({
@@ -13,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="id" className="h-full antialiased">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -31,7 +32,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased min-h-screen font-sans">
-        {children}
+        <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>
   );
