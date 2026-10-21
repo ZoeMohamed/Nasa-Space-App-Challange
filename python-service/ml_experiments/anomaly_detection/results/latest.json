@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-18T08:32:54.121368+00:00",
+  "generated_at": "2026-10-21T02:11:25.477522+00:00",
   "data_note": "Baselines are means/stds over days that had >=1 detection, not zero-filled daily rates -- see data_audit.py. No independent fire-occurrence ground truth exists in this dataset; nothing below is an accuracy metric.",
   "full_history_folds": [
     {
@@ -22,23 +22,23 @@
       "test_year": 2014,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 2714,
+      "test_observations": 11478,
       "cell_method": {
-        "available_count": 2714,
-        "flagged_count": 142,
-        "flag_rate": 0.05232129697862933
+        "available_count": 11478,
+        "flagged_count": 1394,
+        "flag_rate": 0.1214497299181042
       },
       "seasonal_method": {
-        "available_count": 2714,
-        "flagged_count": 115,
-        "flag_rate": 0.0423728813559322,
+        "available_count": 11478,
+        "flagged_count": 1270,
+        "flag_rate": 0.11064645408607772,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 2714,
-        "agree_count": 2595,
-        "agreement_rate": 0.9561532792925571
+        "comparable_observations": 11478,
+        "agree_count": 10514,
+        "agreement_rate": 0.9160132427252135
       }
     },
     {
@@ -62,23 +62,23 @@
       "test_year": 2015,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 4069,
+      "test_observations": 14260,
       "cell_method": {
-        "available_count": 4068,
-        "flagged_count": 391,
-        "flag_rate": 0.09611602753195674
+        "available_count": 14256,
+        "flagged_count": 2351,
+        "flag_rate": 0.16491301907968575
       },
       "seasonal_method": {
-        "available_count": 4069,
-        "flagged_count": 308,
-        "flag_rate": 0.07569427377734086,
+        "available_count": 14260,
+        "flagged_count": 1974,
+        "flag_rate": 0.13842917251051892,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 4068,
-        "agree_count": 3827,
-        "agreement_rate": 0.9407571288102261
+        "comparable_observations": 14256,
+        "agree_count": 12989,
+        "agreement_rate": 0.9111251402918069
       }
     },
     {
@@ -103,23 +103,23 @@
       "test_year": 2016,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 419,
+      "test_observations": 3242,
       "cell_method": {
-        "available_count": 418,
-        "flagged_count": 12,
-        "flag_rate": 0.028708133971291867
+        "available_count": 3242,
+        "flagged_count": 117,
+        "flag_rate": 0.03608883405305367
       },
       "seasonal_method": {
-        "available_count": 419,
-        "flagged_count": 4,
-        "flag_rate": 0.00954653937947494,
+        "available_count": 3242,
+        "flagged_count": 24,
+        "flag_rate": 0.007402837754472548,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 418,
-        "agree_count": 410,
-        "agreement_rate": 0.9808612440191388
+        "comparable_observations": 3242,
+        "agree_count": 3141,
+        "agreement_rate": 0.9688463911165947
       }
     },
     {
@@ -145,23 +145,23 @@
       "test_year": 2017,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 228,
+      "test_observations": 2324,
       "cell_method": {
-        "available_count": 228,
-        "flagged_count": 1,
-        "flag_rate": 0.0043859649122807015
+        "available_count": 2324,
+        "flagged_count": 31,
+        "flag_rate": 0.01333907056798623
       },
       "seasonal_method": {
-        "available_count": 228,
-        "flagged_count": 1,
-        "flag_rate": 0.0043859649122807015,
+        "available_count": 2324,
+        "flagged_count": 14,
+        "flag_rate": 0.006024096385542169,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 228,
-        "agree_count": 226,
-        "agreement_rate": 0.9912280701754386
+        "comparable_observations": 2324,
+        "agree_count": 2283,
+        "agreement_rate": 0.9823580034423408
       }
     },
     {
@@ -188,23 +188,23 @@
       "test_year": 2018,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 971,
+      "test_observations": 5588,
       "cell_method": {
-        "available_count": 971,
-        "flagged_count": 33,
-        "flag_rate": 0.03398558187435633
+        "available_count": 5587,
+        "flagged_count": 111,
+        "flag_rate": 0.019867549668874173
       },
       "seasonal_method": {
-        "available_count": 971,
-        "flagged_count": 34,
-        "flag_rate": 0.035015447991761074,
+        "available_count": 5588,
+        "flagged_count": 128,
+        "flag_rate": 0.02290622763063708,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 971,
-        "agree_count": 944,
-        "agreement_rate": 0.972193614830072
+        "comparable_observations": 5587,
+        "agree_count": 5446,
+        "agreement_rate": 0.9747628423125112
       }
     },
     {
@@ -232,23 +232,23 @@
       "test_year": 2019,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 2366,
+      "test_observations": 8851,
       "cell_method": {
-        "available_count": 2364,
-        "flagged_count": 174,
-        "flag_rate": 0.07360406091370558
+        "available_count": 8850,
+        "flagged_count": 549,
+        "flag_rate": 0.062033898305084746
       },
       "seasonal_method": {
-        "available_count": 2366,
-        "flagged_count": 208,
-        "flag_rate": 0.08791208791208792,
+        "available_count": 8851,
+        "flagged_count": 627,
+        "flag_rate": 0.07083945316913343,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 2364,
-        "agree_count": 2246,
-        "agreement_rate": 0.9500846023688664
+        "comparable_observations": 8850,
+        "agree_count": 8318,
+        "agreement_rate": 0.9398870056497175
       }
     },
     {
@@ -277,23 +277,23 @@
       "test_year": 2020,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 187,
+      "test_observations": 2011,
       "cell_method": {
-        "available_count": 187,
-        "flagged_count": 2,
-        "flag_rate": 0.0106951871657754
+        "available_count": 2011,
+        "flagged_count": 63,
+        "flag_rate": 0.0313276976628543
       },
       "seasonal_method": {
-        "available_count": 187,
-        "flagged_count": 1,
-        "flag_rate": 0.0053475935828877,
+        "available_count": 2011,
+        "flagged_count": 7,
+        "flag_rate": 0.0034808552958727,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 187,
-        "agree_count": 186,
-        "agreement_rate": 0.9946524064171123
+        "comparable_observations": 2011,
+        "agree_count": 1949,
+        "agreement_rate": 0.9691695673794132
       }
     },
     {
@@ -323,23 +323,23 @@
       "test_year": 2021,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 172,
+      "test_observations": 1915,
       "cell_method": {
-        "available_count": 171,
-        "flagged_count": 5,
-        "flag_rate": 0.029239766081871343
+        "available_count": 1915,
+        "flagged_count": 53,
+        "flag_rate": 0.027676240208877285
       },
       "seasonal_method": {
-        "available_count": 172,
-        "flagged_count": 1,
-        "flag_rate": 0.005813953488372093,
+        "available_count": 1915,
+        "flagged_count": 26,
+        "flag_rate": 0.013577023498694517,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 171,
-        "agree_count": 167,
-        "agreement_rate": 0.9766081871345029
+        "comparable_observations": 1915,
+        "agree_count": 1856,
+        "agreement_rate": 0.9691906005221932
       }
     },
     {
@@ -370,23 +370,23 @@
       "test_year": 2022,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 123,
+      "test_observations": 1793,
       "cell_method": {
-        "available_count": 123,
-        "flagged_count": 0,
-        "flag_rate": 0.0
+        "available_count": 1793,
+        "flagged_count": 29,
+        "flag_rate": 0.016174010039040714
       },
       "seasonal_method": {
-        "available_count": 123,
-        "flagged_count": 1,
-        "flag_rate": 0.008130081300813009,
+        "available_count": 1793,
+        "flagged_count": 17,
+        "flag_rate": 0.009481316229782488,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 123,
-        "agree_count": 122,
-        "agreement_rate": 0.991869918699187
+        "comparable_observations": 1793,
+        "agree_count": 1761,
+        "agreement_rate": 0.9821528165086447
       }
     },
     {
@@ -418,23 +418,23 @@
       "test_year": 2023,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 1606,
+      "test_observations": 7616,
       "cell_method": {
-        "available_count": 1606,
-        "flagged_count": 37,
-        "flag_rate": 0.02303860523038605
+        "available_count": 7615,
+        "flagged_count": 173,
+        "flag_rate": 0.022718319107025608
       },
       "seasonal_method": {
-        "available_count": 1606,
-        "flagged_count": 33,
-        "flag_rate": 0.02054794520547945,
+        "available_count": 7616,
+        "flagged_count": 157,
+        "flag_rate": 0.020614495798319327,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 1606,
-        "agree_count": 1580,
-        "agreement_rate": 0.9838107098381071
+        "comparable_observations": 7615,
+        "agree_count": 7421,
+        "agreement_rate": 0.9745239658568614
       }
     },
     {
@@ -467,23 +467,23 @@
       "test_year": 2024,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 493,
+      "test_observations": 3338,
       "cell_method": {
-        "available_count": 493,
-        "flagged_count": 35,
-        "flag_rate": 0.07099391480730223
+        "available_count": 3338,
+        "flagged_count": 135,
+        "flag_rate": 0.04044337926902337
       },
       "seasonal_method": {
-        "available_count": 493,
-        "flagged_count": 12,
-        "flag_rate": 0.02434077079107505,
+        "available_count": 3338,
+        "flagged_count": 13,
+        "flag_rate": 0.0038945476333133613,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 493,
-        "agree_count": 470,
-        "agreement_rate": 0.9533468559837728
+        "comparable_observations": 3338,
+        "agree_count": 3204,
+        "agreement_rate": 0.9598562013181546
       }
     },
     {
@@ -517,23 +517,23 @@
       "test_year": 2025,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 426,
+      "test_observations": 3274,
       "cell_method": {
-        "available_count": 426,
-        "flagged_count": 21,
-        "flag_rate": 0.04929577464788732
+        "available_count": 3274,
+        "flagged_count": 166,
+        "flag_rate": 0.05070250458155162
       },
       "seasonal_method": {
-        "available_count": 426,
-        "flagged_count": 11,
-        "flag_rate": 0.025821596244131457,
+        "available_count": 3274,
+        "flagged_count": 77,
+        "flag_rate": 0.023518631643249847,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 426,
-        "agree_count": 408,
-        "agreement_rate": 0.9577464788732394
+        "comparable_observations": 3274,
+        "agree_count": 3137,
+        "agreement_rate": 0.9581551618814905
       }
     },
     {
@@ -568,23 +568,23 @@
       "test_year": 2026,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 2995,
+      "test_observations": 9643,
       "cell_method": {
-        "available_count": 2995,
-        "flagged_count": 302,
-        "flag_rate": 0.1008347245409015
+        "available_count": 9634,
+        "flagged_count": 959,
+        "flag_rate": 0.09954328420178535
       },
       "seasonal_method": {
-        "available_count": 2995,
-        "flagged_count": 286,
-        "flag_rate": 0.09549248747913189,
+        "available_count": 9643,
+        "flagged_count": 769,
+        "flag_rate": 0.07974696671160428,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 2995,
-        "agree_count": 2817,
-        "agreement_rate": 0.940567612687813
+        "comparable_observations": 9634,
+        "agree_count": 8854,
+        "agreement_rate": 0.9190367448619473
       }
     },
     {
@@ -607,23 +607,23 @@
       "test_year": 2014,
       "region": "riau",
       "skipped": false,
-      "test_observations": 2280,
+      "test_observations": 10045,
       "cell_method": {
-        "available_count": 2267,
-        "flagged_count": 295,
-        "flag_rate": 0.1301279223643582
+        "available_count": 10041,
+        "flagged_count": 1432,
+        "flag_rate": 0.14261527736281246
       },
       "seasonal_method": {
-        "available_count": 2280,
-        "flagged_count": 168,
-        "flag_rate": 0.07368421052631578,
+        "available_count": 10045,
+        "flagged_count": 1478,
+        "flag_rate": 0.14713787954206073,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 2267,
-        "agree_count": 2076,
-        "agreement_rate": 0.9157476841640935
+        "comparable_observations": 10041,
+        "agree_count": 9201,
+        "agreement_rate": 0.9163429937257245
       }
     },
     {
@@ -647,23 +647,23 @@
       "test_year": 2015,
       "region": "riau",
       "skipped": false,
-      "test_observations": 1450,
+      "test_observations": 9574,
       "cell_method": {
-        "available_count": 1446,
-        "flagged_count": 71,
-        "flag_rate": 0.04910096818810512
+        "available_count": 9570,
+        "flagged_count": 535,
+        "flag_rate": 0.05590386624869383
       },
       "seasonal_method": {
-        "available_count": 1450,
-        "flagged_count": 52,
-        "flag_rate": 0.03586206896551724,
+        "available_count": 9574,
+        "flagged_count": 404,
+        "flag_rate": 0.042197618550240235,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 1446,
-        "agree_count": 1396,
-        "agreement_rate": 0.9654218533886584
+        "comparable_observations": 9570,
+        "agree_count": 9129,
+        "agreement_rate": 0.9539184952978056
       }
     },
     {
@@ -688,23 +688,23 @@
       "test_year": 2016,
       "region": "riau",
       "skipped": false,
-      "test_observations": 458,
+      "test_observations": 4695,
       "cell_method": {
-        "available_count": 458,
-        "flagged_count": 11,
-        "flag_rate": 0.024017467248908297
+        "available_count": 4695,
+        "flagged_count": 78,
+        "flag_rate": 0.016613418530351438
       },
       "seasonal_method": {
-        "available_count": 458,
-        "flagged_count": 17,
-        "flag_rate": 0.03711790393013101,
+        "available_count": 4695,
+        "flagged_count": 77,
+        "flag_rate": 0.016400425985090523,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 458,
-        "agree_count": 444,
-        "agreement_rate": 0.9694323144104804
+        "comparable_observations": 4695,
+        "agree_count": 4592,
+        "agreement_rate": 0.9780617678381257
       }
     },
     {
@@ -730,23 +730,23 @@
       "test_year": 2017,
       "region": "riau",
       "skipped": false,
-      "test_observations": 145,
+      "test_observations": 2909,
       "cell_method": {
-        "available_count": 143,
-        "flagged_count": 1,
-        "flag_rate": 0.006993006993006993
+        "available_count": 2909,
+        "flagged_count": 19,
+        "flag_rate": 0.006531454107940873
       },
       "seasonal_method": {
-        "available_count": 145,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
+        "available_count": 2909,
+        "flagged_count": 2,
+        "flag_rate": 0.0006875214850464077,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 143,
-        "agree_count": 142,
-        "agreement_rate": 0.993006993006993
+        "comparable_observations": 2909,
+        "agree_count": 2888,
+        "agreement_rate": 0.9927810244070128
       }
     },
     {
@@ -773,23 +773,23 @@
       "test_year": 2018,
       "region": "riau",
       "skipped": false,
-      "test_observations": 345,
+      "test_observations": 3520,
       "cell_method": {
-        "available_count": 345,
-        "flagged_count": 17,
-        "flag_rate": 0.04927536231884058
+        "available_count": 3520,
+        "flagged_count": 74,
+        "flag_rate": 0.021022727272727273
       },
       "seasonal_method": {
-        "available_count": 345,
-        "flagged_count": 25,
-        "flag_rate": 0.07246376811594203,
+        "available_count": 3520,
+        "flagged_count": 67,
+        "flag_rate": 0.01903409090909091,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 345,
-        "agree_count": 325,
-        "agreement_rate": 0.9420289855072463
+        "comparable_observations": 3520,
+        "agree_count": 3443,
+        "agreement_rate": 0.978125
       }
     },
     {
@@ -817,23 +817,23 @@
       "test_year": 2019,
       "region": "riau",
       "skipped": false,
-      "test_observations": 1026,
+      "test_observations": 6498,
       "cell_method": {
-        "available_count": 1019,
-        "flagged_count": 70,
-        "flag_rate": 0.06869479882237488
+        "available_count": 6498,
+        "flagged_count": 319,
+        "flag_rate": 0.04909202831640505
       },
       "seasonal_method": {
-        "available_count": 1026,
-        "flagged_count": 58,
-        "flag_rate": 0.056530214424951264,
+        "available_count": 6498,
+        "flagged_count": 216,
+        "flag_rate": 0.0332409972299169,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 1019,
-        "agree_count": 951,
-        "agreement_rate": 0.9332679097154073
+        "comparable_observations": 6498,
+        "agree_count": 6231,
+        "agreement_rate": 0.958910433979686
       }
     },
     {
@@ -862,23 +862,23 @@
       "test_year": 2020,
       "region": "riau",
       "skipped": false,
-      "test_observations": 137,
+      "test_observations": 2406,
       "cell_method": {
-        "available_count": 136,
-        "flagged_count": 2,
-        "flag_rate": 0.014705882352941176
+        "available_count": 2406,
+        "flagged_count": 26,
+        "flag_rate": 0.010806317539484621
       },
       "seasonal_method": {
-        "available_count": 137,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
+        "available_count": 2406,
+        "flagged_count": 25,
+        "flag_rate": 0.010390689941812137,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 136,
-        "agree_count": 134,
-        "agreement_rate": 0.9852941176470589
+        "comparable_observations": 2406,
+        "agree_count": 2371,
+        "agreement_rate": 0.985453034081463
       }
     },
     {
@@ -908,23 +908,23 @@
       "test_year": 2021,
       "region": "riau",
       "skipped": false,
-      "test_observations": 105,
+      "test_observations": 2109,
       "cell_method": {
-        "available_count": 105,
-        "flagged_count": 4,
-        "flag_rate": 0.0380952380952381
+        "available_count": 2109,
+        "flagged_count": 10,
+        "flag_rate": 0.00474158368895211
       },
       "seasonal_method": {
-        "available_count": 105,
-        "flagged_count": 2,
-        "flag_rate": 0.01904761904761905,
+        "available_count": 2109,
+        "flagged_count": 8,
+        "flag_rate": 0.003793266951161688,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 105,
-        "agree_count": 103,
-        "agreement_rate": 0.9809523809523809
+        "comparable_observations": 2109,
+        "agree_count": 2095,
+        "agreement_rate": 0.993361782835467
       }
     },
     {
@@ -955,23 +955,23 @@
       "test_year": 2022,
       "region": "riau",
       "skipped": false,
-      "test_observations": 76,
+      "test_observations": 1833,
       "cell_method": {
-        "available_count": 75,
-        "flagged_count": 0,
-        "flag_rate": 0.0
+        "available_count": 1833,
+        "flagged_count": 17,
+        "flag_rate": 0.009274413529732678
       },
       "seasonal_method": {
-        "available_count": 76,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
+        "available_count": 1833,
+        "flagged_count": 3,
+        "flag_rate": 0.0016366612111292963,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 75,
-        "agree_count": 75,
-        "agreement_rate": 1.0
+        "comparable_observations": 1833,
+        "agree_count": 1815,
+        "agreement_rate": 0.9901800327332242
       }
     },
     {
@@ -1003,23 +1003,23 @@
       "test_year": 2023,
       "region": "riau",
       "skipped": false,
-      "test_observations": 162,
+      "test_observations": 2561,
       "cell_method": {
-        "available_count": 161,
-        "flagged_count": 2,
-        "flag_rate": 0.012422360248447204
+        "available_count": 2561,
+        "flagged_count": 26,
+        "flag_rate": 0.01015228426395939
       },
       "seasonal_method": {
-        "available_count": 162,
-        "flagged_count": 2,
-        "flag_rate": 0.012345679012345678,
+        "available_count": 2561,
+        "flagged_count": 25,
+        "flag_rate": 0.009761811792268645,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 161,
-        "agree_count": 159,
-        "agreement_rate": 0.9875776397515528
+        "comparable_observations": 2561,
+        "agree_count": 2528,
+        "agreement_rate": 0.9871144084342054
       }
     },
     {
@@ -1052,22 +1052,1095 @@
       "test_year": 2024,
       "region": "riau",
       "skipped": false,
-      "test_observations": 136,
+      "test_observations": 2218,
       "cell_method": {
-        "available_count": 136,
-        "flagged_count": 1,
-        "flag_rate": 0.007352941176470588
+        "available_count": 2218,
+        "flagged_count": 22,
+        "flag_rate": 0.009918845807033363
       },
       "seasonal_method": {
-        "available_count": 136,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
+        "available_count": 2218,
+        "flagged_count": 8,
+        "flag_rate": 0.0036068530207394047,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 136,
-        "agree_count": 135,
+        "comparable_observations": 2218,
+        "agree_count": 2192,
+        "agreement_rate": 0.9882777276825969
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023,
+        2024
+      ],
+      "test_year": 2025,
+      "region": "riau",
+      "skipped": false,
+      "test_observations": 2223,
+      "cell_method": {
+        "available_count": 2222,
+        "flagged_count": 64,
+        "flag_rate": 0.0288028802880288
+      },
+      "seasonal_method": {
+        "available_count": 2223,
+        "flagged_count": 39,
+        "flag_rate": 0.017543859649122806,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 2222,
+        "agree_count": 2145,
+        "agreement_rate": 0.9653465346534653
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "test_year": 2026,
+      "region": "riau",
+      "skipped": false,
+      "test_observations": 2490,
+      "cell_method": {
+        "available_count": 2490,
+        "flagged_count": 50,
+        "flag_rate": 0.020080321285140562
+      },
+      "seasonal_method": {
+        "available_count": 2490,
+        "flagged_count": 22,
+        "flag_rate": 0.008835341365461847,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 2490,
+        "agree_count": 2440,
+        "agreement_rate": 0.9799196787148594
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013
+      ],
+      "test_year": 2014,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 12499,
+      "cell_method": {
+        "available_count": 12499,
+        "flagged_count": 1093,
+        "flag_rate": 0.08744699575966078
+      },
+      "seasonal_method": {
+        "available_count": 12499,
+        "flagged_count": 877,
+        "flag_rate": 0.07016561324905993,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 12499,
+        "agree_count": 11713,
+        "agreement_rate": 0.9371149691975358
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014
+      ],
+      "test_year": 2015,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 18026,
+      "cell_method": {
+        "available_count": 18018,
+        "flagged_count": 2967,
+        "flag_rate": 0.16466866466866467
+      },
+      "seasonal_method": {
+        "available_count": 18026,
+        "flagged_count": 1936,
+        "flag_rate": 0.10740042161322534,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 18018,
+        "agree_count": 16075,
+        "agreement_rate": 0.8921633921633921
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015
+      ],
+      "test_year": 2016,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 3717,
+      "cell_method": {
+        "available_count": 3717,
+        "flagged_count": 24,
+        "flag_rate": 0.00645682001614205
+      },
+      "seasonal_method": {
+        "available_count": 3717,
+        "flagged_count": 12,
+        "flag_rate": 0.003228410008071025,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 3717,
+        "agree_count": 3687,
+        "agreement_rate": 0.9919289749798225
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016
+      ],
+      "test_year": 2017,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 3428,
+      "cell_method": {
+        "available_count": 3428,
+        "flagged_count": 21,
+        "flag_rate": 0.006126021003500583
+      },
+      "seasonal_method": {
+        "available_count": 3428,
+        "flagged_count": 17,
+        "flag_rate": 0.004959159859976663,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 3428,
+        "agree_count": 3398,
+        "agreement_rate": 0.9912485414235706
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017
+      ],
+      "test_year": 2018,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 5388,
+      "cell_method": {
+        "available_count": 5388,
+        "flagged_count": 33,
+        "flag_rate": 0.006124721603563474
+      },
+      "seasonal_method": {
+        "available_count": 5388,
+        "flagged_count": 17,
+        "flag_rate": 0.0031551596139569415,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 5388,
+        "agree_count": 5342,
+        "agreement_rate": 0.9914625092798812
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018
+      ],
+      "test_year": 2019,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 10537,
+      "cell_method": {
+        "available_count": 10537,
+        "flagged_count": 790,
+        "flag_rate": 0.07497390148998766
+      },
+      "seasonal_method": {
+        "available_count": 10537,
+        "flagged_count": 339,
+        "flag_rate": 0.0321723450697542,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 10537,
+        "agree_count": 9874,
+        "agreement_rate": 0.9370788649520736
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019
+      ],
+      "test_year": 2020,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 2704,
+      "cell_method": {
+        "available_count": 2704,
+        "flagged_count": 8,
+        "flag_rate": 0.0029585798816568047
+      },
+      "seasonal_method": {
+        "available_count": 2704,
+        "flagged_count": 10,
+        "flag_rate": 0.0036982248520710057,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 2704,
+        "agree_count": 2694,
+        "agreement_rate": 0.996301775147929
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020
+      ],
+      "test_year": 2021,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 2831,
+      "cell_method": {
+        "available_count": 2831,
+        "flagged_count": 12,
+        "flag_rate": 0.0042387848816672555
+      },
+      "seasonal_method": {
+        "available_count": 2831,
+        "flagged_count": 21,
+        "flag_rate": 0.007417873542917697,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 2831,
+        "agree_count": 2806,
+        "agreement_rate": 0.9911691981631933
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021
+      ],
+      "test_year": 2022,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 2445,
+      "cell_method": {
+        "available_count": 2445,
+        "flagged_count": 11,
+        "flag_rate": 0.004498977505112475
+      },
+      "seasonal_method": {
+        "available_count": 2445,
+        "flagged_count": 21,
+        "flag_rate": 0.008588957055214725,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 2445,
+        "agree_count": 2423,
+        "agreement_rate": 0.9910020449897751
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022
+      ],
+      "test_year": 2023,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 7864,
+      "cell_method": {
+        "available_count": 7864,
+        "flagged_count": 301,
+        "flag_rate": 0.038275686673448626
+      },
+      "seasonal_method": {
+        "available_count": 7864,
+        "flagged_count": 96,
+        "flag_rate": 0.012207527975584944,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 7864,
+        "agree_count": 7563,
+        "agreement_rate": 0.9617243133265514
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023
+      ],
+      "test_year": 2024,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 4882,
+      "cell_method": {
+        "available_count": 4882,
+        "flagged_count": 42,
+        "flag_rate": 0.008603031544448997
+      },
+      "seasonal_method": {
+        "available_count": 4882,
+        "flagged_count": 15,
+        "flag_rate": 0.0030725112658746417,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 4882,
+        "agree_count": 4831,
+        "agreement_rate": 0.9895534616960262
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023,
+        2024
+      ],
+      "test_year": 2025,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 3619,
+      "cell_method": {
+        "available_count": 3619,
+        "flagged_count": 54,
+        "flag_rate": 0.014921248963802156
+      },
+      "seasonal_method": {
+        "available_count": 3619,
+        "flagged_count": 24,
+        "flag_rate": 0.0066316662061342915,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 3619,
+        "agree_count": 3559,
+        "agreement_rate": 0.9834208344846642
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "test_year": 2026,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 6985,
+      "cell_method": {
+        "available_count": 6984,
+        "flagged_count": 408,
+        "flag_rate": 0.058419243986254296
+      },
+      "seasonal_method": {
+        "available_count": 6985,
+        "flagged_count": 130,
+        "flag_rate": 0.018611309949892626,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 6984,
+        "agree_count": 6620,
+        "agreement_rate": 0.9478808705612829
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013
+      ],
+      "test_year": 2014,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 5498,
+      "cell_method": {
+        "available_count": 5498,
+        "flagged_count": 300,
+        "flag_rate": 0.05456529647144416
+      },
+      "seasonal_method": {
+        "available_count": 5498,
+        "flagged_count": 405,
+        "flag_rate": 0.07366315023644962,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 5498,
+        "agree_count": 5209,
+        "agreement_rate": 0.9474354310658422
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014
+      ],
+      "test_year": 2015,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 8037,
+      "cell_method": {
+        "available_count": 8029,
+        "flagged_count": 1374,
+        "flag_rate": 0.17112965500062274
+      },
+      "seasonal_method": {
+        "available_count": 8037,
+        "flagged_count": 1173,
+        "flag_rate": 0.14594998133631953,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 8029,
+        "agree_count": 7355,
+        "agreement_rate": 0.9160543031510774
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015
+      ],
+      "test_year": 2016,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 1631,
+      "cell_method": {
+        "available_count": 1631,
+        "flagged_count": 4,
+        "flag_rate": 0.002452483139178418
+      },
+      "seasonal_method": {
+        "available_count": 1631,
+        "flagged_count": 10,
+        "flag_rate": 0.0061312078479460455,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 1631,
+        "agree_count": 1619,
+        "agreement_rate": 0.9926425505824648
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016
+      ],
+      "test_year": 2017,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 1402,
+      "cell_method": {
+        "available_count": 1402,
+        "flagged_count": 4,
+        "flag_rate": 0.0028530670470756064
+      },
+      "seasonal_method": {
+        "available_count": 1402,
+        "flagged_count": 8,
+        "flag_rate": 0.005706134094151213,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 1402,
+        "agree_count": 1392,
+        "agreement_rate": 0.992867332382311
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017
+      ],
+      "test_year": 2018,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 1965,
+      "cell_method": {
+        "available_count": 1965,
+        "flagged_count": 26,
+        "flag_rate": 0.013231552162849873
+      },
+      "seasonal_method": {
+        "available_count": 1965,
+        "flagged_count": 12,
+        "flag_rate": 0.0061068702290076335,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 1965,
+        "agree_count": 1939,
+        "agreement_rate": 0.9867684478371501
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018
+      ],
+      "test_year": 2019,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 4298,
+      "cell_method": {
+        "available_count": 4298,
+        "flagged_count": 375,
+        "flag_rate": 0.08724988366682178
+      },
+      "seasonal_method": {
+        "available_count": 4298,
+        "flagged_count": 208,
+        "flag_rate": 0.04839460214053048,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 4298,
+        "agree_count": 4027,
+        "agreement_rate": 0.9369474174034434
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019
+      ],
+      "test_year": 2020,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 985,
+      "cell_method": {
+        "available_count": 985,
+        "flagged_count": 1,
+        "flag_rate": 0.0010152284263959391
+      },
+      "seasonal_method": {
+        "available_count": 985,
+        "flagged_count": 2,
+        "flag_rate": 0.0020304568527918783,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 985,
+        "agree_count": 982,
+        "agreement_rate": 0.9969543147208122
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020
+      ],
+      "test_year": 2021,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 863,
+      "cell_method": {
+        "available_count": 863,
+        "flagged_count": 5,
+        "flag_rate": 0.005793742757821553
+      },
+      "seasonal_method": {
+        "available_count": 863,
+        "flagged_count": 1,
+        "flag_rate": 0.0011587485515643105,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 863,
+        "agree_count": 857,
+        "agreement_rate": 0.9930475086906141
+      }
+    },
+    {
+      "train_years": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021
+      ],
+      "test_year": 2022,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 952,
+      "cell_method": {
+        "available_count": 952,
+        "flagged_count": 7,
+        "flag_rate": 0.007352941176470588
+      },
+      "seasonal_method": {
+        "available_count": 952,
+        "flagged_count": 2,
+        "flag_rate": 0.0021008403361344537,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 952,
+        "agree_count": 945,
         "agreement_rate": 0.9926470588235294
       }
     },
@@ -1095,1101 +2168,28 @@
         2019,
         2020,
         2021,
-        2022,
-        2023,
-        2024
-      ],
-      "test_year": 2025,
-      "region": "riau",
-      "skipped": false,
-      "test_observations": 196,
-      "cell_method": {
-        "available_count": 195,
-        "flagged_count": 15,
-        "flag_rate": 0.07692307692307693
-      },
-      "seasonal_method": {
-        "available_count": 196,
-        "flagged_count": 4,
-        "flag_rate": 0.02040816326530612,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 195,
-        "agree_count": 180,
-        "agreement_rate": 0.9230769230769231
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022,
-        2023,
-        2024,
-        2025
-      ],
-      "test_year": 2026,
-      "region": "riau",
-      "skipped": false,
-      "test_observations": 316,
-      "cell_method": {
-        "available_count": 315,
-        "flagged_count": 9,
-        "flag_rate": 0.02857142857142857
-      },
-      "seasonal_method": {
-        "available_count": 316,
-        "flagged_count": 9,
-        "flag_rate": 0.028481012658227847,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 315,
-        "agree_count": 309,
-        "agreement_rate": 0.9809523809523809
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013
-      ],
-      "test_year": 2014,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 2217,
-      "cell_method": {
-        "available_count": 2209,
-        "flagged_count": 136,
-        "flag_rate": 0.0615663196016297
-      },
-      "seasonal_method": {
-        "available_count": 2217,
-        "flagged_count": 125,
-        "flag_rate": 0.05638249887235002,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 2209,
-        "agree_count": 2094,
-        "agreement_rate": 0.9479402444545043
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014
-      ],
-      "test_year": 2015,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 4148,
-      "cell_method": {
-        "available_count": 4146,
-        "flagged_count": 453,
-        "flag_rate": 0.10926193921852388
-      },
-      "seasonal_method": {
-        "available_count": 4148,
-        "flagged_count": 318,
-        "flag_rate": 0.07666345226615236,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 4146,
-        "agree_count": 3863,
-        "agreement_rate": 0.9317414375301496
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015
-      ],
-      "test_year": 2016,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 185,
-      "cell_method": {
-        "available_count": 185,
-        "flagged_count": 1,
-        "flag_rate": 0.005405405405405406
-      },
-      "seasonal_method": {
-        "available_count": 185,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 185,
-        "agree_count": 184,
-        "agreement_rate": 0.9945945945945946
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016
-      ],
-      "test_year": 2017,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 222,
-      "cell_method": {
-        "available_count": 222,
-        "flagged_count": 0,
-        "flag_rate": 0.0
-      },
-      "seasonal_method": {
-        "available_count": 222,
-        "flagged_count": 1,
-        "flag_rate": 0.0045045045045045045,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 222,
-        "agree_count": 221,
-        "agreement_rate": 0.9954954954954955
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016,
-        2017
-      ],
-      "test_year": 2018,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 391,
-      "cell_method": {
-        "available_count": 391,
-        "flagged_count": 7,
-        "flag_rate": 0.017902813299232736
-      },
-      "seasonal_method": {
-        "available_count": 391,
-        "flagged_count": 1,
-        "flag_rate": 0.0025575447570332483,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 391,
-        "agree_count": 383,
-        "agreement_rate": 0.979539641943734
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018
-      ],
-      "test_year": 2019,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 2047,
-      "cell_method": {
-        "available_count": 2046,
-        "flagged_count": 257,
-        "flag_rate": 0.12561094819159335
-      },
-      "seasonal_method": {
-        "available_count": 2047,
-        "flagged_count": 124,
-        "flag_rate": 0.060576453346360526,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 2046,
-        "agree_count": 1865,
-        "agreement_rate": 0.9115347018572825
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019
-      ],
-      "test_year": 2020,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 80,
-      "cell_method": {
-        "available_count": 80,
-        "flagged_count": 2,
-        "flag_rate": 0.025
-      },
-      "seasonal_method": {
-        "available_count": 80,
-        "flagged_count": 1,
-        "flag_rate": 0.0125,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 80,
-        "agree_count": 79,
-        "agreement_rate": 0.9875
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020
-      ],
-      "test_year": 2021,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 117,
-      "cell_method": {
-        "available_count": 117,
-        "flagged_count": 1,
-        "flag_rate": 0.008547008547008548
-      },
-      "seasonal_method": {
-        "available_count": 117,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 117,
-        "agree_count": 116,
-        "agreement_rate": 0.9914529914529915
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021
-      ],
-      "test_year": 2022,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 114,
-      "cell_method": {
-        "available_count": 114,
-        "flagged_count": 1,
-        "flag_rate": 0.008771929824561403
-      },
-      "seasonal_method": {
-        "available_count": 114,
-        "flagged_count": 1,
-        "flag_rate": 0.008771929824561403,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 114,
-        "agree_count": 114,
-        "agreement_rate": 1.0
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
         2022
       ],
       "test_year": 2023,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 1234,
-      "cell_method": {
-        "available_count": 1234,
-        "flagged_count": 53,
-        "flag_rate": 0.04294975688816856
-      },
-      "seasonal_method": {
-        "available_count": 1234,
-        "flagged_count": 11,
-        "flag_rate": 0.008914100486223663,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 1234,
-        "agree_count": 1190,
-        "agreement_rate": 0.9643435980551054
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022,
-        2023
-      ],
-      "test_year": 2024,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 391,
-      "cell_method": {
-        "available_count": 390,
-        "flagged_count": 12,
-        "flag_rate": 0.03076923076923077
-      },
-      "seasonal_method": {
-        "available_count": 391,
-        "flagged_count": 3,
-        "flag_rate": 0.0076726342710997444,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 390,
-        "agree_count": 377,
-        "agreement_rate": 0.9666666666666667
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022,
-        2023,
-        2024
-      ],
-      "test_year": 2025,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 302,
-      "cell_method": {
-        "available_count": 302,
-        "flagged_count": 2,
-        "flag_rate": 0.006622516556291391
-      },
-      "seasonal_method": {
-        "available_count": 302,
-        "flagged_count": 4,
-        "flag_rate": 0.013245033112582781,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 302,
-        "agree_count": 296,
-        "agreement_rate": 0.9801324503311258
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022,
-        2023,
-        2024,
-        2025
-      ],
-      "test_year": 2026,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 1324,
-      "cell_method": {
-        "available_count": 1323,
-        "flagged_count": 121,
-        "flag_rate": 0.09145880574452003
-      },
-      "seasonal_method": {
-        "available_count": 1324,
-        "flagged_count": 50,
-        "flag_rate": 0.0377643504531722,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 1323,
-        "agree_count": 1236,
-        "agreement_rate": 0.9342403628117913
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013
-      ],
-      "test_year": 2014,
       "region": "jambi",
       "skipped": false,
-      "test_observations": 738,
+      "test_observations": 2104,
       "cell_method": {
-        "available_count": 737,
-        "flagged_count": 39,
-        "flag_rate": 0.052917232021709636
-      },
-      "seasonal_method": {
-        "available_count": 738,
+        "available_count": 2104,
         "flagged_count": 54,
-        "flag_rate": 0.07317073170731707,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 737,
-        "agree_count": 696,
-        "agreement_rate": 0.9443690637720489
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014
-      ],
-      "test_year": 2015,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 1652,
-      "cell_method": {
-        "available_count": 1649,
-        "flagged_count": 193,
-        "flag_rate": 0.1170406306852638
+        "flag_rate": 0.025665399239543727
       },
       "seasonal_method": {
-        "available_count": 1652,
-        "flagged_count": 163,
-        "flag_rate": 0.0986682808716707,
+        "available_count": 2104,
+        "flagged_count": 7,
+        "flag_rate": 0.003326996197718631,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 1649,
-        "agree_count": 1559,
-        "agreement_rate": 0.9454214675560946
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015
-      ],
-      "test_year": 2016,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 62,
-      "cell_method": {
-        "available_count": 62,
-        "flagged_count": 0,
-        "flag_rate": 0.0
-      },
-      "seasonal_method": {
-        "available_count": 62,
-        "flagged_count": 2,
-        "flag_rate": 0.03225806451612903,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 62,
-        "agree_count": 60,
-        "agreement_rate": 0.967741935483871
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016
-      ],
-      "test_year": 2017,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 62,
-      "cell_method": {
-        "available_count": 62,
-        "flagged_count": 0,
-        "flag_rate": 0.0
-      },
-      "seasonal_method": {
-        "available_count": 62,
-        "flagged_count": 1,
-        "flag_rate": 0.016129032258064516,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 62,
-        "agree_count": 61,
-        "agreement_rate": 0.9838709677419355
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016,
-        2017
-      ],
-      "test_year": 2018,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 125,
-      "cell_method": {
-        "available_count": 125,
-        "flagged_count": 9,
-        "flag_rate": 0.072
-      },
-      "seasonal_method": {
-        "available_count": 125,
-        "flagged_count": 4,
-        "flag_rate": 0.032,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 125,
-        "agree_count": 120,
-        "agreement_rate": 0.96
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018
-      ],
-      "test_year": 2019,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 908,
-      "cell_method": {
-        "available_count": 904,
-        "flagged_count": 150,
-        "flag_rate": 0.16592920353982302
-      },
-      "seasonal_method": {
-        "available_count": 908,
-        "flagged_count": 121,
-        "flag_rate": 0.13325991189427314,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 904,
-        "agree_count": 831,
-        "agreement_rate": 0.9192477876106194
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019
-      ],
-      "test_year": 2020,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 14,
-      "cell_method": {
-        "available_count": 14,
-        "flagged_count": 0,
-        "flag_rate": 0.0
-      },
-      "seasonal_method": {
-        "available_count": 14,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 14,
-        "agree_count": 14,
-        "agreement_rate": 1.0
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020
-      ],
-      "test_year": 2021,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 17,
-      "cell_method": {
-        "available_count": 17,
-        "flagged_count": 0,
-        "flag_rate": 0.0
-      },
-      "seasonal_method": {
-        "available_count": 17,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 17,
-        "agree_count": 17,
-        "agreement_rate": 1.0
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021
-      ],
-      "test_year": 2022,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 26,
-      "cell_method": {
-        "available_count": 26,
-        "flagged_count": 0,
-        "flag_rate": 0.0
-      },
-      "seasonal_method": {
-        "available_count": 26,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 26,
-        "agree_count": 26,
-        "agreement_rate": 1.0
-      }
-    },
-    {
-      "train_years": [
-        2000,
-        2001,
-        2002,
-        2003,
-        2004,
-        2005,
-        2006,
-        2007,
-        2008,
-        2009,
-        2010,
-        2011,
-        2012,
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022
-      ],
-      "test_year": 2023,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 224,
-      "cell_method": {
-        "available_count": 224,
-        "flagged_count": 10,
-        "flag_rate": 0.044642857142857144
-      },
-      "seasonal_method": {
-        "available_count": 224,
-        "flagged_count": 1,
-        "flag_rate": 0.004464285714285714,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 224,
-        "agree_count": 215,
-        "agreement_rate": 0.9598214285714286
+        "comparable_observations": 2104,
+        "agree_count": 2055,
+        "agreement_rate": 0.9767110266159695
       }
     },
     {
@@ -2222,23 +2222,23 @@
       "test_year": 2024,
       "region": "jambi",
       "skipped": false,
-      "test_observations": 109,
+      "test_observations": 1740,
       "cell_method": {
-        "available_count": 109,
-        "flagged_count": 1,
-        "flag_rate": 0.009174311926605505
+        "available_count": 1740,
+        "flagged_count": 7,
+        "flag_rate": 0.004022988505747126
       },
       "seasonal_method": {
-        "available_count": 109,
-        "flagged_count": 2,
-        "flag_rate": 0.01834862385321101,
+        "available_count": 1740,
+        "flagged_count": 9,
+        "flag_rate": 0.005172413793103448,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 109,
-        "agree_count": 106,
-        "agreement_rate": 0.9724770642201835
+        "comparable_observations": 1740,
+        "agree_count": 1730,
+        "agreement_rate": 0.9942528735632183
       }
     },
     {
@@ -2272,23 +2272,23 @@
       "test_year": 2025,
       "region": "jambi",
       "skipped": false,
-      "test_observations": 89,
+      "test_observations": 1336,
       "cell_method": {
-        "available_count": 89,
-        "flagged_count": 0,
-        "flag_rate": 0.0
+        "available_count": 1336,
+        "flagged_count": 14,
+        "flag_rate": 0.010479041916167664
       },
       "seasonal_method": {
-        "available_count": 89,
-        "flagged_count": 2,
-        "flag_rate": 0.02247191011235955,
+        "available_count": 1336,
+        "flagged_count": 6,
+        "flag_rate": 0.004491017964071856,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 89,
-        "agree_count": 87,
-        "agreement_rate": 0.9775280898876404
+        "comparable_observations": 1336,
+        "agree_count": 1318,
+        "agreement_rate": 0.9865269461077845
       }
     },
     {
@@ -2323,23 +2323,23 @@
       "test_year": 2026,
       "region": "jambi",
       "skipped": false,
-      "test_observations": 360,
+      "test_observations": 2319,
       "cell_method": {
-        "available_count": 358,
-        "flagged_count": 24,
-        "flag_rate": 0.0670391061452514
+        "available_count": 2318,
+        "flagged_count": 82,
+        "flag_rate": 0.03537532355478861
       },
       "seasonal_method": {
-        "available_count": 360,
-        "flagged_count": 8,
-        "flag_rate": 0.022222222222222223,
+        "available_count": 2319,
+        "flagged_count": 14,
+        "flag_rate": 0.00603708495040966,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 358,
-        "agree_count": 338,
-        "agreement_rate": 0.9441340782122905
+        "comparable_observations": 2318,
+        "agree_count": 2238,
+        "agreement_rate": 0.9654874892148404
       }
     },
     {
@@ -2362,23 +2362,23 @@
       "test_year": 2014,
       "region": "kalimantan-selatan",
       "skipped": false,
-      "test_observations": 1459,
+      "test_observations": 6685,
       "cell_method": {
-        "available_count": 1459,
-        "flagged_count": 108,
-        "flag_rate": 0.07402330363262509
+        "available_count": 6682,
+        "flagged_count": 1069,
+        "flag_rate": 0.1599820413049985
       },
       "seasonal_method": {
-        "available_count": 1459,
-        "flagged_count": 44,
-        "flag_rate": 0.03015764222069911,
+        "available_count": 6685,
+        "flagged_count": 582,
+        "flag_rate": 0.08706058339566193,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 1459,
-        "agree_count": 1355,
-        "agreement_rate": 0.9287183002056203
+        "comparable_observations": 6682,
+        "agree_count": 5935,
+        "agreement_rate": 0.8882071236156839
       }
     },
     {
@@ -2402,23 +2402,23 @@
       "test_year": 2015,
       "region": "kalimantan-selatan",
       "skipped": false,
-      "test_observations": 2409,
+      "test_observations": 9682,
       "cell_method": {
-        "available_count": 2408,
-        "flagged_count": 322,
-        "flag_rate": 0.13372093023255813
+        "available_count": 9682,
+        "flagged_count": 2026,
+        "flag_rate": 0.20925428630448253
       },
       "seasonal_method": {
-        "available_count": 2409,
-        "flagged_count": 157,
-        "flag_rate": 0.06517227065172271,
+        "available_count": 9682,
+        "flagged_count": 1184,
+        "flag_rate": 0.12228878330923362,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 2408,
-        "agree_count": 2171,
-        "agreement_rate": 0.901578073089701
+        "comparable_observations": 9682,
+        "agree_count": 8186,
+        "agreement_rate": 0.8454864697376575
       }
     },
     {
@@ -2443,23 +2443,23 @@
       "test_year": 2016,
       "region": "kalimantan-selatan",
       "skipped": false,
-      "test_observations": 71,
+      "test_observations": 1619,
       "cell_method": {
-        "available_count": 71,
-        "flagged_count": 0,
-        "flag_rate": 0.0
+        "available_count": 1619,
+        "flagged_count": 5,
+        "flag_rate": 0.0030883261272390363
       },
       "seasonal_method": {
-        "available_count": 71,
-        "flagged_count": 4,
-        "flag_rate": 0.056338028169014086,
+        "available_count": 1619,
+        "flagged_count": 64,
+        "flag_rate": 0.03953057442865967,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 71,
-        "agree_count": 67,
-        "agreement_rate": 0.9436619718309859
+        "comparable_observations": 1619,
+        "agree_count": 1550,
+        "agreement_rate": 0.9573810994441013
       }
     },
     {
@@ -2485,23 +2485,23 @@
       "test_year": 2017,
       "region": "kalimantan-selatan",
       "skipped": false,
-      "test_observations": 111,
+      "test_observations": 1523,
       "cell_method": {
-        "available_count": 111,
-        "flagged_count": 1,
-        "flag_rate": 0.009009009009009009
+        "available_count": 1523,
+        "flagged_count": 13,
+        "flag_rate": 0.008535784635587657
       },
       "seasonal_method": {
-        "available_count": 111,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
+        "available_count": 1523,
+        "flagged_count": 13,
+        "flag_rate": 0.008535784635587657,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 111,
-        "agree_count": 110,
-        "agreement_rate": 0.990990990990991
+        "comparable_observations": 1523,
+        "agree_count": 1497,
+        "agreement_rate": 0.9829284307288247
       }
     },
     {
@@ -2528,23 +2528,23 @@
       "test_year": 2018,
       "region": "kalimantan-selatan",
       "skipped": false,
-      "test_observations": 412,
+      "test_observations": 3518,
       "cell_method": {
-        "available_count": 412,
-        "flagged_count": 15,
-        "flag_rate": 0.03640776699029126
+        "available_count": 3518,
+        "flagged_count": 66,
+        "flag_rate": 0.018760659465605456
       },
       "seasonal_method": {
-        "available_count": 412,
-        "flagged_count": 8,
-        "flag_rate": 0.019417475728155338,
+        "available_count": 3518,
+        "flagged_count": 62,
+        "flag_rate": 0.01762364980102331,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 412,
-        "agree_count": 401,
-        "agreement_rate": 0.9733009708737864
+        "comparable_observations": 3518,
+        "agree_count": 3446,
+        "agreement_rate": 0.9795338260375214
       }
     },
     {
@@ -2572,23 +2572,23 @@
       "test_year": 2019,
       "region": "kalimantan-selatan",
       "skipped": false,
-      "test_observations": 1222,
+      "test_observations": 6459,
       "cell_method": {
-        "available_count": 1222,
-        "flagged_count": 81,
-        "flag_rate": 0.0662847790507365
+        "available_count": 6459,
+        "flagged_count": 365,
+        "flag_rate": 0.05651029571141043
       },
       "seasonal_method": {
-        "available_count": 1222,
-        "flagged_count": 87,
-        "flag_rate": 0.07119476268412439,
+        "available_count": 6459,
+        "flagged_count": 425,
+        "flag_rate": 0.06579965938999845,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 1222,
-        "agree_count": 1142,
-        "agreement_rate": 0.9345335515548282
+        "comparable_observations": 6459,
+        "agree_count": 6025,
+        "agreement_rate": 0.9328069360582133
       }
     },
     {
@@ -2617,23 +2617,23 @@
       "test_year": 2020,
       "region": "kalimantan-selatan",
       "skipped": false,
-      "test_observations": 73,
+      "test_observations": 1287,
       "cell_method": {
-        "available_count": 73,
-        "flagged_count": 0,
-        "flag_rate": 0.0
+        "available_count": 1287,
+        "flagged_count": 7,
+        "flag_rate": 0.005439005439005439
       },
       "seasonal_method": {
-        "available_count": 73,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
+        "available_count": 1287,
+        "flagged_count": 7,
+        "flag_rate": 0.005439005439005439,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 73,
-        "agree_count": 73,
-        "agreement_rate": 1.0
+        "comparable_observations": 1287,
+        "agree_count": 1277,
+        "agreement_rate": 0.9922299922299922
       }
     },
     {
@@ -2663,23 +2663,23 @@
       "test_year": 2021,
       "region": "kalimantan-selatan",
       "skipped": false,
-      "test_observations": 32,
+      "test_observations": 1038,
       "cell_method": {
-        "available_count": 32,
-        "flagged_count": 1,
-        "flag_rate": 0.03125
+        "available_count": 1038,
+        "flagged_count": 4,
+        "flag_rate": 0.0038535645472061657
       },
       "seasonal_method": {
-        "available_count": 32,
-        "flagged_count": 1,
-        "flag_rate": 0.03125,
+        "available_count": 1038,
+        "flagged_count": 20,
+        "flag_rate": 0.019267822736030827,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 32,
-        "agree_count": 32,
-        "agreement_rate": 1.0
+        "comparable_observations": 1038,
+        "agree_count": 1014,
+        "agreement_rate": 0.976878612716763
       }
     },
     {
@@ -2710,23 +2710,23 @@
       "test_year": 2022,
       "region": "kalimantan-selatan",
       "skipped": false,
-      "test_observations": 14,
+      "test_observations": 907,
       "cell_method": {
-        "available_count": 14,
-        "flagged_count": 0,
-        "flag_rate": 0.0
+        "available_count": 907,
+        "flagged_count": 2,
+        "flag_rate": 0.002205071664829107
       },
       "seasonal_method": {
-        "available_count": 14,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
+        "available_count": 907,
+        "flagged_count": 4,
+        "flag_rate": 0.004410143329658214,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 14,
-        "agree_count": 14,
-        "agreement_rate": 1.0
+        "comparable_observations": 907,
+        "agree_count": 901,
+        "agreement_rate": 0.9933847850055126
       }
     },
     {
@@ -2758,23 +2758,23 @@
       "test_year": 2023,
       "region": "kalimantan-selatan",
       "skipped": false,
-      "test_observations": 888,
+      "test_observations": 5219,
       "cell_method": {
-        "available_count": 888,
-        "flagged_count": 23,
-        "flag_rate": 0.0259009009009009
+        "available_count": 5219,
+        "flagged_count": 147,
+        "flag_rate": 0.02816631538608929
       },
       "seasonal_method": {
-        "available_count": 888,
-        "flagged_count": 12,
-        "flag_rate": 0.013513513513513514,
+        "available_count": 5219,
+        "flagged_count": 151,
+        "flag_rate": 0.028932745736731175,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 888,
-        "agree_count": 871,
-        "agreement_rate": 0.9808558558558559
+        "comparable_observations": 5219,
+        "agree_count": 5041,
+        "agreement_rate": 0.9658938493964361
       }
     },
     {
@@ -2807,23 +2807,23 @@
       "test_year": 2024,
       "region": "kalimantan-selatan",
       "skipped": false,
-      "test_observations": 143,
+      "test_observations": 1971,
       "cell_method": {
-        "available_count": 143,
-        "flagged_count": 1,
-        "flag_rate": 0.006993006993006993
+        "available_count": 1971,
+        "flagged_count": 8,
+        "flag_rate": 0.004058853373921867
       },
       "seasonal_method": {
-        "available_count": 143,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
+        "available_count": 1971,
+        "flagged_count": 12,
+        "flag_rate": 0.0060882800608828,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 143,
-        "agree_count": 142,
-        "agreement_rate": 0.993006993006993
+        "comparable_observations": 1971,
+        "agree_count": 1953,
+        "agreement_rate": 0.9908675799086758
       }
     },
     {
@@ -2857,23 +2857,23 @@
       "test_year": 2025,
       "region": "kalimantan-selatan",
       "skipped": false,
-      "test_observations": 84,
+      "test_observations": 1535,
       "cell_method": {
-        "available_count": 84,
-        "flagged_count": 0,
-        "flag_rate": 0.0
+        "available_count": 1535,
+        "flagged_count": 10,
+        "flag_rate": 0.006514657980456026
       },
       "seasonal_method": {
-        "available_count": 84,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
+        "available_count": 1535,
+        "flagged_count": 11,
+        "flag_rate": 0.0071661237785016286,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 84,
-        "agree_count": 84,
-        "agreement_rate": 1.0
+        "comparable_observations": 1535,
+        "agree_count": 1514,
+        "agreement_rate": 0.9863192182410423
       }
     },
     {
@@ -2908,32 +2908,32 @@
       "test_year": 2026,
       "region": "kalimantan-selatan",
       "skipped": false,
-      "test_observations": 1261,
+      "test_observations": 5101,
       "cell_method": {
-        "available_count": 1260,
-        "flagged_count": 91,
-        "flag_rate": 0.07222222222222222
+        "available_count": 5101,
+        "flagged_count": 451,
+        "flag_rate": 0.08841403646343854
       },
       "seasonal_method": {
-        "available_count": 1261,
-        "flagged_count": 95,
-        "flag_rate": 0.0753370340999207,
+        "available_count": 5101,
+        "flagged_count": 399,
+        "flag_rate": 0.07821995687120173,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 1260,
-        "agree_count": 1180,
-        "agreement_rate": 0.9365079365079365
+        "comparable_observations": 5101,
+        "agree_count": 4685,
+        "agreement_rate": 0.9184473632621055
       }
     }
   ],
   "full_history_summary": {
     "folds": 65,
-    "mean_cell_flag_rate": 0.039968021946131804,
-    "mean_seasonal_flag_rate": 0.029250593161197654,
+    "mean_cell_flag_rate": 0.03977715591309719,
+    "mean_seasonal_flag_rate": 0.029334936825914912,
     "mean_seasonal_fallback_rate": 0.0,
-    "mean_agreement_rate": 0.9677266932721998
+    "mean_agreement_rate": 0.9659019743870432
   },
   "full_history_caveat": "Training windows here can span the pre-2012 MODIS-only era and the post-2012 MODIS+VIIRS era in the same baseline -- a real confound (more sensors, not necessarily more fire) flagged in the Stage 1 audit. Included for completeness; the VIIRS-era-only run below is the one that avoids this confound.",
   "viirs_era_folds": [
@@ -2944,107 +2944,107 @@
       "test_year": 2014,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 2714,
+      "test_observations": 11478,
       "cell_method": {
-        "available_count": 2323,
-        "flagged_count": 391,
-        "flag_rate": 0.16831683168316833
+        "available_count": 11419,
+        "flagged_count": 2041,
+        "flag_rate": 0.17873719239863387
       },
       "seasonal_method": {
-        "available_count": 2714,
-        "flagged_count": 163,
-        "flag_rate": 0.06005895357406043,
-        "fallback_count": 2714,
+        "available_count": 11478,
+        "flagged_count": 984,
+        "flag_rate": 0.08572922111866178,
+        "fallback_count": 11478,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 11419,
+        "agree_count": 10069,
+        "agreement_rate": 0.8817759873894386
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014
+      ],
+      "test_year": 2015,
+      "region": "kalimantan-tengah",
+      "skipped": false,
+      "test_observations": 14260,
+      "cell_method": {
+        "available_count": 14248,
+        "flagged_count": 1914,
+        "flag_rate": 0.13433464345873106
+      },
+      "seasonal_method": {
+        "available_count": 14260,
+        "flagged_count": 1352,
+        "flag_rate": 0.09481065918653576,
+        "fallback_count": 14260,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 14248,
+        "agree_count": 12986,
+        "agreement_rate": 0.9114261650758001
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015
+      ],
+      "test_year": 2016,
+      "region": "kalimantan-tengah",
+      "skipped": false,
+      "test_observations": 3242,
+      "cell_method": {
+        "available_count": 3239,
+        "flagged_count": 97,
+        "flag_rate": 0.029947514665020068
+      },
+      "seasonal_method": {
+        "available_count": 3242,
+        "flagged_count": 3,
+        "flag_rate": 0.0009253547193090684,
+        "fallback_count": 3242,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 3239,
+        "agree_count": 3145,
+        "agreement_rate": 0.9709786971287434
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016
+      ],
+      "test_year": 2017,
+      "region": "kalimantan-tengah",
+      "skipped": false,
+      "test_observations": 2324,
+      "cell_method": {
+        "available_count": 2323,
+        "flagged_count": 24,
+        "flag_rate": 0.010331467929401636
+      },
+      "seasonal_method": {
+        "available_count": 2324,
+        "flagged_count": 1,
+        "flag_rate": 0.0004302925989672978,
+        "fallback_count": 2324,
         "fallback_rate": 1.0
       },
       "agreement": {
         "comparable_observations": 2323,
-        "agree_count": 2015,
-        "agreement_rate": 0.8674128282393456
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014
-      ],
-      "test_year": 2015,
-      "region": "kalimantan-tengah",
-      "skipped": false,
-      "test_observations": 4069,
-      "cell_method": {
-        "available_count": 3977,
-        "flagged_count": 577,
-        "flag_rate": 0.14508423434749812
-      },
-      "seasonal_method": {
-        "available_count": 4069,
-        "flagged_count": 327,
-        "flag_rate": 0.08036372573113787,
-        "fallback_count": 4069,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 3977,
-        "agree_count": 3558,
-        "agreement_rate": 0.8946442041740005
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015
-      ],
-      "test_year": 2016,
-      "region": "kalimantan-tengah",
-      "skipped": false,
-      "test_observations": 419,
-      "cell_method": {
-        "available_count": 417,
-        "flagged_count": 21,
-        "flag_rate": 0.050359712230215826
-      },
-      "seasonal_method": {
-        "available_count": 419,
-        "flagged_count": 2,
-        "flag_rate": 0.00477326968973747,
-        "fallback_count": 419,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 417,
-        "agree_count": 398,
-        "agreement_rate": 0.9544364508393285
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016
-      ],
-      "test_year": 2017,
-      "region": "kalimantan-tengah",
-      "skipped": false,
-      "test_observations": 228,
-      "cell_method": {
-        "available_count": 228,
-        "flagged_count": 1,
-        "flag_rate": 0.0043859649122807015
-      },
-      "seasonal_method": {
-        "available_count": 228,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 228,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 228,
-        "agree_count": 227,
-        "agreement_rate": 0.9956140350877193
+        "agree_count": 2300,
+        "agreement_rate": 0.9900990099009901
       }
     },
     {
@@ -3058,23 +3058,23 @@
       "test_year": 2018,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 971,
+      "test_observations": 5588,
       "cell_method": {
-        "available_count": 969,
-        "flagged_count": 39,
-        "flag_rate": 0.04024767801857585
+        "available_count": 5587,
+        "flagged_count": 69,
+        "flag_rate": 0.012350098442813675
       },
       "seasonal_method": {
-        "available_count": 971,
-        "flagged_count": 31,
-        "flag_rate": 0.03192584963954686,
-        "fallback_count": 9,
-        "fallback_rate": 0.009268795056642637
+        "available_count": 5588,
+        "flagged_count": 80,
+        "flag_rate": 0.014316392269148175,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 969,
-        "agree_count": 939,
-        "agreement_rate": 0.9690402476780186
+        "comparable_observations": 5587,
+        "agree_count": 5466,
+        "agreement_rate": 0.9783425809915877
       }
     },
     {
@@ -3089,23 +3089,23 @@
       "test_year": 2019,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 2366,
+      "test_observations": 8851,
       "cell_method": {
-        "available_count": 2364,
-        "flagged_count": 179,
-        "flag_rate": 0.07571912013536379
+        "available_count": 8850,
+        "flagged_count": 387,
+        "flag_rate": 0.04372881355932203
       },
       "seasonal_method": {
-        "available_count": 2366,
-        "flagged_count": 189,
-        "flag_rate": 0.07988165680473373,
+        "available_count": 8851,
+        "flagged_count": 444,
+        "flag_rate": 0.05016382329680262,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 2364,
-        "agree_count": 2232,
-        "agreement_rate": 0.9441624365482234
+        "comparable_observations": 8850,
+        "agree_count": 8393,
+        "agreement_rate": 0.9483615819209039
       }
     },
     {
@@ -3121,23 +3121,23 @@
       "test_year": 2020,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 187,
+      "test_observations": 2011,
       "cell_method": {
-        "available_count": 187,
-        "flagged_count": 5,
-        "flag_rate": 0.026737967914438502
+        "available_count": 2011,
+        "flagged_count": 53,
+        "flag_rate": 0.026355047240179015
       },
       "seasonal_method": {
-        "available_count": 187,
-        "flagged_count": 1,
-        "flag_rate": 0.0053475935828877,
-        "fallback_count": 1,
-        "fallback_rate": 0.0053475935828877
+        "available_count": 2011,
+        "flagged_count": 6,
+        "flag_rate": 0.0029835902536051715,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 187,
-        "agree_count": 183,
-        "agreement_rate": 0.9786096256684492
+        "comparable_observations": 2011,
+        "agree_count": 1960,
+        "agreement_rate": 0.9746394828443561
       }
     },
     {
@@ -3154,1687 +3154,23 @@
       "test_year": 2021,
       "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 172,
+      "test_observations": 1915,
       "cell_method": {
-        "available_count": 171,
-        "flagged_count": 12,
-        "flag_rate": 0.07017543859649122
-      },
-      "seasonal_method": {
-        "available_count": 172,
-        "flagged_count": 2,
-        "flag_rate": 0.011627906976744186,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 171,
-        "agree_count": 159,
-        "agreement_rate": 0.9298245614035088
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021
-      ],
-      "test_year": 2022,
-      "region": "kalimantan-tengah",
-      "skipped": false,
-      "test_observations": 123,
-      "cell_method": {
-        "available_count": 123,
-        "flagged_count": 0,
-        "flag_rate": 0.0
-      },
-      "seasonal_method": {
-        "available_count": 123,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 123,
-        "agree_count": 123,
-        "agreement_rate": 1.0
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022
-      ],
-      "test_year": 2023,
-      "region": "kalimantan-tengah",
-      "skipped": false,
-      "test_observations": 1606,
-      "cell_method": {
-        "available_count": 1606,
-        "flagged_count": 41,
-        "flag_rate": 0.025529265255292654
-      },
-      "seasonal_method": {
-        "available_count": 1606,
-        "flagged_count": 24,
-        "flag_rate": 0.014943960149439602,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 1606,
-        "agree_count": 1577,
-        "agreement_rate": 0.9819427148194272
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022,
-        2023
-      ],
-      "test_year": 2024,
-      "region": "kalimantan-tengah",
-      "skipped": false,
-      "test_observations": 493,
-      "cell_method": {
-        "available_count": 492,
-        "flagged_count": 49,
-        "flag_rate": 0.09959349593495935
-      },
-      "seasonal_method": {
-        "available_count": 493,
-        "flagged_count": 7,
-        "flag_rate": 0.014198782961460446,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 492,
-        "agree_count": 450,
-        "agreement_rate": 0.9146341463414634
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022,
-        2023,
-        2024
-      ],
-      "test_year": 2025,
-      "region": "kalimantan-tengah",
-      "skipped": false,
-      "test_observations": 426,
-      "cell_method": {
-        "available_count": 426,
-        "flagged_count": 27,
-        "flag_rate": 0.06338028169014084
-      },
-      "seasonal_method": {
-        "available_count": 426,
-        "flagged_count": 9,
-        "flag_rate": 0.02112676056338028,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 426,
-        "agree_count": 404,
-        "agreement_rate": 0.9483568075117371
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022,
-        2023,
-        2024,
-        2025
-      ],
-      "test_year": 2026,
-      "region": "kalimantan-tengah",
-      "skipped": false,
-      "test_observations": 2995,
-      "cell_method": {
-        "available_count": 2994,
-        "flagged_count": 333,
-        "flag_rate": 0.11122244488977956
-      },
-      "seasonal_method": {
-        "available_count": 2995,
-        "flagged_count": 267,
-        "flag_rate": 0.08914858096828046,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 2994,
-        "agree_count": 2764,
-        "agreement_rate": 0.9231796927187709
-      }
-    },
-    {
-      "train_years": [
-        2013
-      ],
-      "test_year": 2014,
-      "region": "riau",
-      "skipped": false,
-      "test_observations": 2280,
-      "cell_method": {
-        "available_count": 2092,
-        "flagged_count": 309,
-        "flag_rate": 0.1477055449330784
-      },
-      "seasonal_method": {
-        "available_count": 2280,
+        "available_count": 1915,
         "flagged_count": 51,
-        "flag_rate": 0.02236842105263158,
-        "fallback_count": 2280,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 2092,
-        "agree_count": 1819,
-        "agreement_rate": 0.8695028680688337
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014
-      ],
-      "test_year": 2015,
-      "region": "riau",
-      "skipped": false,
-      "test_observations": 1450,
-      "cell_method": {
-        "available_count": 1427,
-        "flagged_count": 91,
-        "flag_rate": 0.06377014716187807
+        "flag_rate": 0.026631853785900782
       },
       "seasonal_method": {
-        "available_count": 1450,
-        "flagged_count": 4,
-        "flag_rate": 0.002758620689655172,
-        "fallback_count": 1450,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 1427,
-        "agree_count": 1338,
-        "agreement_rate": 0.9376313945339874
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015
-      ],
-      "test_year": 2016,
-      "region": "riau",
-      "skipped": false,
-      "test_observations": 458,
-      "cell_method": {
-        "available_count": 457,
-        "flagged_count": 11,
-        "flag_rate": 0.024070021881838075
-      },
-      "seasonal_method": {
-        "available_count": 458,
-        "flagged_count": 3,
-        "flag_rate": 0.006550218340611353,
-        "fallback_count": 458,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 457,
-        "agree_count": 449,
-        "agreement_rate": 0.9824945295404814
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016
-      ],
-      "test_year": 2017,
-      "region": "riau",
-      "skipped": false,
-      "test_observations": 145,
-      "cell_method": {
-        "available_count": 143,
-        "flagged_count": 2,
-        "flag_rate": 0.013986013986013986
-      },
-      "seasonal_method": {
-        "available_count": 145,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 145,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 143,
-        "agree_count": 141,
-        "agreement_rate": 0.986013986013986
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017
-      ],
-      "test_year": 2018,
-      "region": "riau",
-      "skipped": false,
-      "test_observations": 345,
-      "cell_method": {
-        "available_count": 345,
-        "flagged_count": 19,
-        "flag_rate": 0.05507246376811594
-      },
-      "seasonal_method": {
-        "available_count": 345,
-        "flagged_count": 22,
-        "flag_rate": 0.06376811594202898,
-        "fallback_count": 7,
-        "fallback_rate": 0.020289855072463767
-      },
-      "agreement": {
-        "comparable_observations": 345,
-        "agree_count": 326,
-        "agreement_rate": 0.9449275362318841
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018
-      ],
-      "test_year": 2019,
-      "region": "riau",
-      "skipped": false,
-      "test_observations": 1026,
-      "cell_method": {
-        "available_count": 1018,
-        "flagged_count": 70,
-        "flag_rate": 0.068762278978389
-      },
-      "seasonal_method": {
-        "available_count": 1026,
-        "flagged_count": 30,
-        "flag_rate": 0.029239766081871343,
-        "fallback_count": 10,
-        "fallback_rate": 0.009746588693957114
-      },
-      "agreement": {
-        "comparable_observations": 1018,
-        "agree_count": 950,
-        "agreement_rate": 0.9332023575638507
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019
-      ],
-      "test_year": 2020,
-      "region": "riau",
-      "skipped": false,
-      "test_observations": 137,
-      "cell_method": {
-        "available_count": 133,
-        "flagged_count": 3,
-        "flag_rate": 0.022556390977443608
-      },
-      "seasonal_method": {
-        "available_count": 137,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 133,
-        "agree_count": 130,
-        "agreement_rate": 0.9774436090225563
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020
-      ],
-      "test_year": 2021,
-      "region": "riau",
-      "skipped": false,
-      "test_observations": 105,
-      "cell_method": {
-        "available_count": 105,
-        "flagged_count": 5,
-        "flag_rate": 0.047619047619047616
-      },
-      "seasonal_method": {
-        "available_count": 105,
-        "flagged_count": 2,
-        "flag_rate": 0.01904761904761905,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 105,
-        "agree_count": 102,
-        "agreement_rate": 0.9714285714285714
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021
-      ],
-      "test_year": 2022,
-      "region": "riau",
-      "skipped": false,
-      "test_observations": 76,
-      "cell_method": {
-        "available_count": 75,
-        "flagged_count": 0,
-        "flag_rate": 0.0
-      },
-      "seasonal_method": {
-        "available_count": 76,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 75,
-        "agree_count": 75,
-        "agreement_rate": 1.0
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022
-      ],
-      "test_year": 2023,
-      "region": "riau",
-      "skipped": false,
-      "test_observations": 162,
-      "cell_method": {
-        "available_count": 161,
-        "flagged_count": 4,
-        "flag_rate": 0.024844720496894408
-      },
-      "seasonal_method": {
-        "available_count": 162,
-        "flagged_count": 4,
-        "flag_rate": 0.024691358024691357,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 161,
-        "agree_count": 155,
-        "agreement_rate": 0.9627329192546584
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022,
-        2023
-      ],
-      "test_year": 2024,
-      "region": "riau",
-      "skipped": false,
-      "test_observations": 136,
-      "cell_method": {
-        "available_count": 136,
-        "flagged_count": 1,
-        "flag_rate": 0.007352941176470588
-      },
-      "seasonal_method": {
-        "available_count": 136,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 136,
-        "agree_count": 135,
-        "agreement_rate": 0.9926470588235294
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022,
-        2023,
-        2024
-      ],
-      "test_year": 2025,
-      "region": "riau",
-      "skipped": false,
-      "test_observations": 196,
-      "cell_method": {
-        "available_count": 191,
-        "flagged_count": 17,
-        "flag_rate": 0.08900523560209424
-      },
-      "seasonal_method": {
-        "available_count": 196,
-        "flagged_count": 5,
-        "flag_rate": 0.025510204081632654,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 191,
-        "agree_count": 175,
-        "agreement_rate": 0.9162303664921466
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022,
-        2023,
-        2024,
-        2025
-      ],
-      "test_year": 2026,
-      "region": "riau",
-      "skipped": false,
-      "test_observations": 316,
-      "cell_method": {
-        "available_count": 315,
-        "flagged_count": 7,
-        "flag_rate": 0.022222222222222223
-      },
-      "seasonal_method": {
-        "available_count": 316,
-        "flagged_count": 5,
-        "flag_rate": 0.015822784810126583,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 315,
-        "agree_count": 309,
-        "agreement_rate": 0.9809523809523809
-      }
-    },
-    {
-      "train_years": [
-        2013
-      ],
-      "test_year": 2014,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 2217,
-      "cell_method": {
-        "available_count": 1547,
-        "flagged_count": 226,
-        "flag_rate": 0.14608920491273433
-      },
-      "seasonal_method": {
-        "available_count": 2217,
-        "flagged_count": 163,
-        "flag_rate": 0.07352277852954443,
-        "fallback_count": 2217,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 1547,
-        "agree_count": 1373,
-        "agreement_rate": 0.8875242404654169
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014
-      ],
-      "test_year": 2015,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 4148,
-      "cell_method": {
-        "available_count": 4063,
-        "flagged_count": 705,
-        "flag_rate": 0.17351710558700467
-      },
-      "seasonal_method": {
-        "available_count": 4148,
-        "flagged_count": 259,
-        "flag_rate": 0.062439729990356796,
-        "fallback_count": 4148,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 4063,
-        "agree_count": 3503,
-        "agreement_rate": 0.8621708097464927
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015
-      ],
-      "test_year": 2016,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 185,
-      "cell_method": {
-        "available_count": 183,
-        "flagged_count": 1,
-        "flag_rate": 0.00546448087431694
-      },
-      "seasonal_method": {
-        "available_count": 185,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 185,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 183,
-        "agree_count": 182,
-        "agreement_rate": 0.994535519125683
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016
-      ],
-      "test_year": 2017,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 222,
-      "cell_method": {
-        "available_count": 221,
-        "flagged_count": 3,
-        "flag_rate": 0.013574660633484163
-      },
-      "seasonal_method": {
-        "available_count": 222,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 222,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 221,
-        "agree_count": 218,
-        "agreement_rate": 0.9864253393665159
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017
-      ],
-      "test_year": 2018,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 391,
-      "cell_method": {
-        "available_count": 390,
-        "flagged_count": 11,
-        "flag_rate": 0.028205128205128206
-      },
-      "seasonal_method": {
-        "available_count": 391,
-        "flagged_count": 1,
-        "flag_rate": 0.0025575447570332483,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 390,
-        "agree_count": 378,
-        "agreement_rate": 0.9692307692307692
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018
-      ],
-      "test_year": 2019,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 2047,
-      "cell_method": {
-        "available_count": 2041,
-        "flagged_count": 279,
-        "flag_rate": 0.13669769720725133
-      },
-      "seasonal_method": {
-        "available_count": 2047,
-        "flagged_count": 91,
-        "flag_rate": 0.044455300439667805,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 2041,
-        "agree_count": 1819,
-        "agreement_rate": 0.8912297893189612
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019
-      ],
-      "test_year": 2020,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 80,
-      "cell_method": {
-        "available_count": 80,
-        "flagged_count": 1,
-        "flag_rate": 0.0125
-      },
-      "seasonal_method": {
-        "available_count": 80,
-        "flagged_count": 1,
-        "flag_rate": 0.0125,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 80,
-        "agree_count": 78,
-        "agreement_rate": 0.975
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020
-      ],
-      "test_year": 2021,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 117,
-      "cell_method": {
-        "available_count": 117,
-        "flagged_count": 3,
-        "flag_rate": 0.02564102564102564
-      },
-      "seasonal_method": {
-        "available_count": 117,
-        "flagged_count": 1,
-        "flag_rate": 0.008547008547008548,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 117,
-        "agree_count": 113,
-        "agreement_rate": 0.9658119658119658
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021
-      ],
-      "test_year": 2022,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 114,
-      "cell_method": {
-        "available_count": 113,
-        "flagged_count": 2,
-        "flag_rate": 0.017699115044247787
-      },
-      "seasonal_method": {
-        "available_count": 114,
-        "flagged_count": 2,
-        "flag_rate": 0.017543859649122806,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 113,
-        "agree_count": 111,
-        "agreement_rate": 0.9823008849557522
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022
-      ],
-      "test_year": 2023,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 1234,
-      "cell_method": {
-        "available_count": 1234,
-        "flagged_count": 49,
-        "flag_rate": 0.03970826580226904
-      },
-      "seasonal_method": {
-        "available_count": 1234,
-        "flagged_count": 10,
-        "flag_rate": 0.008103727714748784,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 1234,
-        "agree_count": 1187,
-        "agreement_rate": 0.9619124797406807
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022,
-        2023
-      ],
-      "test_year": 2024,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 391,
-      "cell_method": {
-        "available_count": 390,
-        "flagged_count": 10,
-        "flag_rate": 0.02564102564102564
-      },
-      "seasonal_method": {
-        "available_count": 391,
-        "flagged_count": 2,
-        "flag_rate": 0.005115089514066497,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 390,
-        "agree_count": 380,
-        "agreement_rate": 0.9743589743589743
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022,
-        2023,
-        2024
-      ],
-      "test_year": 2025,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 302,
-      "cell_method": {
-        "available_count": 302,
-        "flagged_count": 3,
-        "flag_rate": 0.009933774834437087
-      },
-      "seasonal_method": {
-        "available_count": 302,
-        "flagged_count": 4,
-        "flag_rate": 0.013245033112582781,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 302,
-        "agree_count": 295,
-        "agreement_rate": 0.9768211920529801
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022,
-        2023,
-        2024,
-        2025
-      ],
-      "test_year": 2026,
-      "region": "sumatera-selatan",
-      "skipped": false,
-      "test_observations": 1324,
-      "cell_method": {
-        "available_count": 1323,
-        "flagged_count": 124,
-        "flag_rate": 0.09372637944066516
-      },
-      "seasonal_method": {
-        "available_count": 1324,
-        "flagged_count": 33,
-        "flag_rate": 0.024924471299093656,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 1323,
-        "agree_count": 1220,
-        "agreement_rate": 0.9221466364323507
-      }
-    },
-    {
-      "train_years": [
-        2013
-      ],
-      "test_year": 2014,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 738,
-      "cell_method": {
-        "available_count": 572,
-        "flagged_count": 40,
-        "flag_rate": 0.06993006993006994
-      },
-      "seasonal_method": {
-        "available_count": 738,
-        "flagged_count": 24,
-        "flag_rate": 0.032520325203252036,
-        "fallback_count": 738,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 572,
-        "agree_count": 535,
-        "agreement_rate": 0.9353146853146853
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014
-      ],
-      "test_year": 2015,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 1652,
-      "cell_method": {
-        "available_count": 1610,
-        "flagged_count": 340,
-        "flag_rate": 0.2111801242236025
-      },
-      "seasonal_method": {
-        "available_count": 1652,
-        "flagged_count": 146,
-        "flag_rate": 0.08837772397094432,
-        "fallback_count": 1652,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 1610,
-        "agree_count": 1363,
-        "agreement_rate": 0.846583850931677
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015
-      ],
-      "test_year": 2016,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 62,
-      "cell_method": {
-        "available_count": 62,
-        "flagged_count": 1,
-        "flag_rate": 0.016129032258064516
-      },
-      "seasonal_method": {
-        "available_count": 62,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 62,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 62,
-        "agree_count": 61,
-        "agreement_rate": 0.9838709677419355
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016
-      ],
-      "test_year": 2017,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 62,
-      "cell_method": {
-        "available_count": 62,
-        "flagged_count": 1,
-        "flag_rate": 0.016129032258064516
-      },
-      "seasonal_method": {
-        "available_count": 62,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 62,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 62,
-        "agree_count": 61,
-        "agreement_rate": 0.9838709677419355
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017
-      ],
-      "test_year": 2018,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 125,
-      "cell_method": {
-        "available_count": 125,
-        "flagged_count": 11,
-        "flag_rate": 0.088
-      },
-      "seasonal_method": {
-        "available_count": 125,
-        "flagged_count": 4,
-        "flag_rate": 0.032,
-        "fallback_count": 12,
-        "fallback_rate": 0.096
-      },
-      "agreement": {
-        "comparable_observations": 125,
-        "agree_count": 118,
-        "agreement_rate": 0.944
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018
-      ],
-      "test_year": 2019,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 908,
-      "cell_method": {
-        "available_count": 903,
-        "flagged_count": 152,
-        "flag_rate": 0.16832779623477298
-      },
-      "seasonal_method": {
-        "available_count": 908,
-        "flagged_count": 96,
-        "flag_rate": 0.10572687224669604,
-        "fallback_count": 31,
-        "fallback_rate": 0.034140969162995596
-      },
-      "agreement": {
-        "comparable_observations": 903,
-        "agree_count": 811,
-        "agreement_rate": 0.8981173864894795
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019
-      ],
-      "test_year": 2020,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 14,
-      "cell_method": {
-        "available_count": 14,
-        "flagged_count": 0,
-        "flag_rate": 0.0
-      },
-      "seasonal_method": {
-        "available_count": 14,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 14,
-        "agree_count": 14,
-        "agreement_rate": 1.0
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020
-      ],
-      "test_year": 2021,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 17,
-      "cell_method": {
-        "available_count": 17,
-        "flagged_count": 0,
-        "flag_rate": 0.0
-      },
-      "seasonal_method": {
-        "available_count": 17,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 17,
-        "agree_count": 17,
-        "agreement_rate": 1.0
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021
-      ],
-      "test_year": 2022,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 26,
-      "cell_method": {
-        "available_count": 25,
-        "flagged_count": 0,
-        "flag_rate": 0.0
-      },
-      "seasonal_method": {
-        "available_count": 26,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 25,
-        "agree_count": 25,
-        "agreement_rate": 1.0
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022
-      ],
-      "test_year": 2023,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 224,
-      "cell_method": {
-        "available_count": 224,
-        "flagged_count": 12,
-        "flag_rate": 0.05357142857142857
-      },
-      "seasonal_method": {
-        "available_count": 224,
-        "flagged_count": 2,
-        "flag_rate": 0.008928571428571428,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 224,
-        "agree_count": 212,
-        "agreement_rate": 0.9464285714285714
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022,
-        2023
-      ],
-      "test_year": 2024,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 109,
-      "cell_method": {
-        "available_count": 109,
-        "flagged_count": 1,
-        "flag_rate": 0.009174311926605505
-      },
-      "seasonal_method": {
-        "available_count": 109,
-        "flagged_count": 1,
-        "flag_rate": 0.009174311926605505,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 109,
-        "agree_count": 107,
-        "agreement_rate": 0.981651376146789
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022,
-        2023,
-        2024
-      ],
-      "test_year": 2025,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 89,
-      "cell_method": {
-        "available_count": 89,
-        "flagged_count": 0,
-        "flag_rate": 0.0
-      },
-      "seasonal_method": {
-        "available_count": 89,
-        "flagged_count": 3,
-        "flag_rate": 0.033707865168539325,
-        "fallback_count": 0,
-        "fallback_rate": 0.0
-      },
-      "agreement": {
-        "comparable_observations": 89,
-        "agree_count": 86,
-        "agreement_rate": 0.9662921348314607
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020,
-        2021,
-        2022,
-        2023,
-        2024,
-        2025
-      ],
-      "test_year": 2026,
-      "region": "jambi",
-      "skipped": false,
-      "test_observations": 360,
-      "cell_method": {
-        "available_count": 357,
+        "available_count": 1915,
         "flagged_count": 23,
-        "flag_rate": 0.06442577030812324
-      },
-      "seasonal_method": {
-        "available_count": 360,
-        "flagged_count": 5,
-        "flag_rate": 0.013888888888888888,
+        "flag_rate": 0.012010443864229765,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 357,
-        "agree_count": 333,
-        "agreement_rate": 0.9327731092436975
-      }
-    },
-    {
-      "train_years": [
-        2013
-      ],
-      "test_year": 2014,
-      "region": "kalimantan-selatan",
-      "skipped": false,
-      "test_observations": 1459,
-      "cell_method": {
-        "available_count": 1202,
-        "flagged_count": 193,
-        "flag_rate": 0.1605657237936772
-      },
-      "seasonal_method": {
-        "available_count": 1459,
-        "flagged_count": 56,
-        "flag_rate": 0.03838245373543523,
-        "fallback_count": 1459,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 1202,
-        "agree_count": 1037,
-        "agreement_rate": 0.8627287853577371
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014
-      ],
-      "test_year": 2015,
-      "region": "kalimantan-selatan",
-      "skipped": false,
-      "test_observations": 2409,
-      "cell_method": {
-        "available_count": 2395,
-        "flagged_count": 386,
-        "flag_rate": 0.16116910229645093
-      },
-      "seasonal_method": {
-        "available_count": 2409,
-        "flagged_count": 188,
-        "flag_rate": 0.07804068078040681,
-        "fallback_count": 2409,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 2395,
-        "agree_count": 2109,
-        "agreement_rate": 0.8805845511482254
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015
-      ],
-      "test_year": 2016,
-      "region": "kalimantan-selatan",
-      "skipped": false,
-      "test_observations": 71,
-      "cell_method": {
-        "available_count": 71,
-        "flagged_count": 0,
-        "flag_rate": 0.0
-      },
-      "seasonal_method": {
-        "available_count": 71,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 71,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 71,
-        "agree_count": 71,
-        "agreement_rate": 1.0
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016
-      ],
-      "test_year": 2017,
-      "region": "kalimantan-selatan",
-      "skipped": false,
-      "test_observations": 111,
-      "cell_method": {
-        "available_count": 111,
-        "flagged_count": 0,
-        "flag_rate": 0.0
-      },
-      "seasonal_method": {
-        "available_count": 111,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 111,
-        "fallback_rate": 1.0
-      },
-      "agreement": {
-        "comparable_observations": 111,
-        "agree_count": 111,
-        "agreement_rate": 1.0
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017
-      ],
-      "test_year": 2018,
-      "region": "kalimantan-selatan",
-      "skipped": false,
-      "test_observations": 412,
-      "cell_method": {
-        "available_count": 411,
-        "flagged_count": 13,
-        "flag_rate": 0.031630170316301706
-      },
-      "seasonal_method": {
-        "available_count": 412,
-        "flagged_count": 7,
-        "flag_rate": 0.01699029126213592,
-        "fallback_count": 9,
-        "fallback_rate": 0.021844660194174758
-      },
-      "agreement": {
-        "comparable_observations": 411,
-        "agree_count": 399,
-        "agreement_rate": 0.9708029197080292
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018
-      ],
-      "test_year": 2019,
-      "region": "kalimantan-selatan",
-      "skipped": false,
-      "test_observations": 1222,
-      "cell_method": {
-        "available_count": 1222,
-        "flagged_count": 71,
-        "flag_rate": 0.05810147299509002
-      },
-      "seasonal_method": {
-        "available_count": 1222,
-        "flagged_count": 90,
-        "flag_rate": 0.07364975450081833,
-        "fallback_count": 17,
-        "fallback_rate": 0.013911620294599018
-      },
-      "agreement": {
-        "comparable_observations": 1222,
-        "agree_count": 1131,
-        "agreement_rate": 0.925531914893617
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019
-      ],
-      "test_year": 2020,
-      "region": "kalimantan-selatan",
-      "skipped": false,
-      "test_observations": 73,
-      "cell_method": {
-        "available_count": 73,
-        "flagged_count": 0,
-        "flag_rate": 0.0
-      },
-      "seasonal_method": {
-        "available_count": 73,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 2,
-        "fallback_rate": 0.0273972602739726
-      },
-      "agreement": {
-        "comparable_observations": 73,
-        "agree_count": 73,
-        "agreement_rate": 1.0
-      }
-    },
-    {
-      "train_years": [
-        2013,
-        2014,
-        2015,
-        2016,
-        2017,
-        2018,
-        2019,
-        2020
-      ],
-      "test_year": 2021,
-      "region": "kalimantan-selatan",
-      "skipped": false,
-      "test_observations": 32,
-      "cell_method": {
-        "available_count": 32,
-        "flagged_count": 1,
-        "flag_rate": 0.03125
-      },
-      "seasonal_method": {
-        "available_count": 32,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 2,
-        "fallback_rate": 0.0625
-      },
-      "agreement": {
-        "comparable_observations": 32,
-        "agree_count": 31,
-        "agreement_rate": 0.96875
+        "comparable_observations": 1915,
+        "agree_count": 1847,
+        "agreement_rate": 0.9644908616187989
       }
     },
     {
@@ -4850,25 +3186,25 @@
         2021
       ],
       "test_year": 2022,
-      "region": "kalimantan-selatan",
+      "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 14,
+      "test_observations": 1793,
       "cell_method": {
-        "available_count": 14,
-        "flagged_count": 0,
-        "flag_rate": 0.0
+        "available_count": 1793,
+        "flagged_count": 25,
+        "flag_rate": 0.013943112102621304
       },
       "seasonal_method": {
-        "available_count": 14,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
-        "fallback_count": 2,
-        "fallback_rate": 0.14285714285714285
+        "available_count": 1793,
+        "flagged_count": 12,
+        "flag_rate": 0.006692693809258227,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 14,
-        "agree_count": 14,
-        "agreement_rate": 1.0
+        "comparable_observations": 1793,
+        "agree_count": 1766,
+        "agreement_rate": 0.984941438929169
       }
     },
     {
@@ -4885,25 +3221,25 @@
         2022
       ],
       "test_year": 2023,
-      "region": "kalimantan-selatan",
+      "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 888,
+      "test_observations": 7616,
       "cell_method": {
-        "available_count": 888,
-        "flagged_count": 21,
-        "flag_rate": 0.02364864864864865
+        "available_count": 7615,
+        "flagged_count": 122,
+        "flag_rate": 0.016021011162179907
       },
       "seasonal_method": {
-        "available_count": 888,
-        "flagged_count": 10,
-        "flag_rate": 0.01126126126126126,
+        "available_count": 7616,
+        "flagged_count": 102,
+        "flag_rate": 0.013392857142857142,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 888,
-        "agree_count": 871,
-        "agreement_rate": 0.9808558558558559
+        "comparable_observations": 7615,
+        "agree_count": 7459,
+        "agreement_rate": 0.9795141168745897
       }
     },
     {
@@ -4921,24 +3257,1550 @@
         2023
       ],
       "test_year": 2024,
-      "region": "kalimantan-selatan",
+      "region": "kalimantan-tengah",
       "skipped": false,
-      "test_observations": 143,
+      "test_observations": 3338,
       "cell_method": {
-        "available_count": 143,
-        "flagged_count": 1,
-        "flag_rate": 0.006993006993006993
+        "available_count": 3338,
+        "flagged_count": 125,
+        "flag_rate": 0.03744757339724386
       },
       "seasonal_method": {
-        "available_count": 143,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
+        "available_count": 3338,
+        "flagged_count": 13,
+        "flag_rate": 0.0038945476333133613,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 143,
-        "agree_count": 142,
+        "comparable_observations": 3338,
+        "agree_count": 3212,
+        "agreement_rate": 0.9622528460155781
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023,
+        2024
+      ],
+      "test_year": 2025,
+      "region": "kalimantan-tengah",
+      "skipped": false,
+      "test_observations": 3274,
+      "cell_method": {
+        "available_count": 3274,
+        "flagged_count": 154,
+        "flag_rate": 0.047037263286499695
+      },
+      "seasonal_method": {
+        "available_count": 3274,
+        "flagged_count": 53,
+        "flag_rate": 0.016188149053146,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 3274,
+        "agree_count": 3135,
+        "agreement_rate": 0.9575442883323152
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "test_year": 2026,
+      "region": "kalimantan-tengah",
+      "skipped": false,
+      "test_observations": 9643,
+      "cell_method": {
+        "available_count": 9634,
+        "flagged_count": 815,
+        "flag_rate": 0.08459622171476022
+      },
+      "seasonal_method": {
+        "available_count": 9643,
+        "flagged_count": 631,
+        "flag_rate": 0.06543606761381313,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 9634,
+        "agree_count": 8850,
+        "agreement_rate": 0.9186215486817522
+      }
+    },
+    {
+      "train_years": [
+        2013
+      ],
+      "test_year": 2014,
+      "region": "riau",
+      "skipped": false,
+      "test_observations": 10045,
+      "cell_method": {
+        "available_count": 10023,
+        "flagged_count": 1115,
+        "flag_rate": 0.11124413848149256
+      },
+      "seasonal_method": {
+        "available_count": 10045,
+        "flagged_count": 264,
+        "flag_rate": 0.026281732205077152,
+        "fallback_count": 10045,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 10023,
+        "agree_count": 9052,
+        "agreement_rate": 0.9031228175197047
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014
+      ],
+      "test_year": 2015,
+      "region": "riau",
+      "skipped": false,
+      "test_observations": 9574,
+      "cell_method": {
+        "available_count": 9570,
+        "flagged_count": 513,
+        "flag_rate": 0.05360501567398119
+      },
+      "seasonal_method": {
+        "available_count": 9574,
+        "flagged_count": 52,
+        "flag_rate": 0.0054313766450804265,
+        "fallback_count": 9574,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 9570,
+        "agree_count": 9091,
+        "agreement_rate": 0.9499477533960292
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015
+      ],
+      "test_year": 2016,
+      "region": "riau",
+      "skipped": false,
+      "test_observations": 4695,
+      "cell_method": {
+        "available_count": 4695,
+        "flagged_count": 57,
+        "flag_rate": 0.012140575079872205
+      },
+      "seasonal_method": {
+        "available_count": 4695,
+        "flagged_count": 18,
+        "flag_rate": 0.0038338658146964857,
+        "fallback_count": 4695,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 4695,
+        "agree_count": 4640,
+        "agreement_rate": 0.9882854100106496
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016
+      ],
+      "test_year": 2017,
+      "region": "riau",
+      "skipped": false,
+      "test_observations": 2909,
+      "cell_method": {
+        "available_count": 2909,
+        "flagged_count": 25,
+        "flag_rate": 0.008594018563080097
+      },
+      "seasonal_method": {
+        "available_count": 2909,
+        "flagged_count": 0,
+        "flag_rate": 0.0,
+        "fallback_count": 2909,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 2909,
+        "agree_count": 2884,
+        "agreement_rate": 0.9914059814369199
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017
+      ],
+      "test_year": 2018,
+      "region": "riau",
+      "skipped": false,
+      "test_observations": 3520,
+      "cell_method": {
+        "available_count": 3520,
+        "flagged_count": 53,
+        "flag_rate": 0.015056818181818182
+      },
+      "seasonal_method": {
+        "available_count": 3520,
+        "flagged_count": 48,
+        "flag_rate": 0.013636363636363636,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 3520,
+        "agree_count": 3461,
+        "agreement_rate": 0.9832386363636364
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018
+      ],
+      "test_year": 2019,
+      "region": "riau",
+      "skipped": false,
+      "test_observations": 6498,
+      "cell_method": {
+        "available_count": 6498,
+        "flagged_count": 250,
+        "flag_rate": 0.03847337642351493
+      },
+      "seasonal_method": {
+        "available_count": 6498,
+        "flagged_count": 149,
+        "flag_rate": 0.022930132348414897,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 6498,
+        "agree_count": 6257,
+        "agreement_rate": 0.9629116651277316
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019
+      ],
+      "test_year": 2020,
+      "region": "riau",
+      "skipped": false,
+      "test_observations": 2406,
+      "cell_method": {
+        "available_count": 2406,
+        "flagged_count": 23,
+        "flag_rate": 0.009559434746467166
+      },
+      "seasonal_method": {
+        "available_count": 2406,
+        "flagged_count": 10,
+        "flag_rate": 0.004156275976724855,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 2406,
+        "agree_count": 2375,
+        "agreement_rate": 0.987115544472153
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020
+      ],
+      "test_year": 2021,
+      "region": "riau",
+      "skipped": false,
+      "test_observations": 2109,
+      "cell_method": {
+        "available_count": 2109,
+        "flagged_count": 10,
+        "flag_rate": 0.00474158368895211
+      },
+      "seasonal_method": {
+        "available_count": 2109,
+        "flagged_count": 6,
+        "flag_rate": 0.002844950213371266,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 2109,
+        "agree_count": 2097,
+        "agreement_rate": 0.9943100995732574
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021
+      ],
+      "test_year": 2022,
+      "region": "riau",
+      "skipped": false,
+      "test_observations": 1833,
+      "cell_method": {
+        "available_count": 1833,
+        "flagged_count": 20,
+        "flag_rate": 0.010911074740861976
+      },
+      "seasonal_method": {
+        "available_count": 1833,
+        "flagged_count": 2,
+        "flag_rate": 0.0010911074740861974,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 1833,
+        "agree_count": 1813,
+        "agreement_rate": 0.989088925259138
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022
+      ],
+      "test_year": 2023,
+      "region": "riau",
+      "skipped": false,
+      "test_observations": 2561,
+      "cell_method": {
+        "available_count": 2561,
+        "flagged_count": 27,
+        "flag_rate": 0.010542756735650137
+      },
+      "seasonal_method": {
+        "available_count": 2561,
+        "flagged_count": 22,
+        "flag_rate": 0.008590394377196407,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 2561,
+        "agree_count": 2528,
+        "agreement_rate": 0.9871144084342054
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023
+      ],
+      "test_year": 2024,
+      "region": "riau",
+      "skipped": false,
+      "test_observations": 2218,
+      "cell_method": {
+        "available_count": 2218,
+        "flagged_count": 19,
+        "flag_rate": 0.008566275924256087
+      },
+      "seasonal_method": {
+        "available_count": 2218,
+        "flagged_count": 6,
+        "flag_rate": 0.002705139765554554,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 2218,
+        "agree_count": 2193,
+        "agreement_rate": 0.9887285843101894
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023,
+        2024
+      ],
+      "test_year": 2025,
+      "region": "riau",
+      "skipped": false,
+      "test_observations": 2223,
+      "cell_method": {
+        "available_count": 2222,
+        "flagged_count": 76,
+        "flag_rate": 0.034203420342034205
+      },
+      "seasonal_method": {
+        "available_count": 2223,
+        "flagged_count": 36,
+        "flag_rate": 0.016194331983805668,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 2222,
+        "agree_count": 2134,
+        "agreement_rate": 0.9603960396039604
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "test_year": 2026,
+      "region": "riau",
+      "skipped": false,
+      "test_observations": 2490,
+      "cell_method": {
+        "available_count": 2490,
+        "flagged_count": 42,
+        "flag_rate": 0.016867469879518072
+      },
+      "seasonal_method": {
+        "available_count": 2490,
+        "flagged_count": 17,
+        "flag_rate": 0.006827309236947791,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 2490,
+        "agree_count": 2449,
+        "agreement_rate": 0.9835341365461847
+      }
+    },
+    {
+      "train_years": [
+        2013
+      ],
+      "test_year": 2014,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 12499,
+      "cell_method": {
+        "available_count": 12309,
+        "flagged_count": 1960,
+        "flag_rate": 0.15923308148509221
+      },
+      "seasonal_method": {
+        "available_count": 12499,
+        "flagged_count": 904,
+        "flag_rate": 0.07232578606288503,
+        "fallback_count": 12499,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 12309,
+        "agree_count": 11060,
+        "agreement_rate": 0.8985295312373061
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014
+      ],
+      "test_year": 2015,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 18026,
+      "cell_method": {
+        "available_count": 18012,
+        "flagged_count": 3030,
+        "flag_rate": 0.16822118587608262
+      },
+      "seasonal_method": {
+        "available_count": 18026,
+        "flagged_count": 1326,
+        "flag_rate": 0.07356041273715744,
+        "fallback_count": 18026,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 18012,
+        "agree_count": 15816,
+        "agreement_rate": 0.8780812791472352
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015
+      ],
+      "test_year": 2016,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 3717,
+      "cell_method": {
+        "available_count": 3717,
+        "flagged_count": 17,
+        "flag_rate": 0.0045735808447672855
+      },
+      "seasonal_method": {
+        "available_count": 3717,
+        "flagged_count": 0,
+        "flag_rate": 0.0,
+        "fallback_count": 3717,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 3717,
+        "agree_count": 3700,
+        "agreement_rate": 0.9954264191552327
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016
+      ],
+      "test_year": 2017,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 3428,
+      "cell_method": {
+        "available_count": 3428,
+        "flagged_count": 18,
+        "flag_rate": 0.005250875145857643
+      },
+      "seasonal_method": {
+        "available_count": 3428,
+        "flagged_count": 0,
+        "flag_rate": 0.0,
+        "fallback_count": 3428,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 3428,
+        "agree_count": 3410,
+        "agreement_rate": 0.9947491248541424
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017
+      ],
+      "test_year": 2018,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 5388,
+      "cell_method": {
+        "available_count": 5388,
+        "flagged_count": 32,
+        "flag_rate": 0.005939123979213066
+      },
+      "seasonal_method": {
+        "available_count": 5388,
+        "flagged_count": 15,
+        "flag_rate": 0.0027839643652561247,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 5388,
+        "agree_count": 5347,
+        "agreement_rate": 0.9923904974016332
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018
+      ],
+      "test_year": 2019,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 10537,
+      "cell_method": {
+        "available_count": 10537,
+        "flagged_count": 623,
+        "flag_rate": 0.0591249881370409
+      },
+      "seasonal_method": {
+        "available_count": 10537,
+        "flagged_count": 245,
+        "flag_rate": 0.02325139982917339,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 10537,
+        "agree_count": 9965,
+        "agreement_rate": 0.945715099174338
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019
+      ],
+      "test_year": 2020,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 2704,
+      "cell_method": {
+        "available_count": 2704,
+        "flagged_count": 7,
+        "flag_rate": 0.0025887573964497044
+      },
+      "seasonal_method": {
+        "available_count": 2704,
+        "flagged_count": 13,
+        "flag_rate": 0.004807692307692308,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 2704,
+        "agree_count": 2690,
+        "agreement_rate": 0.9948224852071006
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020
+      ],
+      "test_year": 2021,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 2831,
+      "cell_method": {
+        "available_count": 2831,
+        "flagged_count": 11,
+        "flag_rate": 0.003885552808194984
+      },
+      "seasonal_method": {
+        "available_count": 2831,
+        "flagged_count": 24,
+        "flag_rate": 0.008477569763334511,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 2831,
+        "agree_count": 2802,
+        "agreement_rate": 0.9897562698693041
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021
+      ],
+      "test_year": 2022,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 2445,
+      "cell_method": {
+        "available_count": 2445,
+        "flagged_count": 13,
+        "flag_rate": 0.005316973415132925
+      },
+      "seasonal_method": {
+        "available_count": 2445,
+        "flagged_count": 32,
+        "flag_rate": 0.013087934560327199,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 2445,
+        "agree_count": 2410,
+        "agreement_rate": 0.9856850715746421
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022
+      ],
+      "test_year": 2023,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 7864,
+      "cell_method": {
+        "available_count": 7864,
+        "flagged_count": 232,
+        "flag_rate": 0.029501525940996948
+      },
+      "seasonal_method": {
+        "available_count": 7864,
+        "flagged_count": 77,
+        "flag_rate": 0.009791454730417091,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 7864,
+        "agree_count": 7609,
+        "agreement_rate": 0.9675737538148524
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023
+      ],
+      "test_year": 2024,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 4882,
+      "cell_method": {
+        "available_count": 4882,
+        "flagged_count": 47,
+        "flag_rate": 0.00962720196640721
+      },
+      "seasonal_method": {
+        "available_count": 4882,
+        "flagged_count": 15,
+        "flag_rate": 0.0030725112658746417,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 4882,
+        "agree_count": 4826,
+        "agreement_rate": 0.988529291274068
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023,
+        2024
+      ],
+      "test_year": 2025,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 3619,
+      "cell_method": {
+        "available_count": 3619,
+        "flagged_count": 62,
+        "flag_rate": 0.01713180436584692
+      },
+      "seasonal_method": {
+        "available_count": 3619,
+        "flagged_count": 34,
+        "flag_rate": 0.009394860458690245,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 3619,
+        "agree_count": 3539,
+        "agreement_rate": 0.9778944459795523
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "test_year": 2026,
+      "region": "sumatera-selatan",
+      "skipped": false,
+      "test_observations": 6985,
+      "cell_method": {
+        "available_count": 6984,
+        "flagged_count": 366,
+        "flag_rate": 0.05240549828178694
+      },
+      "seasonal_method": {
+        "available_count": 6985,
+        "flagged_count": 84,
+        "flag_rate": 0.012025769506084466,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 6984,
+        "agree_count": 6634,
+        "agreement_rate": 0.949885452462772
+      }
+    },
+    {
+      "train_years": [
+        2013
+      ],
+      "test_year": 2014,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 5498,
+      "cell_method": {
+        "available_count": 5493,
+        "flagged_count": 497,
+        "flag_rate": 0.09047879118878573
+      },
+      "seasonal_method": {
+        "available_count": 5498,
+        "flagged_count": 147,
+        "flag_rate": 0.02673699527100764,
+        "fallback_count": 5498,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 5493,
+        "agree_count": 5053,
+        "agreement_rate": 0.9198980520662662
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014
+      ],
+      "test_year": 2015,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 8037,
+      "cell_method": {
+        "available_count": 8029,
+        "flagged_count": 1564,
+        "flag_rate": 0.19479387221322705
+      },
+      "seasonal_method": {
+        "available_count": 8037,
+        "flagged_count": 939,
+        "flag_rate": 0.11683463979096678,
+        "fallback_count": 8037,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 8029,
+        "agree_count": 7137,
+        "agreement_rate": 0.8889027276124051
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015
+      ],
+      "test_year": 2016,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 1631,
+      "cell_method": {
+        "available_count": 1631,
+        "flagged_count": 3,
+        "flag_rate": 0.0018393623543838135
+      },
+      "seasonal_method": {
+        "available_count": 1631,
+        "flagged_count": 0,
+        "flag_rate": 0.0,
+        "fallback_count": 1631,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 1631,
+        "agree_count": 1628,
+        "agreement_rate": 0.9981606376456161
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016
+      ],
+      "test_year": 2017,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 1402,
+      "cell_method": {
+        "available_count": 1402,
+        "flagged_count": 6,
+        "flag_rate": 0.0042796005706134095
+      },
+      "seasonal_method": {
+        "available_count": 1402,
+        "flagged_count": 0,
+        "flag_rate": 0.0,
+        "fallback_count": 1402,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 1402,
+        "agree_count": 1396,
+        "agreement_rate": 0.9957203994293866
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017
+      ],
+      "test_year": 2018,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 1965,
+      "cell_method": {
+        "available_count": 1965,
+        "flagged_count": 17,
+        "flag_rate": 0.008651399491094147
+      },
+      "seasonal_method": {
+        "available_count": 1965,
+        "flagged_count": 8,
+        "flag_rate": 0.004071246819338422,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 1965,
+        "agree_count": 1950,
+        "agreement_rate": 0.9923664122137404
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018
+      ],
+      "test_year": 2019,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 4298,
+      "cell_method": {
+        "available_count": 4298,
+        "flagged_count": 323,
+        "flag_rate": 0.07515123313168916
+      },
+      "seasonal_method": {
+        "available_count": 4298,
+        "flagged_count": 143,
+        "flag_rate": 0.0332712889716147,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 4298,
+        "agree_count": 4038,
+        "agreement_rate": 0.9395067473243369
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019
+      ],
+      "test_year": 2020,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 985,
+      "cell_method": {
+        "available_count": 985,
+        "flagged_count": 1,
+        "flag_rate": 0.0010152284263959391
+      },
+      "seasonal_method": {
+        "available_count": 985,
+        "flagged_count": 4,
+        "flag_rate": 0.0040609137055837565,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 985,
+        "agree_count": 980,
+        "agreement_rate": 0.9949238578680203
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020
+      ],
+      "test_year": 2021,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 863,
+      "cell_method": {
+        "available_count": 863,
+        "flagged_count": 6,
+        "flag_rate": 0.006952491309385863
+      },
+      "seasonal_method": {
+        "available_count": 863,
+        "flagged_count": 1,
+        "flag_rate": 0.0011587485515643105,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 863,
+        "agree_count": 856,
+        "agreement_rate": 0.9918887601390498
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021
+      ],
+      "test_year": 2022,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 952,
+      "cell_method": {
+        "available_count": 952,
+        "flagged_count": 9,
+        "flag_rate": 0.009453781512605041
+      },
+      "seasonal_method": {
+        "available_count": 952,
+        "flagged_count": 8,
+        "flag_rate": 0.008403361344537815,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 952,
+        "agree_count": 939,
+        "agreement_rate": 0.9863445378151261
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022
+      ],
+      "test_year": 2023,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 2104,
+      "cell_method": {
+        "available_count": 2104,
+        "flagged_count": 53,
+        "flag_rate": 0.025190114068441065
+      },
+      "seasonal_method": {
+        "available_count": 2104,
+        "flagged_count": 4,
+        "flag_rate": 0.0019011406844106464,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 2104,
+        "agree_count": 2051,
+        "agreement_rate": 0.9748098859315589
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023
+      ],
+      "test_year": 2024,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 1740,
+      "cell_method": {
+        "available_count": 1740,
+        "flagged_count": 6,
+        "flag_rate": 0.0034482758620689655
+      },
+      "seasonal_method": {
+        "available_count": 1740,
+        "flagged_count": 8,
+        "flag_rate": 0.004597701149425287,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 1740,
+        "agree_count": 1728,
+        "agreement_rate": 0.993103448275862
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023,
+        2024
+      ],
+      "test_year": 2025,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 1336,
+      "cell_method": {
+        "available_count": 1336,
+        "flagged_count": 23,
+        "flag_rate": 0.01721556886227545
+      },
+      "seasonal_method": {
+        "available_count": 1336,
+        "flagged_count": 9,
+        "flag_rate": 0.006736526946107785,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 1336,
+        "agree_count": 1308,
+        "agreement_rate": 0.9790419161676647
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "test_year": 2026,
+      "region": "jambi",
+      "skipped": false,
+      "test_observations": 2319,
+      "cell_method": {
+        "available_count": 2318,
+        "flagged_count": 81,
+        "flag_rate": 0.034943917169974116
+      },
+      "seasonal_method": {
+        "available_count": 2319,
+        "flagged_count": 6,
+        "flag_rate": 0.00258732212160414,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 2318,
+        "agree_count": 2233,
+        "agreement_rate": 0.9633304572907679
+      }
+    },
+    {
+      "train_years": [
+        2013
+      ],
+      "test_year": 2014,
+      "region": "kalimantan-selatan",
+      "skipped": false,
+      "test_observations": 6685,
+      "cell_method": {
+        "available_count": 6668,
+        "flagged_count": 1208,
+        "flag_rate": 0.1811637672465507
+      },
+      "seasonal_method": {
+        "available_count": 6685,
+        "flagged_count": 462,
+        "flag_rate": 0.06910994764397906,
+        "fallback_count": 6685,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 6668,
+        "agree_count": 5750,
+        "agreement_rate": 0.8623275344931014
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014
+      ],
+      "test_year": 2015,
+      "region": "kalimantan-selatan",
+      "skipped": false,
+      "test_observations": 9682,
+      "cell_method": {
+        "available_count": 9660,
+        "flagged_count": 1557,
+        "flag_rate": 0.16118012422360248
+      },
+      "seasonal_method": {
+        "available_count": 9682,
+        "flagged_count": 754,
+        "flag_rate": 0.07787647180334642,
+        "fallback_count": 9682,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 9660,
+        "agree_count": 8441,
+        "agreement_rate": 0.8738095238095238
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015
+      ],
+      "test_year": 2016,
+      "region": "kalimantan-selatan",
+      "skipped": false,
+      "test_observations": 1619,
+      "cell_method": {
+        "available_count": 1619,
+        "flagged_count": 6,
+        "flag_rate": 0.0037059913526868438
+      },
+      "seasonal_method": {
+        "available_count": 1619,
+        "flagged_count": 0,
+        "flag_rate": 0.0,
+        "fallback_count": 1619,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 1619,
+        "agree_count": 1613,
+        "agreement_rate": 0.9962940086473132
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016
+      ],
+      "test_year": 2017,
+      "region": "kalimantan-selatan",
+      "skipped": false,
+      "test_observations": 1523,
+      "cell_method": {
+        "available_count": 1523,
+        "flagged_count": 6,
+        "flag_rate": 0.003939592908732764
+      },
+      "seasonal_method": {
+        "available_count": 1523,
+        "flagged_count": 0,
+        "flag_rate": 0.0,
+        "fallback_count": 1523,
+        "fallback_rate": 1.0
+      },
+      "agreement": {
+        "comparable_observations": 1523,
+        "agree_count": 1517,
+        "agreement_rate": 0.9960604070912672
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017
+      ],
+      "test_year": 2018,
+      "region": "kalimantan-selatan",
+      "skipped": false,
+      "test_observations": 3518,
+      "cell_method": {
+        "available_count": 3518,
+        "flagged_count": 28,
+        "flag_rate": 0.007959067652075043
+      },
+      "seasonal_method": {
+        "available_count": 3518,
+        "flagged_count": 50,
+        "flag_rate": 0.014212620807276862,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 3518,
+        "agree_count": 3462,
+        "agreement_rate": 0.9840818646958499
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018
+      ],
+      "test_year": 2019,
+      "region": "kalimantan-selatan",
+      "skipped": false,
+      "test_observations": 6459,
+      "cell_method": {
+        "available_count": 6459,
+        "flagged_count": 220,
+        "flag_rate": 0.034061000154822725
+      },
+      "seasonal_method": {
+        "available_count": 6459,
+        "flagged_count": 332,
+        "flag_rate": 0.051401145688187024,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 6459,
+        "agree_count": 6083,
+        "agreement_rate": 0.9417866542808484
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019
+      ],
+      "test_year": 2020,
+      "region": "kalimantan-selatan",
+      "skipped": false,
+      "test_observations": 1287,
+      "cell_method": {
+        "available_count": 1287,
+        "flagged_count": 7,
+        "flag_rate": 0.005439005439005439
+      },
+      "seasonal_method": {
+        "available_count": 1287,
+        "flagged_count": 6,
+        "flag_rate": 0.004662004662004662,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 1287,
+        "agree_count": 1278,
         "agreement_rate": 0.993006993006993
       }
     },
@@ -4951,6 +4813,144 @@
         2017,
         2018,
         2019,
+        2020
+      ],
+      "test_year": 2021,
+      "region": "kalimantan-selatan",
+      "skipped": false,
+      "test_observations": 1038,
+      "cell_method": {
+        "available_count": 1038,
+        "flagged_count": 2,
+        "flag_rate": 0.0019267822736030828
+      },
+      "seasonal_method": {
+        "available_count": 1038,
+        "flagged_count": 20,
+        "flag_rate": 0.019267822736030827,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 1038,
+        "agree_count": 1016,
+        "agreement_rate": 0.9788053949903661
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021
+      ],
+      "test_year": 2022,
+      "region": "kalimantan-selatan",
+      "skipped": false,
+      "test_observations": 907,
+      "cell_method": {
+        "available_count": 907,
+        "flagged_count": 2,
+        "flag_rate": 0.002205071664829107
+      },
+      "seasonal_method": {
+        "available_count": 907,
+        "flagged_count": 4,
+        "flag_rate": 0.004410143329658214,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 907,
+        "agree_count": 901,
+        "agreement_rate": 0.9933847850055126
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022
+      ],
+      "test_year": 2023,
+      "region": "kalimantan-selatan",
+      "skipped": false,
+      "test_observations": 5219,
+      "cell_method": {
+        "available_count": 5219,
+        "flagged_count": 96,
+        "flag_rate": 0.01839432841540525
+      },
+      "seasonal_method": {
+        "available_count": 5219,
+        "flagged_count": 130,
+        "flag_rate": 0.024908986395861275,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 5219,
+        "agree_count": 5061,
+        "agreement_rate": 0.9697260011496456
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023
+      ],
+      "test_year": 2024,
+      "region": "kalimantan-selatan",
+      "skipped": false,
+      "test_observations": 1971,
+      "cell_method": {
+        "available_count": 1971,
+        "flagged_count": 7,
+        "flag_rate": 0.0035514967021816335
+      },
+      "seasonal_method": {
+        "available_count": 1971,
+        "flagged_count": 12,
+        "flag_rate": 0.0060882800608828,
+        "fallback_count": 0,
+        "fallback_rate": 0.0
+      },
+      "agreement": {
+        "comparable_observations": 1971,
+        "agree_count": 1954,
+        "agreement_rate": 0.991374936580416
+      }
+    },
+    {
+      "train_years": [
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
         2020,
         2021,
         2022,
@@ -4960,23 +4960,23 @@
       "test_year": 2025,
       "region": "kalimantan-selatan",
       "skipped": false,
-      "test_observations": 84,
+      "test_observations": 1535,
       "cell_method": {
-        "available_count": 84,
-        "flagged_count": 0,
-        "flag_rate": 0.0
+        "available_count": 1535,
+        "flagged_count": 10,
+        "flag_rate": 0.006514657980456026
       },
       "seasonal_method": {
-        "available_count": 84,
-        "flagged_count": 0,
-        "flag_rate": 0.0,
+        "available_count": 1535,
+        "flagged_count": 7,
+        "flag_rate": 0.004560260586319218,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 84,
-        "agree_count": 84,
-        "agreement_rate": 1.0
+        "comparable_observations": 1535,
+        "agree_count": 1518,
+        "agreement_rate": 0.9889250814332248
       }
     },
     {
@@ -4998,85 +4998,85 @@
       "test_year": 2026,
       "region": "kalimantan-selatan",
       "skipped": false,
-      "test_observations": 1261,
+      "test_observations": 5101,
       "cell_method": {
-        "available_count": 1257,
-        "flagged_count": 94,
-        "flag_rate": 0.07478122513922036
+        "available_count": 5101,
+        "flagged_count": 352,
+        "flag_rate": 0.06900607723975691
       },
       "seasonal_method": {
-        "available_count": 1261,
-        "flagged_count": 98,
-        "flag_rate": 0.07771609833465504,
+        "available_count": 5101,
+        "flagged_count": 326,
+        "flag_rate": 0.0639090374436385,
         "fallback_count": 0,
         "fallback_rate": 0.0
       },
       "agreement": {
-        "comparable_observations": 1257,
-        "agree_count": 1169,
-        "agreement_rate": 0.9299920445505171
+        "comparable_observations": 5101,
+        "agree_count": 4721,
+        "agreement_rate": 0.9255048029798079
       }
     }
   ],
   "viirs_era_summary": {
     "folds": 65,
-    "mean_cell_flag_rate": 0.0529403729865909,
-    "mean_seasonal_flag_rate": 0.023330366014980192,
-    "mean_seasonal_fallback_rate": 0.31451237669521287,
-    "mean_agreement_rate": 0.9544260006762247
+    "mean_cell_flag_rate": 0.0383265926255742,
+    "mean_seasonal_flag_rate": 0.019459123605187777,
+    "mean_seasonal_fallback_rate": 0.3076923076923077,
+    "mean_agreement_rate": 0.9656048177977482
   },
   "sensitivity_sweep": {
     "threshold_z": {
       "1.5": {
         "folds": 65,
-        "mean_cell_flag_rate": 0.06900923725182052,
-        "mean_seasonal_flag_rate": 0.031925851183702114,
-        "mean_seasonal_fallback_rate": 0.31451237669521287,
-        "mean_agreement_rate": 0.9424350850487769
+        "mean_cell_flag_rate": 0.050118951099591615,
+        "mean_seasonal_flag_rate": 0.026662735011889357,
+        "mean_seasonal_fallback_rate": 0.3076923076923077,
+        "mean_agreement_rate": 0.9557919127605043
       },
       "2.0": {
         "folds": 65,
-        "mean_cell_flag_rate": 0.0529403729865909,
-        "mean_seasonal_flag_rate": 0.023330366014980192,
-        "mean_seasonal_fallback_rate": 0.31451237669521287,
-        "mean_agreement_rate": 0.9544260006762247
+        "mean_cell_flag_rate": 0.0383265926255742,
+        "mean_seasonal_flag_rate": 0.019459123605187777,
+        "mean_seasonal_fallback_rate": 0.3076923076923077,
+        "mean_agreement_rate": 0.9656048177977482
       },
       "2.5": {
         "folds": 65,
-        "mean_cell_flag_rate": 0.042094722763956795,
-        "mean_seasonal_flag_rate": 0.017505839564908646,
-        "mean_seasonal_fallback_rate": 0.31451237669521287,
-        "mean_agreement_rate": 0.9622887598116315
+        "mean_cell_flag_rate": 0.03023948433619456,
+        "mean_seasonal_flag_rate": 0.014868722531883457,
+        "mean_seasonal_fallback_rate": 0.3076923076923077,
+        "mean_agreement_rate": 0.972483199190599
       },
       "3.0": {
         "folds": 65,
-        "mean_cell_flag_rate": 0.03400041803983558,
-        "mean_seasonal_flag_rate": 0.013625232001530834,
-        "mean_seasonal_fallback_rate": 0.31451237669521287,
-        "mean_agreement_rate": 0.968153818799001
+        "mean_cell_flag_rate": 0.024641453758260417,
+        "mean_seasonal_flag_rate": 0.011762162545593646,
+        "mean_seasonal_fallback_rate": 0.3076923076923077,
+        "mean_agreement_rate": 0.9771830034873041
       }
     },
     "min_years": {
       "3": {
         "folds": 65,
-        "mean_cell_flag_rate": 0.0529403729865909,
-        "mean_seasonal_flag_rate": 0.02748529186927673,
-        "mean_seasonal_fallback_rate": 0.1555123121101516,
-        "mean_agreement_rate": 0.9515521950680443
+        "mean_cell_flag_rate": 0.0383265926255742,
+        "mean_seasonal_flag_rate": 0.020543813930999872,
+        "mean_seasonal_fallback_rate": 0.15384615384615385,
+        "mean_agreement_rate": 0.9646340667429913
       },
       "5": {
         "folds": 65,
-        "mean_cell_flag_rate": 0.0529403729865909,
-        "mean_seasonal_flag_rate": 0.023330366014980192,
-        "mean_seasonal_fallback_rate": 0.31451237669521287,
-        "mean_agreement_rate": 0.9544260006762247
+        "mean_cell_flag_rate": 0.0383265926255742,
+        "mean_seasonal_flag_rate": 0.019459123605187777,
+        "mean_seasonal_fallback_rate": 0.3076923076923077,
+        "mean_agreement_rate": 0.9656048177977482
       },
       "8": {
         "folds": 65,
-        "mean_cell_flag_rate": 0.0529403729865909,
-        "mean_seasonal_flag_rate": 0.021540241954752373,
-        "mean_seasonal_fallback_rate": 0.572846351049084,
-        "mean_agreement_rate": 0.9557597097966658
+        "mean_cell_flag_rate": 0.0383265926255742,
+        "mean_seasonal_flag_rate": 0.018380528580066533,
+        "mean_seasonal_fallback_rate": 0.5384615384615384,
+        "mean_agreement_rate": 0.9667393721068174
       }
     }
   },
@@ -5091,13 +5091,13 @@
       2022
     ],
     "high_years": {
-      "mean_cell_flag_rate": 0.12623290791673014,
-      "mean_seasonal_flag_rate": 0.06449338312362882,
+      "mean_cell_flag_rate": 0.09626742528520141,
+      "mean_seasonal_flag_rate": 0.05495313502972795,
       "n_fold_region_results": 10
     },
     "low_years": {
-      "mean_cell_flag_rate": 0.016945265719512957,
-      "mean_seasonal_flag_rate": 0.0049742658535588185,
+      "mean_cell_flag_rate": 0.008728383370038962,
+      "mean_seasonal_flag_rate": 0.0065410168368006056,
       "n_fold_region_results": 15
     },
     "caveat": "Qualitative sanity check only. 'High/low activity year' is based on this dataset's own yearly detection totals (Stage 1 audit), not an independent fire-occurrence record. Do not read this as accuracy or validation."

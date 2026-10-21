@@ -8,11 +8,13 @@ import WorkstationLayout from "@/components/layout/WorkstationLayout";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import StatTile from "@/components/ui/StatTile";
-import { getRegionOption, getRangeOption, historicalQuery, isArchiveRange, liveWindowFor, matchesRegion, withFilters } from "@/lib/filters";
+import { getRegionOption, getRangeOption, historicalQuery, isArchiveRange, labelOf, liveWindowFor, matchesRegion, withFilters } from "@/lib/filters";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 import { windowLoadingNote } from "@/lib/hotspots";
 import { useLiveHotspots } from "@/lib/useLiveHotspots";
 import type { CommunityReport, DailyActivity, HistoricalCalendarResponse, HistoricalMonth } from "@/types";
 import { areaRegionLabel } from "@/lib/adminRegion";
+import MapLoadingText from "@/components/map/MapLoadingText";
 
 
 /**
@@ -42,7 +44,7 @@ const FireMap = dynamic(() => import("@/components/map/FireMap"), {
   loading: () => (
     <div className="h-full w-full flex items-center justify-center bg-gray-100">
       <span className="font-medium text-sm text-gray-500 animate-pulse">
-        Loading map…
+        <MapLoadingText />
       </span>
     </div>
   ),
@@ -64,7 +66,8 @@ function sumDaily(rows: DailyActivity[]) {
   return totals;
 }
 
-const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
+const MONTH_NAMES_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
+const MONTH_NAMES_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function DashboardPageContent() {
   const searchParams = useSearchParams();
@@ -72,7 +75,9 @@ function DashboardPageContent() {
   const activeRange = getRangeOption(searchParams.get("range"));
   const archiveRange = isArchiveRange(searchParams.get("range"));
   const liveWindow = liveWindowFor(searchParams.get("range"));
-  const periodLabel = archiveRange ? "24 Jam Terakhir" : activeRange.label;
+  const { tr, language } = useTranslation();
+  const MONTH_NAMES = language === "en" ? MONTH_NAMES_EN : MONTH_NAMES_ID;
+  const periodLabel = archiveRange ? tr("24 Jam Terakhir", "Last 24 Hours") : labelOf(activeRange, language);
 
   const { data, error, loading, refresh: refreshHotspots } = useLiveHotspots(liveWindow, { province: activeRegion.provinsi });
   const meta = data?.meta ?? null;
@@ -159,8 +164,11 @@ function DashboardPageContent() {
   const harmonizationSentence = useMemo(() => {
     const { total, MATCHED, MODIS_ONLY, VIIRS_ONLY, UNMATCHED } = matchCounts;
     if (total === 0) return null;
-    return `Dari ${total.toLocaleString()} deteksi dalam ${periodLabel.toLowerCase()}, ${MATCHED.toLocaleString()} cocok di dua sensor (MODIS + VIIRS), ${MODIS_ONLY.toLocaleString()} hanya terdeteksi MODIS, ${VIIRS_ONLY.toLocaleString()} hanya terdeteksi VIIRS, dan ${UNMATCHED.toLocaleString()} belum tertandai. Harmonisasi mengurangi penghitungan ganda, bukan mengonfirmasi kejadian kebakaran.`;
-  }, [matchCounts, periodLabel]);
+    return tr(
+      `Dari ${total.toLocaleString()} deteksi dalam ${periodLabel.toLowerCase()}, ${MATCHED.toLocaleString()} cocok di dua sensor (MODIS + VIIRS), ${MODIS_ONLY.toLocaleString()} hanya terdeteksi MODIS, ${VIIRS_ONLY.toLocaleString()} hanya terdeteksi VIIRS, dan ${UNMATCHED.toLocaleString()} belum tertandai. Harmonisasi mengurangi penghitungan ganda, bukan mengonfirmasi kejadian kebakaran.`,
+      `Of ${total.toLocaleString()} detections in the ${periodLabel.toLowerCase()}, ${MATCHED.toLocaleString()} matched across both sensors (MODIS + VIIRS), ${MODIS_ONLY.toLocaleString()} were seen by MODIS only, ${VIIRS_ONLY.toLocaleString()} by VIIRS only, and ${UNMATCHED.toLocaleString()} are unflagged. Harmonization reduces double counting; it does not confirm a fire.`
+    );
+  }, [matchCounts, periodLabel, tr]);
 
   const timeSeriesData = useMemo(() => {
     if (archiveRange) {
@@ -231,7 +239,7 @@ function DashboardPageContent() {
         overlap: bin.matched > 0 ? matchedPairs : 0,
       };
     });
-  }, [archiveRange, historicalMonths, liveWindow, dailyRows, markers]);
+  }, [archiveRange, historicalMonths, liveWindow, dailyRows, markers, MONTH_NAMES]);
 
   const timeSeriesSummary = useMemo(() => {
     let maxVal = 0;
@@ -268,16 +276,22 @@ function DashboardPageContent() {
         <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-900">
           <span className="material-symbols-outlined text-amber-600 text-base shrink-0">info</span>
           <p>
-            Deteksi satelit adalah indikasi, bukan konfirmasi kebakaran. Perlu verifikasi lapangan sebelum tindak lanjut.
+            {tr(
+              "Deteksi satelit adalah indikasi, bukan konfirmasi kebakaran. Perlu verifikasi lapangan sebelum tindak lanjut.",
+              "Satellite detections are indications, not fire confirmations. Field verification is needed before acting."
+            )}
           </p>
         </div>
 
         {/* Page Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-[var(--color-text-main)] mb-2">Dashboard</h1>
+            <h1 className="text-3xl font-bold text-[var(--color-text-main)] mb-2">{tr("Dasbor", "Dashboard")}</h1>
             <p className="text-sm text-[var(--color-text-muted)] max-w-2xl">
-              Pantau aktivitas kebakaran terkini, data sensor yang diharmonisasi, dan area yang memerlukan perhatian lebih lanjut.
+              {tr(
+                "Pantau aktivitas kebakaran terkini, data sensor yang diharmonisasi, dan area yang memerlukan perhatian lebih lanjut.",
+                "Monitor current fire activity, harmonized sensor data, and areas that need further attention."
+              )}
             </p>
           </div>
           <button
@@ -286,7 +300,7 @@ function DashboardPageContent() {
             disabled={loading}
             className="h-9 px-4 bg-white border border-[var(--color-border)] rounded-lg text-sm font-medium text-blue-600 shadow-sm hover:bg-gray-50 disabled:text-gray-400 shrink-0"
           >
-            Refresh
+            {tr("Muat ulang", "Refresh")}
           </button>
         </div>
 
@@ -298,15 +312,18 @@ function DashboardPageContent() {
             {error
               ? error
               : loading
-                ? (windowLoadingNote(liveWindow) ?? "NASA live → Python processing…")
+                ? (windowLoadingNote(liveWindow, language) ?? tr("Memproses data live NASA…", "NASA live → Python processing…"))
                 : meta
-                  ? `Wilayah: ${activeRegion.label} • Periode: ${periodLabel} • Diperbarui ${new Date(meta.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                  ? `${tr("Wilayah", "Region")}: ${labelOf(activeRegion, language)} • ${tr("Periode", "Period")}: ${periodLabel} • ${tr("Diperbarui", "Updated")} ${new Date(meta.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
                   : ""}
           </span>
           {!loading && !error && meta && (
             <span
               className={meta.degraded ? "text-amber-600" : "text-gray-400"}
-              title="Jumlah ini berasal langsung dari NASA FIRMS dan bisa naik-turun antar pemuatan karena jadwal lintasan satelit yang sesungguhnya — bukan bug."
+              title={tr(
+                "Jumlah ini berasal langsung dari NASA FIRMS dan bisa naik-turun antar pemuatan karena jadwal lintasan satelit yang sesungguhnya — bukan bug.",
+                "These counts come straight from NASA FIRMS and can change between loads because of real satellite overpass schedules — not a bug."
+              )}
             >
               •{" "}
               {Object.entries(
@@ -318,7 +335,7 @@ function DashboardPageContent() {
                   return acc;
                 }, {})
               )
-                .map(([sensor, { count, allAvailable }]) => `${sensor} ${count}${allAvailable ? "" : " (sebagian gagal)"}`)
+                .map(([sensor, { count, allAvailable }]) => `${sensor} ${count}${allAvailable ? "" : tr(" (sebagian gagal)", " (partly failed)")}`)
                 .join(" · ")}
             </span>
           )}
@@ -328,9 +345,9 @@ function DashboardPageContent() {
         <Card className="overflow-hidden">
           <div className="flex items-center justify-between p-4 pb-0">
             <div>
-              <h3 className="font-bold text-[var(--color-text-main)]">Peta Deteksi</h3>
+              <h3 className="font-bold text-[var(--color-text-main)]">{tr("Peta Deteksi", "Detection Map")}</h3>
               <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                Titik panas langsung dari NASA FIRMS, diproses oleh Python fire pipeline.
+                {tr("Titik panas langsung dari NASA FIRMS, diproses oleh Python fire pipeline.", "Live hotspots from NASA FIRMS, processed by the Python fire pipeline.")}
               </p>
             </div>
           </div>
@@ -355,46 +372,46 @@ function DashboardPageContent() {
             <div className="absolute top-3 right-3 z-[1000] w-64 bg-white border border-[var(--color-border)] rounded-lg shadow-lg p-4 text-xs">
               <div className="flex items-center justify-between mb-3">
                 <span className="font-bold text-[var(--color-text-main)] tracking-wide text-[11px]">
-                  DETECTION LEGEND
+                  {tr("LEGENDA DETEKSI", "DETECTION LEGEND")}
                 </span>
                 <Badge tone="neutral">EPSG:4326</Badge>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">Harmonized (MODIS + VIIRS)</span>
+                  <span className="text-[var(--color-text-muted)]">{tr("Terharmonisasi (MODIS + VIIRS)", "Harmonized (MODIS + VIIRS)")}</span>
                   <span className="font-semibold text-[var(--color-text-main)]">{matchCounts.MATCHED}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">MODIS only</span>
+                  <span className="text-[var(--color-text-muted)]">{tr("Hanya MODIS", "MODIS only")}</span>
                   <span className="font-semibold text-[var(--color-text-main)]">{matchCounts.MODIS_ONLY}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">VIIRS only</span>
+                  <span className="text-[var(--color-text-muted)]">{tr("Hanya VIIRS", "VIIRS only")}</span>
                   <span className="font-semibold text-[var(--color-text-main)]">{matchCounts.VIIRS_ONLY}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">Unmatched telemetry</span>
+                  <span className="text-[var(--color-text-muted)]">{tr("Belum dicocokkan", "Unmatched telemetry")}</span>
                   <span className="font-semibold text-[var(--color-text-main)]">{matchCounts.UNMATCHED}</span>
                 </div>
               </div>
               <div className="h-px bg-[var(--color-border)] my-3" />
-              <div className="font-bold text-[11px] tracking-wide text-[var(--color-text-main)] mb-2">SEVERITY</div>
+              <div className="font-bold text-[11px] tracking-wide text-[var(--color-text-main)] mb-2">{tr("TINGKAT", "SEVERITY")}</div>
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1.5 text-[var(--color-text-muted)]">
-                    <span className="w-2 h-2 rounded-full bg-red-600" /> High
+                    <span className="w-2 h-2 rounded-full bg-red-600" /> {tr("Tinggi", "High")}
                   </span>
                   <span className="font-semibold text-[var(--color-text-main)]">{severityCounts.HIGH}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1.5 text-[var(--color-text-muted)]">
-                    <span className="w-2 h-2 rounded-full bg-orange-400" /> Medium
+                    <span className="w-2 h-2 rounded-full bg-orange-400" /> {tr("Sedang", "Medium")}
                   </span>
                   <span className="font-semibold text-[var(--color-text-main)]">{severityCounts.MEDIUM}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1.5 text-[var(--color-text-muted)]">
-                    <span className="w-2 h-2 rounded-full bg-yellow-400" /> Low
+                    <span className="w-2 h-2 rounded-full bg-yellow-400" /> {tr("Rendah", "Low")}
                   </span>
                   <span className="font-semibold text-[var(--color-text-main)]">{severityCounts.LOW}</span>
                 </div>
@@ -405,42 +422,42 @@ function DashboardPageContent() {
 
         {/* Map Summary */}
         <div>
-          <h2 className="text-xl font-bold text-[var(--color-text-main)] mb-4">Map Summary</h2>
+          <h2 className="text-xl font-bold text-[var(--color-text-main)] mb-4">{tr("Ringkasan Peta", "Map Summary")}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatTile
               icon="local_fire_department"
               iconTone="red"
-              label="Total Hotspots"
+              label={tr("Total Titik Panas", "Total Hotspots")}
               value={totals.total.toLocaleString()}
               caption={periodLabel}
             />
             <StatTile
               icon="location_on"
               iconTone="blue"
-              label="Areas Affected"
+              label={tr("Area Terdampak", "Areas Affected")}
               value={areas.length.toLocaleString()}
-              caption="Grid 0.25° dengan deteksi aktif"
+              caption={tr("Grid 0,25° dengan deteksi aktif", "0.25° grid cells with active detections")}
             />
             <StatTile
               icon="warning"
               iconTone="amber"
-              label="High-Priority Areas"
+              label={tr("Area Prioritas Tinggi", "High-Priority Areas")}
               value={highPriorityAreaCount.toLocaleString()}
-              caption="Menyarankan verifikasi lapangan segera"
+              caption={tr("Menyarankan verifikasi lapangan segera", "Field verification suggested soon")}
             />
             <StatTile
               icon="verified"
               iconTone="green"
-              label="Sensor Harmonization"
+              label={tr("Harmonisasi Sensor", "Sensor Harmonization")}
               value={`${matchCounts.MATCHED.toLocaleString()} / ${markers.length.toLocaleString()}`}
-              caption="Terverifikasi dua sensor (MODIS + VIIRS)"
+              caption={tr("Terdeteksi dua sensor (MODIS + VIIRS)", "Seen by both sensors (MODIS + VIIRS)")}
             />
           </div>
         </div>
 
         {/* Analytic Insights */}
         <div>
-          <h2 className="text-xl font-bold text-[var(--color-text-main)] mb-4">Analytic Insights</h2>
+          <h2 className="text-xl font-bold text-[var(--color-text-main)] mb-4">{tr("Wawasan Analitik", "Analytic Insights")}</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
             {/* Time Series — Interactive Multi-Series Harmonized + MODIS + VIIRS Visualizer */}
@@ -464,13 +481,13 @@ function DashboardPageContent() {
                   </div>
                   <div>
                     <h3 className="font-bold text-[var(--color-text-main)] text-sm md:text-base flex items-center gap-2">
-                      Time Series
+                      {tr("Deret Waktu", "Time Series")}
                       <span className="text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
-                        {archiveRange ? "Arsip Historis" : `NRT ${activeRange.label.replace(" Terakhir", "")}`}
+                        {archiveRange ? tr("Arsip Historis", "Historical Archive") : `NRT ${labelOf(activeRange, language).replace(" Terakhir", "").replace("Last ", "")}`}
                       </span>
                       {historicalLoading && (
                         <span className="text-[10px] font-medium normal-case text-[var(--color-text-muted)] animate-pulse">
-                          Memuat arsip…
+                          {tr("Memuat arsip…", "Loading archive…")}
                         </span>
                       )}
                     </h3>
@@ -480,7 +497,7 @@ function DashboardPageContent() {
                 <div className="flex items-center gap-3 text-[11px] font-medium text-[var(--color-text-muted)]">
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-sm bg-emerald-600 inline-block" />
-                    <span className="text-[var(--color-text-main)] font-semibold">Harmonized</span>
+                    <span className="text-[var(--color-text-main)] font-semibold">{tr("Terharmonisasi", "Harmonized")}</span>
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-sm bg-blue-500 inline-block" />
@@ -494,7 +511,12 @@ function DashboardPageContent() {
               </div>
 
               <p className="text-xs text-[var(--color-text-muted)] mb-3">
-                Tren deteksi harian terharmonisasi (MODIS + VIIRS) • {archiveRange ? `Agregasi bulanan ${activeRange.label}` : liveWindow === "24h" ? "Per jendela orbit satelit (UTC)" : "Per hari (UTC)"}
+                {tr("Tren deteksi terharmonisasi (MODIS + VIIRS)", "Harmonized detection trend (MODIS + VIIRS)")} •{" "}
+                {archiveRange
+                  ? `${tr("Agregasi bulanan", "Monthly totals,")} ${labelOf(activeRange, language)}`
+                  : liveWindow === "24h"
+                    ? tr("Per jendela orbit satelit (UTC)", "Per satellite overpass window (UTC)")
+                    : tr("Per hari (UTC)", "Per day (UTC)")}
               </p>
 
               {/* Chart Canvas Area */}
@@ -538,14 +560,14 @@ function DashboardPageContent() {
                             <div className="font-semibold text-gray-200 border-b border-gray-700/80 pb-1 mb-1.5 flex justify-between items-center">
                               <span>{slot.fullLabel}</span>
                               <span className="text-[10px] text-emerald-400">
-                                {slot.overlap > 0 ? `${slot.overlap} cocok` : "NRT"}
+                                {slot.overlap > 0 ? `${slot.overlap} ${tr("cocok", "matched")}` : "NRT"}
                               </span>
                             </div>
                             <div className="space-y-1">
                               <div className="flex justify-between items-center text-emerald-300 font-medium">
                                 <span className="flex items-center gap-1.5">
                                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                                  Harmonized:
+                                  {tr("Terharmonisasi", "Harmonized")}:
                                 </span>
                                 <span>{slot.harmonized.toLocaleString()}</span>
                               </div>
@@ -574,7 +596,7 @@ function DashboardPageContent() {
                           <div
                             className="flex-1 max-w-[14px] bg-emerald-600 rounded-t transition-all duration-300 group-hover:brightness-110 shadow-xs"
                             style={{ height: `${harmHeight}%` }}
-                            title={`Harmonized: ${slot.harmonized}`}
+                            title={`${tr("Terharmonisasi", "Harmonized")}: ${slot.harmonized}`}
                           />
                           {/* MODIS Bar */}
                           <div
@@ -609,23 +631,23 @@ function DashboardPageContent() {
               {/* Bottom Quick Metric Chips */}
               <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-[var(--color-border)]">
                 <div className="bg-emerald-50/60 border border-emerald-100 rounded-lg p-2 text-center">
-                  <div className="text-[10px] text-emerald-800 font-medium">Harmonisasi Total</div>
+                  <div className="text-[10px] text-emerald-800 font-medium">{tr("Harmonisasi Total", "Total Harmonized")}</div>
                   <div className="text-sm font-bold text-emerald-700">
                     {timeSeriesSummary.totalHarmonized.toLocaleString()}
                   </div>
-                  <div className="text-[9px] text-emerald-600/80">deduplikasi sensor</div>
+                  <div className="text-[9px] text-emerald-600/80">{tr("deduplikasi sensor", "sensor-deduplicated")}</div>
                 </div>
 
                 <div className="bg-gray-50 border border-gray-200/80 rounded-lg p-2 text-center">
-                  <div className="text-[10px] text-[var(--color-text-muted)] font-medium">Puncak Deteksi</div>
+                  <div className="text-[10px] text-[var(--color-text-muted)] font-medium">{tr("Puncak Deteksi", "Detection Peak")}</div>
                   <div className="text-xs font-bold text-[var(--color-text-main)] truncate" title={timeSeriesSummary.peakLabel}>
                     {timeSeriesSummary.peakLabel}
                   </div>
-                  <div className="text-[9px] text-[var(--color-text-muted)]">jendela teraktif</div>
+                  <div className="text-[9px] text-[var(--color-text-muted)]">{tr("jendela teraktif", "most active window")}</div>
                 </div>
 
                 <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-2 text-center">
-                  <div className="text-[10px] text-blue-900 font-medium">Rasio Sensor</div>
+                  <div className="text-[10px] text-blue-900 font-medium">{tr("Rasio Sensor", "Sensor Ratio")}</div>
                   <div className="text-xs font-bold text-blue-800">
                     {timeSeriesSummary.totalModis} : {timeSeriesSummary.totalViirs}
                   </div>
@@ -641,10 +663,10 @@ function DashboardPageContent() {
                 <span className="material-symbols-outlined text-emerald-600 bg-white rounded-lg p-2 text-xl shrink-0">verified</span>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-bold text-[var(--color-text-main)]">Harmonisasi Aktif</h3>
+                    <h3 className="font-bold text-[var(--color-text-main)]">{tr("Harmonisasi Aktif", "Active Harmonization")}</h3>
                   </div>
                   <p className="text-xs leading-relaxed text-[var(--color-text-main)]/80">
-                    {harmonizationSentence ?? "Belum ada deteksi pada jendela saat ini untuk dihitung harmonisasinya."}
+                    {harmonizationSentence ?? tr("Belum ada deteksi pada jendela saat ini untuk dihitung harmonisasinya.", "No detections in the current window to harmonize yet.")}
                   </p>
                 </div>
               </div>
@@ -662,16 +684,16 @@ function DashboardPageContent() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-bold text-[var(--color-text-main)]">
-                      {areaRegionLabel(topArea).title} — Prioritas Verifikasi
+                      {areaRegionLabel(topArea, language).title} — {tr("Prioritas Verifikasi", "Verification Priority")}
                     </h3>
                     <Badge tone="high">#{topArea.priorityRank}</Badge>
                   </div>
                   <p className="text-xs text-[var(--color-text-main)]/70">
                     {topArea.consecutiveActiveDays !== null && topArea.consecutiveActiveDays > 0
-                      ? `${topArea.consecutiveActiveDays} hari berturut-turut aktif`
-                      : "Baru terdeteksi pada jendela ini"}
+                      ? tr(`${topArea.consecutiveActiveDays} hari berturut-turut aktif`, `Active ${topArea.consecutiveActiveDays} days in a row`)
+                      : tr("Baru terdeteksi pada jendela ini", "First detected in this window")}
                     {topArea.frpSum !== null ? ` • FRP ${topArea.frpSum.toFixed(1)} MW` : ""}
-                    {" — rekomendasi: prioritaskan verifikasi lapangan."}
+                    {tr(" — rekomendasi: prioritaskan verifikasi lapangan.", " — recommendation: prioritize field verification.")}
                   </p>
                 </div>
               </div>
@@ -679,15 +701,18 @@ function DashboardPageContent() {
                 href={withFilters("/priority-areas", searchParams)}
                 className="shrink-0 px-5 py-2 bg-[#f04438] text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-red-600 transition-colors"
               >
-                Tinjau
+                {tr("Tinjau", "Review")}
               </Link>
             </div>
           </Card>
         ) : (
           <Card className="p-5 text-center text-sm text-[var(--color-text-muted)]">
             {loading
-              ? "Memuat area prioritas…"
-              : "Tidak ada area prioritas pada jendela ini — belum ada deteksi yang memenuhi kriteria penilaian, atau sumber data belum dikonfigurasi."}
+              ? tr("Memuat area prioritas…", "Loading priority areas…")
+              : tr(
+                  "Tidak ada area prioritas pada jendela ini — belum ada deteksi yang memenuhi kriteria penilaian, atau sumber data belum dikonfigurasi.",
+                  "No priority areas in this window — no detections meet the scoring criteria yet, or the data source isn't configured."
+                )}
           </Card>
         )}
 

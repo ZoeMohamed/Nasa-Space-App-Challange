@@ -135,7 +135,7 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
             <Link
               href="/community/notifikasi"
               className="md:hidden relative p-2 text-[var(--community-ink-muted)] hover:text-[var(--community-ink)] rounded-full hover:bg-black/5 transition"
-              aria-label="Notifikasi"
+              aria-label={t("community.nav.notifications")}
             >
               <span className="material-symbols-outlined text-[22px]">notifications</span>
               {unreadCount > 0 && (

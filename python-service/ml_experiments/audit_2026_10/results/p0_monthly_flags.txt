@@ -1,0 +1,18 @@
+test cell-days 429865
+before (n>=2): compared 99.93% of active cell-days, flagged 13704 = 3.19% of compared; Aug-Oct share of flags 73.8%
+after (n>=10): compared 99.56% of active cell-days, flagged 13553 = 3.17% of compared; Aug-Oct share of flags 74.1%
+       cell_days  before  after  before_rate  after_rate
+month                                                   
+1          12067     284    270       0.0235      0.0224
+2          14457     305    292       0.0211      0.0202
+3          16559     418    408       0.0252      0.0246
+4          15148     237    232       0.0156      0.0153
+5          17401     188    183       0.0108      0.0105
+6          22843     302    295       0.0132      0.0129
+7          44265     894    888       0.0202      0.0201
+8          76627    2532   2509       0.0330      0.0327
+9          92042    4352   4326       0.0473      0.0470
+10         75911    3233   3211       0.0426      0.0423
+11         31219     807    795       0.0258      0.0255
+12         11326     152    144       0.0134      0.0127
+share of all active cell-days in Aug-Oct: 56.9%

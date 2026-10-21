@@ -260,3 +260,51 @@ def filter_frame_to_admin(data, code: str | None, sqlite_path: str | None = None
     keep = cells_intersecting_admin(data.grid_lat, data.grid_lon, code, sqlite_path=sqlite_path)
     mask = [(float(a), float(b)) in keep for a, b in zip(data.grid_lat, data.grid_lon)]
     return data[mask]
+
+
+# --- user-drawn area of interest ------------------------------------------------------------------
+
+MAX_POLYGON_POINTS = 200
+
+
+def parse_polygon(text: str | None):
+    """A user-drawn area from "lat,lon;lat,lon;..." (at least 3 points, at most MAX_POLYGON_POINTS).
+
+    Raises ValueError with a readable message for anything malformed, out of range, or with no area.
+    A self-intersecting outline (e.g. points clicked out of order) is repaired with make_valid.
+    """
+    if not text:
+        return None
+    try:
+        points = [tuple(float(value) for value in pair.split(",")) for pair in text.strip().strip(";").split(";")]
+    except ValueError as exc:
+        raise ValueError("polygon must be 'lat,lon;lat,lon;...'") from exc
+    if any(len(point) != 2 for point in points):
+        raise ValueError("polygon must be 'lat,lon;lat,lon;...'")
+    if not 3 <= len(points) <= MAX_POLYGON_POINTS:
+        raise ValueError(f"polygon needs 3 to {MAX_POLYGON_POINTS} points")
+    if any(not (-90 <= lat <= 90 and -180 <= lon <= 180) for lat, lon in points):
+        raise ValueError("polygon point out of range")
+    polygon = shapely.make_valid(shapely.Polygon([(lon, lat) for lat, lon in points]))
+    if polygon.is_empty or polygon.area == 0:
+        raise ValueError("polygon has no area")
+    shapely.prepare(polygon)
+    return polygon
+
+
+def cells_intersecting_polygon(grid_lats, grid_lons, polygon, cell_size: float = 0.25) -> set[tuple[float, float]]:
+    """Grid cells (SW corner) whose 0.25° box intersects `polygon` -- same rule as an admin area."""
+    cells = sorted({(float(a), float(b)) for a, b in zip(grid_lats, grid_lons)})
+    if polygon is None or not cells:
+        return set()
+    boxes = shapely.box([c[1] for c in cells], [c[0] for c in cells], [c[1] + cell_size for c in cells], [c[0] + cell_size for c in cells])
+    return {cell for cell, hit in zip(cells, shapely.intersects(polygon, boxes)) if hit}
+
+
+def filter_frame_to_polygon(data, polygon):
+    """Filter a DataFrame with grid_lat/grid_lon columns to cells intersecting a drawn area."""
+    if polygon is None or data.empty:
+        return data
+    keep = cells_intersecting_polygon(data.grid_lat, data.grid_lon, polygon)
+    mask = [(float(a), float(b)) in keep for a, b in zip(data.grid_lat, data.grid_lon)]
+    return data[mask]

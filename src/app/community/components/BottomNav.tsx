@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getOrCreateSubmitterToken } from "../lib/submitterToken";
 import type { ReportsListResponse } from "@/types";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 /**
  * Shared 5-item bottom nav for the Community View (Figma node 186:3013):
@@ -16,6 +17,7 @@ import type { ReportsListResponse } from "@/types";
  * reasonable, honestly-derived proxy rather than an invented figure.
  */
 export default function BottomNav() {
+  const { t, tr } = useTranslation();
   const pathname = usePathname();
   const [unread, setUnread] = useState(0);
 
@@ -41,11 +43,11 @@ export default function BottomNav() {
   }, []);
 
   const items = [
-    { href: "/community", label: "Beranda", icon: "home" },
-    { href: "/community/edukasi", label: "Edukasi", icon: "menu_book" },
-    { href: "/community/report", label: "Lapor", icon: "photo_camera", fab: true },
-    { href: "/community/notifikasi", label: "Notifikasi", icon: "notifications", badge: unread },
-    { href: "/community/saya", label: "Saya", icon: "person" },
+    { href: "/community", label: t("community.nav.home"), icon: "home" },
+    { href: "/community/edukasi", label: t("community.nav.education"), icon: "menu_book" },
+    { href: "/community/report", label: tr("Lapor", "Report"), icon: "photo_camera", fab: true },
+    { href: "/community/notifikasi", label: t("community.nav.notifications"), icon: "notifications", badge: unread },
+    { href: "/community/saya", label: t("community.nav.me"), icon: "person" },
   ];
 
   return (

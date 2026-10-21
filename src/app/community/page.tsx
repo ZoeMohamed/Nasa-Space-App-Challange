@@ -7,7 +7,8 @@ import RadarMap from "./components/RadarMap";
 import { NearbyReportList, type NearbyReportItem } from "./components/NearbyLists";
 import { bearingDeg, compassLabel, formatDistanceKm, haversineKm, isUpwind } from "./lib/geo";
 import {
-  STATUS_LABEL,
+  aqiCategoryLabel,
+  statusLabel,
   STATUS_NEAR_KM,
   STATUS_RADIUS_KM,
   STATUS_UPWIND_KM,
@@ -18,6 +19,7 @@ import { useLocationState } from "./lib/useLocation";
 import { useRegion } from "@/lib/useRegion";
 import { formatAdminFull } from "@/lib/adminRegion";
 import type { CommunityReport, HotspotApiResponse, HotspotMarker, WeatherResponse } from "@/types";
+import { useTranslation, pick, type Language } from "@/lib/i18n/LanguageContext";
 
 const RADIUS_OPTIONS = [10, 25, 50] as const;
 type RadiusOption = (typeof RADIUS_OPTIONS)[number];
@@ -25,16 +27,17 @@ const MAX_NEARBY_SHOWN = 6;
 const CALM_WIND_KMH = 2;
 
 /** Relative-time label from a hotspot's own acquiredAt timestamp — never a hardcoded clock time. */
-function formatRelativeTime(iso: string | undefined): string | null {
+function formatRelativeTime(iso: string | undefined, language: Language): string | null {
   if (!iso) return null;
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return null;
   const minutes = Math.round((Date.now() - then) / 60000);
-  if (minutes < 1) return "baru saja";
-  if (minutes < 60) return `${minutes} menit lalu`;
+  if (minutes < 1) return pick(language, "baru saja", "just now");
+  if (minutes < 60) return pick(language, `${minutes} menit lalu`, `${minutes} min ago`);
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} jam lalu`;
-  return `${Math.round(hours / 24)} hari lalu`;
+  if (hours < 24) return pick(language, `${hours} jam lalu`, `${hours} h ago`);
+  const days = Math.round(hours / 24);
+  return pick(language, `${days} hari lalu`, `${days} d ago`);
 }
 
 const STATUS_DOT: Record<AreaStatusLevel, string> = {
@@ -51,6 +54,8 @@ const STATUS_BAR_IDLE: Record<AreaStatusLevel, string> = {
 };
 
 export default function CommunityBerandaPage() {
+  const { tr, language } = useTranslation();
+  const STATUS_LABEL = { aman: statusLabel("aman", language), waspada: statusLabel("waspada", language), siaga: statusLabel("siaga", language), awas: statusLabel("awas", language) };
   const location = useLocationState();
   const { fix, ready } = location;
 
@@ -65,12 +70,16 @@ export default function CommunityBerandaPage() {
 
   const fixRegion = useRegion(fix?.lat, fix?.lon);
   const locationName = fix
-    ? (fix.label ?? formatAdminFull(fixRegion) ?? (fix.source === "gps" ? "Lokasi GPS Anda" : `Koordinat ${fix.lat.toFixed(3)}, ${fix.lon.toFixed(3)}`))
+    ? (fix.label ??
+      formatAdminFull(fixRegion) ??
+      (fix.source === "gps"
+        ? tr("Lokasi GPS Anda", "Your GPS location")
+        : `${tr("Koordinat", "Coordinates")} ${fix.lat.toFixed(3)}, ${fix.lon.toFixed(3)}`))
     : null;
   const locationSourceLabel = fix
     ? fix.source === "gps"
-      ? `GPS · akurasi ±${Math.round(fix.accuracyMeters ?? 15)} m`
-      : "Dipilih manual"
+      ? `GPS · ${tr("akurasi", "accuracy")} ±${Math.round(fix.accuracyMeters ?? 15)} m`
+      : tr("Dipilih manual", "Picked manually")
     : null;
 
   // With a location: EVERY detection within the largest radius option, filtered server-side before
@@ -180,7 +189,10 @@ export default function CommunityBerandaPage() {
   const statusResult =
     !user || hotspotLoading || weatherLoading
       ? null
-      : computeAreaStatus({ nearestHotspotKm, nearestVerifiedReportKm: nearestVerifiedKm, nearestUpwindHotspotKm: nearestUpwindKm, usAqi });
+      : computeAreaStatus(
+          { nearestHotspotKm, nearestVerifiedReportKm: nearestVerifiedKm, nearestUpwindHotspotKm: nearestUpwindKm, usAqi },
+          language
+        );
   const status: AreaStatusLevel | null = statusResult?.level ?? null;
   const inStatusRadius = hotspotsWithGeo.filter((h) => h.distanceKm <= STATUS_RADIUS_KM);
   const nearest = hotspotsWithGeo[0];
@@ -194,12 +206,18 @@ export default function CommunityBerandaPage() {
     if (!locationName || !status) return;
     const text =
       inStatusRadius.length > 0
-        ? `Status: ${STATUS_LABEL[status]}. ${inStatusRadius.length} deteksi satelit titik panas dalam radius ${STATUS_RADIUS_KM} km dari ${locationName}. Lihat detailnya di AGNIBHŪMI.`
-        : `Status: ${STATUS_LABEL[status]}. Tidak ada deteksi satelit titik panas dalam radius ${STATUS_RADIUS_KM} km dari ${locationName} saat ini.`;
+        ? tr(
+            `Status: ${STATUS_LABEL[status]}. ${inStatusRadius.length} deteksi satelit titik panas dalam radius ${STATUS_RADIUS_KM} km dari ${locationName}. Lihat detailnya di AGNIBHŪMI.`,
+            `Status: ${STATUS_LABEL[status]}. ${inStatusRadius.length} satellite hotspot detections within ${STATUS_RADIUS_KM} km of ${locationName}. See the details on AGNIBHŪMI.`
+          )
+        : tr(
+            `Status: ${STATUS_LABEL[status]}. Tidak ada deteksi satelit titik panas dalam radius ${STATUS_RADIUS_KM} km dari ${locationName} saat ini.`,
+            `Status: ${STATUS_LABEL[status]}. No satellite hotspot detections within ${STATUS_RADIUS_KM} km of ${locationName} right now.`
+          );
     const url = typeof window !== "undefined" ? window.location.href : "";
     if (navigator.share) {
       try {
-        await navigator.share({ title: "AGNIBHŪMI — Pemantauan Karhutla", text, url });
+        await navigator.share({ title: tr("AGNIBHŪMI — Pemantauan Karhutla", "AGNIBHŪMI — Forest & Land Fire Monitoring"), text, url });
       } catch {
         /* user cancelled */
       }
@@ -220,10 +238,12 @@ export default function CommunityBerandaPage() {
           </span>
           <div className="min-w-0">
             <h1 className="text-sm font-bold text-[#123027] truncate leading-tight">
-              {!ready ? "Memuat lokasi…" : (locationName ?? "Lokasi belum diatur")}
+              {!ready ? tr("Memuat lokasi…", "Loading location…") : (locationName ?? tr("Lokasi belum diatur", "Location not set"))}
             </h1>
             <p className="text-[11px] text-[var(--community-ink-muted)] truncate mt-0.5">
-              {fix ? `${locationSourceLabel} · Status dihitung dalam radius ${STATUS_RADIUS_KM} km` : "Atur lokasi untuk melihat status wilayahmu"}
+              {fix
+                ? `${locationSourceLabel} · ${tr(`Status dihitung dalam radius ${STATUS_RADIUS_KM} km`, `Status uses a ${STATUS_RADIUS_KM} km radius`)}`
+                : tr("Atur lokasi untuk melihat status wilayahmu", "Set your location to see your area's status")}
             </p>
           </div>
         </div>
@@ -233,7 +253,7 @@ export default function CommunityBerandaPage() {
           aria-expanded={pickerOpen}
           className="shrink-0 text-xs font-bold text-[var(--community-accent)] bg-emerald-50/80 hover:bg-emerald-100/80 px-3 py-1.5 rounded-full border border-emerald-200 transition active:scale-95"
         >
-          {pickerOpen ? "Tutup" : fix ? "Ubah" : "Atur lokasi"}
+          {pickerOpen ? tr("Tutup", "Close") : fix ? tr("Ubah", "Change") : tr("Atur lokasi", "Set location")}
         </button>
       </div>
 
@@ -249,10 +269,10 @@ export default function CommunityBerandaPage() {
           <div className="flex items-center justify-between gap-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-[11px] font-semibold text-emerald-200 border border-white/10">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Status wilayahmu
+              {tr("Status wilayahmu", "Your area's status")}
             </span>
             <span className="text-[11px] text-emerald-200/80 font-medium">
-              {hotspotLoading ? "Memperbarui…" : "Data satelit 24 jam terakhir"}
+              {hotspotLoading ? tr("Memperbarui…", "Updating…") : tr("Data satelit 24 jam terakhir", "Satellite data, last 24 hours")}
             </span>
           </div>
 
@@ -283,10 +303,16 @@ export default function CommunityBerandaPage() {
 
           <p className="mt-2 text-xs md:text-[13px] text-emerald-100/90 leading-relaxed">
             {status === null
-              ? "Memuat data satelit & kualitas udara di sekitar lokasimu…"
+              ? tr("Memuat data satelit & kualitas udara di sekitar lokasimu…", "Loading satellite & air-quality data around you…")
               : inStatusRadius.length === 0
-                ? `Tidak ada deteksi satelit dalam radius ${STATUS_RADIUS_KM} km dari ${locationName}. ${nearest ? `Terdekat ${formatDistanceKm(nearest.distanceKm)} ke arah ${compassLabel(nearest.bearing)}.` : ""}${status === "aman" ? " Ini bukan kepastian bebas kebakaran." : ""}`
-                : `${inStatusRadius.length} deteksi satelit dalam radius ${STATUS_RADIUS_KM} km. Terdekat ${formatDistanceKm(inStatusRadius[0].distanceKm)} ke arah ${compassLabel(inStatusRadius[0].bearing)}${formatRelativeTime(inStatusRadius[0].marker.acquiredAt) ? `, terdeteksi ${formatRelativeTime(inStatusRadius[0].marker.acquiredAt)}` : ""}.`}
+                ? tr(
+                    `Tidak ada deteksi satelit dalam radius ${STATUS_RADIUS_KM} km dari ${locationName}. ${nearest ? `Terdekat ${formatDistanceKm(nearest.distanceKm)} ke arah ${compassLabel(nearest.bearing)}.` : ""}${status === "aman" ? " Ini bukan kepastian bebas kebakaran." : ""}`,
+                    `No satellite detections within ${STATUS_RADIUS_KM} km of ${locationName}. ${nearest ? `Nearest is ${formatDistanceKm(nearest.distanceKm)} to the ${compassLabel(nearest.bearing, "en")}.` : ""}${status === "aman" ? " This is not a guarantee there is no fire." : ""}`
+                  )
+                : tr(
+                    `${inStatusRadius.length} deteksi satelit dalam radius ${STATUS_RADIUS_KM} km. Terdekat ${formatDistanceKm(inStatusRadius[0].distanceKm)} ke arah ${compassLabel(inStatusRadius[0].bearing)}${formatRelativeTime(inStatusRadius[0].marker.acquiredAt, "id") ? `, terdeteksi ${formatRelativeTime(inStatusRadius[0].marker.acquiredAt, "id")}` : ""}.`,
+                    `${inStatusRadius.length} satellite detections within ${STATUS_RADIUS_KM} km. Nearest is ${formatDistanceKm(inStatusRadius[0].distanceKm)} to the ${compassLabel(inStatusRadius[0].bearing, "en")}${formatRelativeTime(inStatusRadius[0].marker.acquiredAt, "en") ? `, detected ${formatRelativeTime(inStatusRadius[0].marker.acquiredAt, "en")}` : ""}.`
+                  )}
           </p>
 
           <div className="mt-5 space-y-2.5">
@@ -309,17 +335,32 @@ export default function CommunityBerandaPage() {
           </div>
 
           <details className="mt-4 text-[11px] text-emerald-200/80 leading-relaxed">
-            <summary className="cursor-pointer font-semibold text-emerald-100">Bagaimana status ini dihitung?</summary>
-            <p className="mt-2">Status = tingkat tertinggi dari faktor berikut:</p>
+            <summary className="cursor-pointer font-semibold text-emerald-100">
+              {tr("Bagaimana status ini dihitung?", "How is this status calculated?")}
+            </summary>
+            <p className="mt-2">{tr("Status = tingkat tertinggi dari faktor berikut:", "Status = the highest level reached by any of these factors:")}</p>
             <ul className="mt-1 list-disc pl-4 space-y-0.5">
-              <li>Titik panas satelit (24 jam): ≤ {STATUS_NEAR_KM} km = Siaga, {STATUS_NEAR_KM}–{STATUS_RADIUS_KM} km = Waspada</li>
-              <li>Titik panas searah angin ≤ {STATUS_UPWIND_KM} km = Waspada (asap bisa terbawa)</li>
-              <li>Kualitas udara (US AQI): 151–200 = Waspada, 201–300 = Siaga, &gt; 300 = Awas</li>
-              <li>Laporan warga terverifikasi petugas ≤ {STATUS_NEAR_KM} km = Awas</li>
+              <li>
+                {tr("Titik panas satelit (24 jam)", "Satellite hotspot (24 h)")}: ≤ {STATUS_NEAR_KM} km = {STATUS_LABEL.siaga},{" "}
+                {STATUS_NEAR_KM}–{STATUS_RADIUS_KM} km = {STATUS_LABEL.waspada}
+              </li>
+              <li>
+                {tr("Titik panas searah angin", "Upwind hotspot")} ≤ {STATUS_UPWIND_KM} km = {STATUS_LABEL.waspada}{" "}
+                {tr("(asap bisa terbawa)", "(smoke may drift to you)")}
+              </li>
+              <li>
+                {tr("Kualitas udara (US AQI)", "Air quality (US AQI)")}: 151–200 = {STATUS_LABEL.waspada}, 201–300 = {STATUS_LABEL.siaga}, &gt; 300 ={" "}
+                {STATUS_LABEL.awas}
+              </li>
+              <li>
+                {tr("Laporan warga terverifikasi petugas", "Officer-verified citizen report")} ≤ {STATUS_NEAR_KM} km = {STATUS_LABEL.awas}
+              </li>
             </ul>
             <p className="mt-2">
-              Bukan status resmi BNPB/BMKG. Titik panas satelit adalah anomali suhu, bukan konfirmasi kebakaran. Kualitas
-              udara adalah perkiraan model Open-Meteo di titik lokasimu, bukan pengukuran stasiun ISPU.
+              {tr(
+                "Bukan status resmi BNPB/BMKG. Titik panas satelit adalah anomali suhu, bukan konfirmasi kebakaran. Kualitas udara adalah perkiraan model Open-Meteo di titik lokasimu, bukan pengukuran stasiun ISPU.",
+                "Not an official BNPB/BMKG status. A satellite hotspot is a temperature anomaly, not a confirmed fire. Air quality is an Open-Meteo model estimate at your location, not an ISPU station measurement."
+              )}
             </p>
           </details>
 
@@ -328,7 +369,7 @@ export default function CommunityBerandaPage() {
               href={inStatusRadius[0] ? `/community/alert/${inStatusRadius[0].marker.id}` : "/community/map"}
               className="flex-1 flex items-center justify-center gap-2 bg-white hover:bg-emerald-50 text-[#123027] font-bold text-xs md:text-sm py-3 px-4 rounded-xl transition active:scale-[0.98]"
             >
-              <span>{inStatusRadius[0] ? "Lihat detail peringatan" : "Buka peta lengkap"}</span>
+              <span>{inStatusRadius[0] ? tr("Lihat detail peringatan", "View alert details") : tr("Buka peta lengkap", "Open full map")}</span>
               <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
             </Link>
             <button
@@ -336,7 +377,7 @@ export default function CommunityBerandaPage() {
               onClick={handleShare}
               disabled={!status}
               className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 hover:bg-white/20 text-white transition active:scale-95 disabled:opacity-50"
-              aria-label={shareSuccess ? "Tautan disalin" : "Bagikan status"}
+              aria-label={shareSuccess ? tr("Tautan disalin", "Link copied") : tr("Bagikan status", "Share status")}
             >
               <span className="material-symbols-outlined text-[20px]" aria-hidden="true">{shareSuccess ? "check" : "share"}</span>
             </button>
@@ -347,9 +388,9 @@ export default function CommunityBerandaPage() {
       {/* C) Quick actions */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { href: "/community/map", icon: "map", tint: "bg-emerald-50 text-emerald-700", label: "Pantau Sekitar" },
-          { href: "/community/report", icon: "photo_camera", tint: "bg-rose-50 text-rose-600", label: "Lapor Kejadian" },
-          { href: "/community/edukasi", icon: "shield", tint: "bg-amber-50 text-amber-700", label: "Belajar Bersiap" },
+          { href: "/community/map", icon: "map", tint: "bg-emerald-50 text-emerald-700", label: tr("Pantau Sekitar", "Watch Nearby") },
+          { href: "/community/report", icon: "photo_camera", tint: "bg-rose-50 text-rose-600", label: tr("Lapor Kejadian", "Report a Fire") },
+          { href: "/community/edukasi", icon: "shield", tint: "bg-amber-50 text-amber-700", label: tr("Belajar Bersiap", "Learn to Prepare") },
         ].map((action) => (
           <Link
             key={action.href}
@@ -370,15 +411,15 @@ export default function CommunityBerandaPage() {
             <span className="material-symbols-outlined text-[20px]">air</span>
           </span>
           <span className="text-xs font-bold text-[#123027]">
-            Cek Kualitas Udara
+            {tr("Cek Kualitas Udara", "Check Air Quality")}
             <span className="block text-[10px] font-semibold text-[var(--community-ink-muted)] mt-0.5">
               {!fix
-                ? "Atur lokasi dulu"
+                ? tr("Atur lokasi dulu", "Set location first")
                 : weatherLoading
-                  ? "Memuat…"
+                  ? tr("Memuat…", "Loading…")
                   : currentWeather?.airQuality?.usAqiCategory
-                    ? `${currentWeather.airQuality.usAqiCategory} (AQI ${currentWeather.airQuality.usAqi})`
-                    : "Data belum tersedia"}
+                    ? `${aqiCategoryLabel(currentWeather.airQuality.usAqiCategory, language)} (AQI ${currentWeather.airQuality.usAqi})`
+                    : tr("Data belum tersedia", "No data yet")}
             </span>
           </span>
         </Link>
@@ -387,7 +428,7 @@ export default function CommunityBerandaPage() {
       {/* D) Map — full width and tall enough to actually read */}
       <RadarMap
         markers={markers}
-        locationLabel={locationName ?? "Lokasimu"}
+        locationLabel={locationName ?? tr("Lokasimu", "Your location")}
         userCoords={user}
         radiusKm={STATUS_RADIUS_KM}
         reports={reports.map((r) => ({
@@ -404,15 +445,15 @@ export default function CommunityBerandaPage() {
         {/* E) Nearest hotspots with radius + wind filter */}
         <section className="md:col-span-7 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-[#123027]">Titik api terdekat</h2>
+            <h2 className="text-sm font-bold text-[#123027]">{tr("Titik api terdekat", "Nearest hotspots")}</h2>
             <Link href="/community/map" className="text-xs font-semibold text-[var(--community-accent)] hover:underline">
-              Lihat di peta
+              {tr("Lihat di peta", "View on map")}
             </Link>
           </div>
 
           {!fix ? (
             <p className="text-sm text-[var(--community-ink-muted)] rounded-xl border border-dashed border-[var(--community-border)] p-4">
-              Atur lokasi Anda dulu untuk melihat titik api terdekat.
+              {tr("Atur lokasi Anda dulu untuk melihat titik api terdekat.", "Set your location first to see the nearest hotspots.")}
             </p>
           ) : (
             <>
@@ -448,17 +489,24 @@ export default function CommunityBerandaPage() {
                   >
                     navigation
                   </span>
-                  Searah angin ke lokasiku{windUsable ? ` (${upwindInRadius})` : ""}
+                  {tr("Searah angin ke lokasiku", "Upwind of me")}
+                  {windUsable ? ` (${upwindInRadius})` : ""}
                 </button>
               </div>
               <p className="text-[11px] text-[var(--community-ink-muted)] leading-relaxed">
                 {weatherLoading
-                  ? "Memuat data angin…"
+                  ? tr("Memuat data angin…", "Loading wind data…")
                   : windFrom === null || windSpeed === null
-                    ? "Data angin belum tersedia, jadi filter arah angin tidak bisa dipakai."
+                    ? tr("Data angin belum tersedia, jadi filter arah angin tidak bisa dipakai.", "Wind data isn't available yet, so the wind filter can't be used.")
                     : windSpeed < CALM_WIND_KMH
-                      ? `Angin hampir tenang (${windSpeed.toFixed(1)} km/jam) — arah asap tidak bisa diperkirakan.`
-                      : `Angin saat ini dari ${compassLabel(windFrom)} (${Math.round(windFrom)}°), ${windSpeed.toFixed(0)} km/jam. Titik api di sisi itu bisa membawa asap ke lokasimu. Perkiraan kasar dari angin di satu titik (Open-Meteo), bukan model sebaran asap.`}
+                      ? tr(
+                          `Angin hampir tenang (${windSpeed.toFixed(1)} km/jam) — arah asap tidak bisa diperkirakan.`,
+                          `Wind is almost calm (${windSpeed.toFixed(1)} km/h) — smoke direction can't be estimated.`
+                        )
+                      : tr(
+                          `Angin saat ini dari ${compassLabel(windFrom)} (${Math.round(windFrom)}°), ${windSpeed.toFixed(0)} km/jam. Titik api di sisi itu bisa membawa asap ke lokasimu. Perkiraan kasar dari angin di satu titik (Open-Meteo), bukan model sebaran asap.`,
+                          `Wind is currently from the ${compassLabel(windFrom, "en")} (${Math.round(windFrom)}°), ${windSpeed.toFixed(0)} km/h. Hotspots on that side may carry smoke to you. A rough estimate from the wind at one point (Open-Meteo), not a smoke-dispersion model.`
+                        )}
               </p>
 
               {hotspotLoading ? (
@@ -469,8 +517,8 @@ export default function CommunityBerandaPage() {
               ) : listed.length === 0 ? (
                 <p className="text-sm text-[var(--community-ink-muted)] rounded-xl border border-dashed border-[var(--community-border)] p-4">
                   {upwindOnly
-                    ? `Tidak ada titik api searah angin dalam radius ${radiusKm} km.`
-                    : `Tidak ada deteksi satelit dalam radius ${radiusKm} km dari lokasi Anda.`}
+                    ? tr(`Tidak ada titik api searah angin dalam radius ${radiusKm} km.`, `No upwind hotspots within ${radiusKm} km.`)
+                    : tr(`Tidak ada deteksi satelit dalam radius ${radiusKm} km dari lokasi Anda.`, `No satellite detections within ${radiusKm} km of you.`)}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -487,23 +535,26 @@ export default function CommunityBerandaPage() {
                           </span>
                           <div className="min-w-0">
                             <div className="text-xs font-bold text-[#123027] truncate">
-                              {formatDistanceKm(distanceKm)} ke arah {compassLabel(bearing)}
+                              {tr(
+                                `${formatDistanceKm(distanceKm)} ke arah ${compassLabel(bearing)}`,
+                                `${formatDistanceKm(distanceKm)} to the ${compassLabel(bearing, "en")}`
+                              )}
                             </div>
                             <div className="text-[11px] text-[var(--community-ink-muted)] mt-0.5 truncate">
                               {marker.admin ? `${marker.admin.kecamatan}, ${marker.admin.kabupatenKota} · ` : ""}
-                              {marker.sensor ?? "Satelit"}
-                              {formatRelativeTime(marker.acquiredAt) ? ` · ${formatRelativeTime(marker.acquiredAt)}` : ""}
+                              {marker.sensor ?? tr("Satelit", "Satellite")}
+                              {formatRelativeTime(marker.acquiredAt, language) ? ` · ${formatRelativeTime(marker.acquiredAt, language)}` : ""}
                             </div>
                           </div>
                         </div>
                         {upwind ? (
                           <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold text-sky-800 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-md">
                             <span className="material-symbols-outlined text-[13px]">air</span>
-                            Searah angin
+                            {tr("Searah angin", "Upwind")}
                           </span>
                         ) : (
                           <span className="shrink-0 text-[10px] font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
-                            Deteksi satelit
+                            {tr("Deteksi satelit", "Satellite detection")}
                           </span>
                         )}
                       </div>
@@ -511,7 +562,10 @@ export default function CommunityBerandaPage() {
                   ))}
                   {listed.length > MAX_NEARBY_SHOWN && (
                     <p className="text-[11px] text-[var(--community-ink-muted)]">
-                      +{listed.length - MAX_NEARBY_SHOWN} titik lainnya — lihat semuanya di peta.
+                      {tr(
+                        `+${listed.length - MAX_NEARBY_SHOWN} titik lainnya — lihat semuanya di peta.`,
+                        `+${listed.length - MAX_NEARBY_SHOWN} more — see them all on the map.`
+                      )}
                     </p>
                   )}
                 </div>
@@ -528,9 +582,9 @@ export default function CommunityBerandaPage() {
                 <span className="material-symbols-outlined text-[22px]">photo_camera</span>
               </span>
               <div>
-                <h3 className="text-sm font-bold text-red-950">Melihat titik api atau asap?</h3>
+                <h3 className="text-sm font-bold text-red-950">{tr("Melihat titik api atau asap?", "See fire or smoke?")}</h3>
                 <p className="text-xs text-red-800/80 mt-0.5 leading-relaxed">
-                  Laporan Anda membantu petugas memverifikasi kejadian lebih cepat.
+                  {tr("Laporan Anda membantu petugas memverifikasi kejadian lebih cepat.", "Your report helps officers verify incidents faster.")}
                 </p>
               </div>
             </div>
@@ -538,7 +592,7 @@ export default function CommunityBerandaPage() {
               href="/community/report"
               className="block w-full text-center rounded-xl bg-[#ba1a1a] hover:bg-[#a01616] py-2.5 text-xs font-bold text-white transition active:scale-[0.99]"
             >
-              Lapor Kebakaran Sekarang
+              {tr("Lapor Kebakaran Sekarang", "Report a Fire Now")}
             </Link>
           </div>
 
@@ -549,13 +603,13 @@ export default function CommunityBerandaPage() {
               className="w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--community-border)] bg-white py-2.5 text-xs font-bold text-[#123027] hover:border-emerald-300 transition active:scale-[0.99]"
             >
               <span className="material-symbols-outlined text-[18px]">{shareSuccess ? "check" : "share"}</span>
-              {shareSuccess ? "Tautan disalin" : "Bagikan situasi ini"}
+              {shareSuccess ? tr("Tautan disalin", "Link copied") : tr("Bagikan situasi ini", "Share this situation")}
             </button>
           )}
 
           {nearbyReports.length > 0 && (
             <section className="space-y-2">
-              <h2 className="text-sm font-bold text-[#123027]">Laporan warga terdekat</h2>
+              <h2 className="text-sm font-bold text-[#123027]">{tr("Laporan warga terdekat", "Nearest citizen reports")}</h2>
               <NearbyReportList items={nearbyReports} />
             </section>
           )}

@@ -3,15 +3,16 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getOrCreateSubmitterToken } from "../lib/submitterToken";
-import { REPORT_STATUS_LABEL, REPORT_STATUS_TONE, REPORT_STATUS_TONE_CLASSES } from "../lib/reportStatus";
+import { reportStatusLabel, REPORT_STATUS_TONE, REPORT_STATUS_TONE_CLASSES } from "../lib/reportStatus";
 import type { CommunityReport, ReportsListResponse } from "@/types";
+import { useTranslation, type Language } from "@/lib/i18n/LanguageContext";
 
 type FetchState = "idle" | "loading" | "loaded" | "error";
 
-function formatCreatedAt(value: string): string {
+function formatCreatedAt(value: string, language: Language): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" });
+  return date.toLocaleString(language === "en" ? "en-GB" : "id-ID", { dateStyle: "medium", timeStyle: "short" });
 }
 
 /**
@@ -21,12 +22,12 @@ function formatCreatedAt(value: string): string {
  * Operator side (PATCH, out of scope for this view).
  */
 export default function MyReports() {
+  const { tr, language } = useTranslation();
   // Initialized to "loading" rather than set synchronously inside the effect below
   // (this component always fetches on mount) — only "loaded"/"error" are ever set
   // from within the fetch's own then/catch callbacks.
   const [state, setState] = useState<FetchState>("loading");
   const [reports, setReports] = useState<CommunityReport[]>([]);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const token = getOrCreateSubmitterToken();
@@ -37,9 +38,7 @@ export default function MyReports() {
     fetch(`/api/reports?submitterToken=${encodeURIComponent(token)}`, { cache: "no-store" })
       .then(async (response) => {
         const body = (await response.json()) as ReportsListResponse & { error?: string; detail?: string };
-        if (!response.ok) {
-          throw new Error(body.detail ?? body.error ?? "Gagal memuat riwayat laporan Anda.");
-        }
+        if (!response.ok) throw new Error(body.detail ?? body.error ?? "failed");
         return body;
       })
       .then((body) => {
@@ -49,7 +48,7 @@ export default function MyReports() {
       })
       .catch((error: unknown) => {
         if (cancelled) return;
-        setErrorMessage(error instanceof Error ? error.message : "Gagal memuat riwayat laporan Anda.");
+        console.warn("MyReports fetch failed", error);
         setState("error");
       });
 
@@ -60,19 +59,21 @@ export default function MyReports() {
 
   return (
     <section id="laporan-saya" className="space-y-2">
-      <h2 className="text-sm font-bold">Laporan Saya</h2>
+      <h2 className="text-sm font-bold">{tr("Laporan Saya", "My Reports")}</h2>
 
       {state === "loading" && (
-        <p className="text-sm text-[var(--community-ink-muted)]">Memuat riwayat laporan…</p>
+        <p className="text-sm text-[var(--community-ink-muted)]">{tr("Memuat riwayat laporan…", "Loading your report history…")}</p>
       )}
 
       {state === "error" && (
-        <p className="text-sm rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-700">{errorMessage}</p>
+        <p className="text-sm rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-700">
+          {tr("Gagal memuat riwayat laporan Anda.", "Failed to load your report history.")}
+        </p>
       )}
 
       {state === "loaded" && reports.length === 0 && (
         <p className="text-sm text-[var(--community-ink-muted)] rounded-xl border border-dashed border-[var(--community-border)] p-4">
-          Anda belum pernah mengirim laporan dari perangkat ini.
+          {tr("Anda belum pernah mengirim laporan dari perangkat ini.", "You haven't sent any reports from this device yet.")}
         </p>
       )}
 
@@ -91,11 +92,11 @@ export default function MyReports() {
                     <span
                       className={`shrink-0 inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase ${REPORT_STATUS_TONE_CLASSES[tone]}`}
                     >
-                      {REPORT_STATUS_LABEL[report.status]}
+                      {reportStatusLabel(report.status, language)}
                     </span>
                   </div>
                   <p className="mt-1 text-[11px] text-[var(--community-ink-muted)]">
-                    Dikirim {formatCreatedAt(report.createdAt)}
+                    {tr("Dikirim", "Sent")} {formatCreatedAt(report.createdAt, language)}
                   </p>
                 </Link>
               </li>

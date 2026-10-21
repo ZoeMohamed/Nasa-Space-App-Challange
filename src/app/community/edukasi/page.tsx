@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { loadCheckedItems } from "../lib/checklistProgress";
 import { TOTAL_CHECKLIST_ITEMS } from "./siaga/checklistData";
-import { HIGHLIGHT_FACTS, TONE_CLASSES } from "./facts";
+import { factText, HIGHLIGHT_FACTS, TONE_CLASSES } from "./facts";
 import {
   BagIllustration,
   SmokeEntryIllustration,
   SimulationEntryIllustration,
   LocalHelpEntryIllustration,
 } from "@/components/community/illustrations";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 /**
  * Rebuilt Edukasi hub ("Siap Sebelum Asap Datang"). Replaces the old
@@ -21,8 +22,8 @@ import {
 
 interface EntryCard {
   href: string;
-  title: string;
-  subtitle: string;
+  title: readonly [string, string];
+  subtitle: readonly [string, string];
   icon: React.ComponentType<{ className?: string }>;
   tint: string;
 }
@@ -30,35 +31,36 @@ interface EntryCard {
 const ENTRY_CARDS: EntryCard[] = [
   {
     href: "/community/edukasi/siaga",
-    title: "Siapkan Tas Siaga",
-    subtitle: "Checklist dokumen, tas darurat, dan rencana keluarga",
+    title: ["Siapkan Tas Siaga", "Pack a Go-Bag"],
+    subtitle: ["Checklist dokumen, tas darurat, dan rencana keluarga", "Checklist for documents, an emergency bag, and a family plan"],
     icon: BagIllustration,
     tint: "bg-emerald-50",
   },
   {
     href: "/community/edukasi/asap",
-    title: "Lindungi Keluarga",
-    subtitle: "Cara praktis melindungi diri dari asap kebakaran",
+    title: ["Lindungi Keluarga", "Protect Your Family"],
+    subtitle: ["Cara praktis melindungi diri dari asap kebakaran", "Practical ways to protect yourself from fire smoke"],
     icon: SmokeEntryIllustration,
     tint: "bg-orange-50",
   },
   {
     href: "/community/edukasi/simulasi",
-    title: "Simulasi Keadaan Darurat",
-    subtitle: "Latihan \"apa yang harus saya lakukan?\" lewat skenario",
+    title: ["Simulasi Keadaan Darurat", "Emergency Drill"],
+    subtitle: ["Latihan “apa yang harus saya lakukan?” lewat skenario", "Practise “what should I do?” through scenarios"],
     icon: SimulationEntryIllustration,
     tint: "bg-amber-50",
   },
   {
     href: "/community/edukasi/sekitar",
-    title: "Bantuan di Sekitarku",
-    subtitle: "Kanal pelaporan warga dan sumber resmi terdekat",
+    title: ["Bantuan di Sekitarku", "Help Near Me"],
+    subtitle: ["Kanal pelaporan warga dan sumber resmi terdekat", "Citizen reporting channels and official sources"],
     icon: LocalHelpEntryIllustration,
     tint: "bg-emerald-50",
   },
 ];
 
 export default function EdukasiPage() {
+  const { tr, language } = useTranslation();
   const [checked, setChecked] = useState<Record<string, boolean> | null>(null);
 
   useEffect(() => {
@@ -70,10 +72,12 @@ export default function EdukasiPage() {
   return (
     <div className="space-y-6">
       <section>
-        <h1 className="text-lg font-extrabold text-[#123027]">Siap Sebelum Asap Datang</h1>
+        <h1 className="text-lg font-extrabold text-[#123027]">{tr("Siap Sebelum Asap Datang", "Ready Before the Smoke Arrives")}</h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-1 leading-relaxed">
-          Kesiapan kecil hari ini membuat keluarga Anda lebih tenang saat musim kabut asap tiba. Pilih salah
-          satu di bawah untuk mulai — semua progres tersimpan otomatis di perangkat ini.
+          {tr(
+            "Kesiapan kecil hari ini membuat keluarga Anda lebih tenang saat musim kabut asap tiba. Pilih salah satu di bawah untuk mulai — semua progres tersimpan otomatis di perangkat ini.",
+            "A little preparation today keeps your family calmer when haze season comes. Pick one below to start — all progress is saved automatically on this device."
+          )}
         </p>
       </section>
 
@@ -83,9 +87,10 @@ export default function EdukasiPage() {
           <span className="material-symbols-outlined text-[18px]">emergency</span>
         </span>
         <p className="text-[11px] text-rose-900 leading-relaxed">
-          Jika Anda dalam bahaya langsung, segera hubungi layanan darurat setempat atau ikuti instruksi
-          evakuasi resmi (BNPB/BMKG/aparat desa) — aplikasi ini adalah alat bantu edukasi dan bukan
-          pengganti layanan darurat.
+          {tr(
+            "Jika Anda dalam bahaya langsung, segera hubungi layanan darurat setempat atau ikuti instruksi evakuasi resmi (BNPB/BMKG/aparat desa) — aplikasi ini adalah alat bantu edukasi dan bukan pengganti layanan darurat.",
+            "If you are in immediate danger, call local emergency services right away or follow official evacuation instructions (BNPB/BMKG/village officials) — this app is an education aid, not a replacement for emergency services."
+          )}
         </p>
       </div>
 
@@ -96,9 +101,11 @@ export default function EdukasiPage() {
       >
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold text-[var(--community-ink-muted)]">Progres checklist siaga</p>
+            <p className="text-xs font-semibold text-[var(--community-ink-muted)]">{tr("Progres checklist siaga", "Preparedness checklist progress")}</p>
             <p className="text-sm font-bold text-[#123027] mt-0.5">
-              {checked === null ? "Memuat…" : `${doneCount} dari ${TOTAL_CHECKLIST_ITEMS} selesai`}
+              {checked === null
+                ? tr("Memuat…", "Loading…")
+                : tr(`${doneCount} dari ${TOTAL_CHECKLIST_ITEMS} selesai`, `${doneCount} of ${TOTAL_CHECKLIST_ITEMS} done`)}
             </p>
           </div>
           <div className="h-2.5 w-20 rounded-full bg-gray-100 overflow-hidden shrink-0">
@@ -114,15 +121,19 @@ export default function EdukasiPage() {
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <h2 className="text-sm font-bold text-[#123027]">Fakta karhutla yang perlu kamu tahu</h2>
-            <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5">Dari World Bank, jurnal ilmiah, BNPB, dan CDC.</p>
+            <h2 className="text-sm font-bold text-[#123027]">{tr("Fakta karhutla yang perlu kamu tahu", "Fire facts you should know")}</h2>
+            <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5">
+              {tr("Dari World Bank, jurnal ilmiah, BNPB, dan CDC.", "From the World Bank, scientific journals, BNPB, and the CDC.")}
+            </p>
           </div>
           <Link href="/community/edukasi/fakta" className="shrink-0 text-xs font-bold text-[var(--community-accent)] hover:underline">
-            Semua fakta &amp; pustaka
+            {tr("Semua fakta & pustaka", "All facts & references")}
           </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {HIGHLIGHT_FACTS.map((fact) => (
+          {HIGHLIGHT_FACTS.map((fact) => {
+            const text = factText(fact, language);
+            return (
             <Link
               key={fact.title}
               href="/community/edukasi/fakta"
@@ -131,11 +142,14 @@ export default function EdukasiPage() {
               <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${TONE_CLASSES[fact.tone]}`}>
                 <span className="material-symbols-outlined text-[18px]">{fact.icon}</span>
               </span>
-              <p className="text-lg font-extrabold text-[#123027] leading-tight">{fact.value}</p>
-              <p className="text-xs font-semibold text-[#123027]">{fact.title}</p>
-              <p className="text-[11px] text-[var(--community-ink-muted)]">Sumber [{fact.refs.join(", ")}]</p>
+              <p className="text-lg font-extrabold text-[#123027] leading-tight">{text.value}</p>
+              <p className="text-xs font-semibold text-[#123027]">{text.title}</p>
+              <p className="text-[11px] text-[var(--community-ink-muted)]">
+                {tr("Sumber", "Source")} [{fact.refs.join(", ")}]
+              </p>
             </Link>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -153,9 +167,9 @@ export default function EdukasiPage() {
                 <Icon className="h-8 w-8" />
               </span>
               <div>
-                <h2 className="text-sm font-bold text-[#123027]">{card.title}</h2>
+                <h2 className="text-sm font-bold text-[#123027]">{tr(...card.title)}</h2>
                 <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5 leading-relaxed">
-                  {card.subtitle}
+                  {tr(...card.subtitle)}
                 </p>
               </div>
             </Link>

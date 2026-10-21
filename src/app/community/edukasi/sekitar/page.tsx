@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useLocationState } from "../../lib/useLocation";
 import { haversineKm, formatDistanceKm } from "../../lib/geo";
-import { EDU_ARTICLES } from "../articles";
+import { articleText, EDU_ARTICLES } from "../articles";
 import type { HotspotApiResponse, HotspotMarker } from "@/types";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 const WHO_URL = "https://www.who.int/news-room/fact-sheets/detail/wildfires-and-health";
 const BMKG_URL = "https://www.bmkg.go.id/";
@@ -19,17 +20,33 @@ const DEFAULT_LOCATION = { lat: -3.125, lon: 114.15 };
 
 interface ResourceCategory {
   id: string;
-  title: string;
-  description: string;
+  title: readonly [string, string];
+  description: readonly [string, string];
 }
 
 const UNVERIFIED_CATEGORIES: ResourceCategory[] = [
-  { id: "kontak", title: "Kontak darurat setempat", description: "Nomor telepon posko/aparat desa, puskesmas, dan pemadam kebakaran setempat." },
-  { id: "shelter", title: "Lokasi pengungsian", description: "Titik pengungsian resmi terdekat beserta status keterisian." },
-  { id: "kesehatan", title: "Fasilitas kesehatan", description: "Puskesmas/klinik terdekat dan jam operasionalnya." },
+  {
+    id: "kontak",
+    title: ["Kontak darurat setempat", "Local emergency contacts"],
+    description: [
+      "Nomor telepon posko/aparat desa, puskesmas, dan pemadam kebakaran setempat.",
+      "Phone numbers for the local command post/village officials, health centre, and fire service.",
+    ],
+  },
+  {
+    id: "shelter",
+    title: ["Lokasi pengungsian", "Evacuation shelters"],
+    description: ["Titik pengungsian resmi terdekat beserta status keterisian.", "The nearest official shelters and how full they are."],
+  },
+  {
+    id: "kesehatan",
+    title: ["Fasilitas kesehatan", "Health facilities"],
+    description: ["Puskesmas/klinik terdekat dan jam operasionalnya.", "The nearest health centres/clinics and their opening hours."],
+  },
 ];
 
 export default function SekitarPage() {
+  const { tr, language } = useTranslation();
   const location = useLocationState();
   const { fix } = location;
 
@@ -73,21 +90,28 @@ export default function SekitarPage() {
   return (
     <div className="space-y-6">
       <Link href="/community/edukasi" className="text-xs font-semibold text-[var(--community-ink-muted)]">
-        ← Kembali ke Edukasi
+        ← {tr("Kembali ke Edukasi", "Back to Learn")}
       </Link>
 
       <section>
-        <h1 className="text-lg font-extrabold text-[#123027]">Bantuan di Sekitarku</h1>
+        <h1 className="text-lg font-extrabold text-[#123027]">{tr("Bantuan di Sekitarku", "Help Near Me")}</h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-1 leading-relaxed">
-          Sumber daya lokal untuk kesiapsiagaan — menggunakan lokasi Anda (opsional) hanya untuk memberi
-          konteks jarak dari deteksi satelit.
+          {tr(
+            "Sumber daya lokal untuk kesiapsiagaan — menggunakan lokasi Anda (opsional) hanya untuk memberi konteks jarak dari deteksi satelit.",
+            "Local preparedness resources — your location (optional) is only used to give distance context from satellite detections."
+          )}
         </p>
       </section>
 
       {/* Optional location context, graceful if denied */}
       <div className="rounded-2xl border border-[var(--community-border)] bg-white p-4 space-y-2">
         <p className="text-xs font-semibold text-[#123027]">
-          {fix ? "Lokasi Anda sudah digunakan untuk konteks jarak di bawah." : "Bagikan lokasi untuk konteks jarak yang lebih akurat (opsional)."}
+          {fix
+            ? tr("Lokasi Anda sudah digunakan untuk konteks jarak di bawah.", "Your location is used for the distance context below.")
+            : tr(
+                "Bagikan lokasi untuk konteks jarak yang lebih akurat (opsional). Tanpa lokasi, jarak di bawah dihitung dari titik contoh di Pulang Pisau.",
+                "Share your location for more accurate distance context (optional). Without it, distances below are from an example point in Pulang Pisau."
+              )}
         </p>
         {!fix && (
           <div className="flex flex-wrap gap-2">
@@ -96,10 +120,10 @@ export default function SekitarPage() {
               onClick={location.requestGeolocation}
               className="text-xs font-bold text-white bg-[var(--community-accent)] px-3 py-1.5 rounded-full"
             >
-              Gunakan lokasi GPS
+              {tr("Gunakan lokasi GPS", "Use GPS location")}
             </button>
             <span className="text-[11px] text-[var(--community-ink-muted)] self-center">
-              atau lewati — halaman ini tetap bisa digunakan tanpa lokasi.
+              {tr("atau lewati — halaman ini tetap bisa digunakan tanpa lokasi.", "or skip — this page still works without a location.")}
             </span>
           </div>
         )}
@@ -111,46 +135,52 @@ export default function SekitarPage() {
       {/* Satellite detection note */}
       <div className="rounded-2xl border border-[var(--community-border)] bg-white p-4 space-y-1.5">
         {markers === null ? (
-          <p className="text-xs text-[var(--community-ink-muted)]">Memuat data deteksi satelit…</p>
+          <p className="text-xs text-[var(--community-ink-muted)]">{tr("Memuat data deteksi satelit…", "Loading satellite detections…")}</p>
         ) : nearbyCount === null || nearbyCount === 0 ? (
           <p className="text-xs text-[var(--community-ink-muted)]">
-            Tidak ada deteksi satelit dalam radius {NEARBY_RADIUS_KM} km dari lokasi acuan saat ini.
+            {fix
+              ? tr(`Tidak ada deteksi satelit dalam radius ${NEARBY_RADIUS_KM} km dari lokasi Anda saat ini.`, `No satellite detections within ${NEARBY_RADIUS_KM} km of you right now.`)
+              : tr(`Tidak ada deteksi satelit dalam radius ${NEARBY_RADIUS_KM} km dari titik contoh saat ini.`, `No satellite detections within ${NEARBY_RADIUS_KM} km of the example point right now.`)}
           </p>
         ) : (
           <p className="text-xs font-semibold text-[#123027]">
-            {nearbyCount} deteksi satelit terdekat dalam {NEARBY_RADIUS_KM} km
-            {nearestDistance !== null && ` (terdekat ${formatDistanceKm(nearestDistance)})`}.
+            {tr(
+              `${nearbyCount} deteksi satelit dalam ${NEARBY_RADIUS_KM} km${nearestDistance !== null ? ` (terdekat ${formatDistanceKm(nearestDistance)})` : ""}.`,
+              `${nearbyCount} satellite detections within ${NEARBY_RADIUS_KM} km${nearestDistance !== null ? ` (nearest ${formatDistanceKm(nearestDistance)})` : ""}.`
+            )}
           </p>
         )}
         <p className="text-[11px] text-amber-700 leading-relaxed">
-          Deteksi MODIS/VIIRS menunjukkan anomali panas, bukan konfirmasi kebakaran aktif.
+          {tr("Deteksi MODIS/VIIRS menunjukkan anomali panas, bukan konfirmasi kebakaran aktif.", "MODIS/VIIRS detections show heat anomalies, not confirmed active fires.")}
         </p>
       </div>
 
       {/* Community reporting channel — the one real, available resource */}
       <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 space-y-2">
-        <p className="text-xs font-bold text-emerald-900">Jalur pelaporan warga</p>
+        <p className="text-xs font-bold text-emerald-900">{tr("Jalur pelaporan warga", "Citizen reporting channel")}</p>
         <p className="text-[11px] text-emerald-900/80 leading-relaxed">
-          Satu-satunya kanal yang tersedia dan berfungsi di aplikasi ini: kirim laporan langsung dari lokasi
-          kejadian untuk membantu verifikasi deteksi satelit.
+          {tr(
+            "Satu-satunya kanal yang tersedia dan berfungsi di aplikasi ini: kirim laporan langsung dari lokasi kejadian untuk membantu verifikasi deteksi satelit.",
+            "The one channel that's available and working in this app: send a report straight from the incident location to help verify satellite detections."
+          )}
         </p>
         <Link
           href="/community/report"
           className="inline-block rounded-xl bg-emerald-800 text-white text-xs font-bold px-4 py-2"
         >
-          Buka Lapor Kebakaran
+          {tr("Buka Lapor Kebakaran", "Open Fire Report")}
         </Link>
       </section>
 
       {/* Unverified local resource categories */}
       <section className="space-y-2">
-        <h2 className="text-sm font-bold text-[#123027]">Sumber daya lokal</h2>
+        <h2 className="text-sm font-bold text-[#123027]">{tr("Sumber daya lokal", "Local resources")}</h2>
         {UNVERIFIED_CATEGORIES.map((cat) => (
           <div key={cat.id} className="rounded-xl border border-[var(--community-border)] bg-white p-3.5">
-            <p className="text-xs font-semibold text-[#123027]">{cat.title}</p>
-            <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5 leading-relaxed">{cat.description}</p>
+            <p className="text-xs font-semibold text-[#123027]">{tr(...cat.title)}</p>
+            <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5 leading-relaxed">{tr(...cat.description)}</p>
             <p className="text-[11px] font-semibold text-amber-700 mt-2 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 inline-block">
-              Belum terverifikasi — data resmi belum tersedia
+              {tr("Belum terverifikasi — data resmi belum tersedia", "Not verified — official data not available yet")}
             </p>
           </div>
         ))}
@@ -158,15 +188,15 @@ export default function SekitarPage() {
 
       {/* Official external sources */}
       <section className="rounded-2xl border border-[var(--community-border)] bg-white p-4 space-y-2">
-        <h2 className="text-sm font-bold text-[#123027]">Sumber resmi</h2>
+        <h2 className="text-sm font-bold text-[#123027]">{tr("Sumber resmi", "Official sources")}</h2>
         <p className="text-[11px] text-[var(--community-ink-muted)] leading-relaxed">
-          Untuk informasi cuaca dan kualitas udara resmi, rujuk BMKG:{" "}
+          {tr("Untuk informasi cuaca dan kualitas udara resmi, rujuk BMKG:", "For official weather and air-quality information, see BMKG:")}{" "}
           <a href={BMKG_URL} target="_blank" rel="noreferrer" className="text-[var(--community-accent)] underline">
             {BMKG_URL}
           </a>
         </p>
         <p className="text-[11px] text-[var(--community-ink-muted)] leading-relaxed">
-          Untuk panduan kesehatan terkait asap kebakaran hutan, rujuk lembar fakta WHO:{" "}
+          {tr("Untuk panduan kesehatan terkait asap kebakaran hutan, rujuk lembar fakta WHO:", "For health guidance on wildfire smoke, see the WHO fact sheet:")}{" "}
           <a href={WHO_URL} target="_blank" rel="noreferrer" className="text-[var(--community-accent)] underline">
             {WHO_URL}
           </a>
@@ -175,7 +205,7 @@ export default function SekitarPage() {
 
       {/* Supplementary article list kept from the old structure */}
       <section className="space-y-2">
-        <h2 className="text-sm font-bold text-[#123027]">Baca lebih lanjut</h2>
+        <h2 className="text-sm font-bold text-[#123027]">{tr("Baca lebih lanjut", "Read more")}</h2>
         <ul className="space-y-2">
           {EDU_ARTICLES.map((article) => (
             <li key={article.slug}>
@@ -187,9 +217,9 @@ export default function SekitarPage() {
                   {article.icon}
                 </span>
                 <span>
-                  <span className="block text-sm font-semibold">{article.title}</span>
+                  <span className="block text-sm font-semibold">{articleText(article, language).title}</span>
                   <span className="block text-[11px] text-[var(--community-ink-muted)] mt-0.5">
-                    {article.summary}
+                    {articleText(article, language).summary}
                   </span>
                 </span>
               </Link>

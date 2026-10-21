@@ -1,0 +1,26 @@
+Run 2026-10-21 ~02:10 UTC, window = last 24 h, filter nominal+high (production default).
+Baseline = fire_pipeline.historical.load_calendar_summary() daily per-cell mean/std (VIIRS era, SNPP-only archive).
+
+MODIS_NRT 1930 usable
+VIIRS_SNPP_NRT 4366 usable
+VIIRS_NOAA20_NRT 7926 usable
+VIIRS_NOAA21_NRT 8121 usable
+
+ALL available (production): events=20480 cells=1103 with-baseline=1055 unusual=333 (31.6%)  utc-dates-in-window=1
+   median live count / baseline mean: 1.77
+
+MODIS + VIIRS_SNPP_NRT only: events=5224 cells=659 with-baseline=637 unusual=53 (8.3%)  utc-dates-in-window=1
+   median live count / baseline mean: 0.82
+
+MODIS + VIIRS_NOAA20_NRT only: events=8133 cells=878 with-baseline=844 unusual=143 (16.9%)  utc-dates-in-window=1
+   median live count / baseline mean: 1.03
+
+MODIS + VIIRS_NOAA21_NRT only: events=8377 cells=904 with-baseline=864 unusual=122 (14.1%)  utc-dates-in-window=1
+   median live count / baseline mean: 0.99
+pair: VIIRS_SNPP_NRT VIIRS_NOAA20_NRT
+
+VIIRS_SNPP_NRT detections with a VIIRS_NOAA20_NRT detection <=1 km & <=12 h: 3247/4417 (73.5%) -- counted as separate events today
+
+(A first attempt minutes earlier got MODIS_NRT and VIIRS_NOAA21_NRT as "unavailable" from FIRMS; the
+probe now retries each source up to 4 times. The dashboard at the same moment reported SNPP unavailable,
+so which satellites are in "live" changes from request to request.)

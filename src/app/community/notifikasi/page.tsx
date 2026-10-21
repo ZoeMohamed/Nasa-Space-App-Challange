@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { loadAlertPrefs } from "../lib/alertPrefs";
-import { getRegionOption, matchesRegion } from "@/lib/filters";
+import { getRegionOption, labelOf, matchesRegion } from "@/lib/filters";
 import { formatAdminShort } from "@/lib/adminRegion";
 import { getOrCreateSubmitterToken } from "../lib/submitterToken";
-import { REPORT_STATUS_LABEL } from "../lib/reportStatus";
+import { reportStatusLabel } from "../lib/reportStatus";
 import type { CommunityReport, HotspotApiResponse, HotspotMarker, ReportsListResponse } from "@/types";
+import { useTranslation, pick, type Language } from "@/lib/i18n/LanguageContext";
 
 const SEVERITY_RANK: Record<HotspotMarker["severity"], number> = { LOW: 0, MEDIUM: 1, HIGH: 2 };
 
@@ -15,18 +16,26 @@ type FeedItem =
   | { kind: "hotspot"; id: string; title: string; subtitle: string; time: string; href: string }
   | { kind: "report"; id: string; title: string; subtitle: string; time: string; href: string };
 
-function formatRelative(iso: string): string {
+function formatRelative(iso: string, language: Language): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
   const diffMin = Math.round((Date.now() - date.getTime()) / 60000);
-  if (diffMin < 1) return "baru saja";
-  if (diffMin < 60) return `${diffMin} menit lalu`;
+  if (diffMin < 1) return pick(language, "baru saja", "just now");
+  if (diffMin < 60) return pick(language, `${diffMin} menit lalu`, `${diffMin} min ago`);
   const diffH = Math.round(diffMin / 60);
-  if (diffH < 24) return `${diffH} jam lalu`;
-  return `${Math.round(diffH / 24)} hari lalu`;
+  if (diffH < 24) return pick(language, `${diffH} jam lalu`, `${diffH} h ago`);
+  const days = Math.round(diffH / 24);
+  return pick(language, `${days} hari lalu`, `${days} d ago`);
 }
 
+const SEVERITY_WORD: Record<HotspotMarker["severity"], readonly [string, string]> = {
+  LOW: ["rendah", "low"],
+  MEDIUM: ["sedang", "medium"],
+  HIGH: ["tinggi", "high"],
+};
+
 export default function NotifikasiPage() {
+  const { tr, language } = useTranslation();
   const [markers, setMarkers] = useState<HotspotMarker[]>([]);
   const [reports, setReports] = useState<CommunityReport[]>([]);
   const [state, setState] = useState<"loading" | "loaded" | "error">("loading");
@@ -76,9 +85,13 @@ export default function NotifikasiPage() {
       .map((m) => ({
         kind: "hotspot" as const,
         id: m.id,
-        title: `Titik api ${m.severity.toLowerCase()} — ${formatAdminShort(m.admin) ?? m.label}`,
+        title: pick(
+          language,
+          `Titik api ${SEVERITY_WORD[m.severity][0]} — ${formatAdminShort(m.admin) ?? m.label}`,
+          `${SEVERITY_WORD[m.severity][1][0].toUpperCase()}${SEVERITY_WORD[m.severity][1].slice(1)} hotspot — ${formatAdminShort(m.admin) ?? m.label}`
+        ),
         subtitle: `${m.sensor ?? m.satellite ?? "Sensor"} · FRP ${typeof m.frp === "number" ? m.frp.toFixed(1) : "—"} MW`,
-        time: formatRelative(m.acquiredAt!),
+        time: formatRelative(m.acquiredAt!, language),
         href: `/community/alert/${m.id}`,
       }));
 
@@ -88,32 +101,37 @@ export default function NotifikasiPage() {
           .map((r) => ({
             kind: "report" as const,
             id: r.id,
-            title: `Laporan Anda: ${REPORT_STATUS_LABEL[r.status]}`,
+            title: `${pick(language, "Laporan Anda", "Your report")}: ${reportStatusLabel(r.status, language)}`,
             subtitle: r.description,
-            time: formatRelative(r.reviewedAt ?? r.createdAt),
+            time: formatRelative(r.reviewedAt ?? r.createdAt, language),
             href: `/community/reports/${r.id}`,
           }))
       : [];
 
     return [...reportItems, ...hotspotItems];
-  }, [markers, reports, prefs]);
+  }, [markers, reports, prefs, language]);
 
   const alertRegion = getRegionOption(prefs.region);
-  const severityLabel = { LOW: "Semua tingkat", MEDIUM: "Sedang ke atas", HIGH: "Tinggi saja" }[prefs.minSeverity];
+  const severityLabel = {
+    LOW: tr("Semua tingkat", "All levels"),
+    MEDIUM: tr("Sedang ke atas", "Medium and above"),
+    HIGH: tr("Tinggi saja", "High only"),
+  }[prefs.minSeverity];
+  const regionLabel = labelOf(alertRegion, language);
 
   const feed = (
     <div className="space-y-3">
       {state === "loading" && (
-        <p className="text-xs text-[var(--community-ink-muted)] py-6 text-center animate-pulse">Memuat notifikasi…</p>
+        <p className="text-xs text-[var(--community-ink-muted)] py-6 text-center animate-pulse">{tr("Memuat notifikasi…", "Loading notifications…")}</p>
       )}
       {state === "error" && (
-        <p className="text-xs rounded-2xl border border-rose-200 bg-rose-50 p-3 text-rose-700">Gagal memuat notifikasi.</p>
+        <p className="text-xs rounded-2xl border border-rose-200 bg-rose-50 p-3 text-rose-700">{tr("Gagal memuat notifikasi.", "Failed to load notifications.")}</p>
       )}
       {state === "loaded" && items.length === 0 && (
         <div className="rounded-2xl border border-dashed border-[var(--community-border)] bg-white p-8 text-center space-y-2">
           <span className="material-symbols-outlined text-[32px] text-emerald-700">notifications_none</span>
           <p className="text-sm text-[var(--community-ink-muted)]">
-            Tidak ada peringatan baru untuk {alertRegion.label} saat ini.
+            {tr(`Tidak ada peringatan baru untuk ${regionLabel} saat ini.`, `No new alerts for ${regionLabel} right now.`)}
           </p>
         </div>
       )}
@@ -154,14 +172,14 @@ export default function NotifikasiPage() {
     <div className="rounded-[2rem] bg-[#091b15] text-white p-5 space-y-5 border border-emerald-950">
       <div className="text-center pt-1">
         <p className="text-xs text-white/70" suppressHydrationWarning>
-          {now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Jakarta" })}
+          {now.toLocaleDateString(language === "en" ? "en-GB" : "id-ID", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Jakarta" })}
         </p>
         <p className="text-4xl font-light tracking-tight mt-1" suppressHydrationWarning>
-          {now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" })}
+          {now.toLocaleTimeString(language === "en" ? "en-GB" : "id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" })}
         </p>
       </div>
       {items.length === 0 ? (
-        <p className="text-center text-xs text-white/60 pb-2">Belum ada notifikasi untuk ditampilkan.</p>
+        <p className="text-center text-xs text-white/60 pb-2">{tr("Belum ada notifikasi untuk ditampilkan.", "No notifications to show yet.")}</p>
       ) : (
         <div className="space-y-2.5">
           {items.slice(0, 3).map((item) => (
@@ -190,7 +208,10 @@ export default function NotifikasiPage() {
         </div>
       )}
       <p className="text-[10px] text-white/50 text-center leading-relaxed">
-        Pratinjau dari notifikasi di atas. Notifikasi push ke HP belum tersedia di prototipe ini.
+        {tr(
+          "Pratinjau dari notifikasi di atas. Notifikasi push ke HP belum tersedia di prototipe ini.",
+          "A preview of the notifications above. Push notifications to phones aren't available in this prototype yet."
+        )}
       </p>
     </div>
   );
@@ -199,16 +220,16 @@ export default function NotifikasiPage() {
     <div className="max-w-xl md:max-w-5xl mx-auto space-y-5 animate-fadeIn">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-black text-[#123027]">Notifikasi</h1>
+          <h1 className="text-xl md:text-2xl font-black text-[#123027]">{tr("Notifikasi", "Notifications")}</h1>
           <p className="text-xs md:text-sm text-[var(--community-ink-muted)] mt-0.5">
-            Peringatan deteksi satelit &amp; perkembangan laporanmu.
+            {tr("Peringatan deteksi satelit & perkembangan laporanmu.", "Satellite detection alerts & updates on your reports.")}
           </p>
         </div>
         <Link
           href="/community/pengaturan"
           className="md:hidden text-xs font-bold text-[var(--community-accent)] bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full border border-emerald-200 transition"
         >
-          Atur Filter
+          {tr("Atur Filter", "Set Filters")}
         </Link>
       </div>
 
@@ -220,7 +241,7 @@ export default function NotifikasiPage() {
             onClick={() => setActiveTab("feed")}
             className={`flex-1 py-2 rounded-xl transition ${activeTab === "feed" ? "bg-white text-[#123027] shadow-xs" : "text-[var(--community-ink-muted)]"}`}
           >
-            Pemberitahuan ({items.length})
+            {tr("Pemberitahuan", "Alerts")} ({items.length})
           </button>
           <button
             type="button"
@@ -230,7 +251,7 @@ export default function NotifikasiPage() {
             }`}
           >
             <span className="material-symbols-outlined text-[15px]">smartphone</span>
-            Pratinjau Layar Kunci
+            {tr("Pratinjau Layar Kunci", "Lock Screen Preview")}
           </button>
         </div>
         {activeTab === "feed" ? feed : lockScreen}
@@ -239,35 +260,35 @@ export default function NotifikasiPage() {
       {/* Desktop: feed + side panel */}
       <div className="hidden md:grid md:grid-cols-[1fr_340px] md:gap-6 items-start">
         <section className="space-y-3">
-          <h2 className="text-sm font-bold text-[#123027]">Pemberitahuan ({items.length})</h2>
+          <h2 className="text-sm font-bold text-[#123027]">{tr("Pemberitahuan", "Alerts")} ({items.length})</h2>
           {feed}
         </section>
         <aside className="space-y-4 sticky top-24">
           <div className="rounded-2xl border border-[var(--community-border)] bg-white p-4 space-y-3">
-            <h2 className="text-sm font-bold text-[#123027]">Filter aktif</h2>
+            <h2 className="text-sm font-bold text-[#123027]">{tr("Filter aktif", "Active filters")}</h2>
             <dl className="space-y-2 text-xs">
               <div className="flex justify-between gap-3">
-                <dt className="text-[var(--community-ink-muted)]">Wilayah</dt>
-                <dd className="font-semibold text-[#123027] text-right">{alertRegion.label}</dd>
+                <dt className="text-[var(--community-ink-muted)]">{tr("Wilayah", "Area")}</dt>
+                <dd className="font-semibold text-[#123027] text-right">{regionLabel}</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-[var(--community-ink-muted)]">Tingkat titik api</dt>
+                <dt className="text-[var(--community-ink-muted)]">{tr("Tingkat titik api", "Hotspot level")}</dt>
                 <dd className="font-semibold text-[#123027] text-right">{severityLabel}</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-[var(--community-ink-muted)]">Update laporanku</dt>
-                <dd className="font-semibold text-[#123027] text-right">{prefs.notifyReportUpdates ? "Aktif" : "Mati"}</dd>
+                <dt className="text-[var(--community-ink-muted)]">{tr("Update laporanku", "My report updates")}</dt>
+                <dd className="font-semibold text-[#123027] text-right">{prefs.notifyReportUpdates ? tr("Aktif", "On") : tr("Mati", "Off")}</dd>
               </div>
             </dl>
             <Link
               href="/community/pengaturan"
               className="block text-center rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 py-2 text-xs font-bold text-[var(--community-accent)] transition"
             >
-              Ubah filter
+              {tr("Ubah filter", "Change filters")}
             </Link>
           </div>
           <div className="space-y-2">
-            <h2 className="text-sm font-bold text-[#123027]">Pratinjau layar kunci HP</h2>
+            <h2 className="text-sm font-bold text-[#123027]">{tr("Pratinjau layar kunci HP", "Phone lock screen preview")}</h2>
             {lockScreen}
           </div>
         </aside>

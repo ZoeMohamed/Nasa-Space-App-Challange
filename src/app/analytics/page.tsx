@@ -7,11 +7,12 @@ import WorkstationLayout from "@/components/layout/WorkstationLayout";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import StatTile from "@/components/ui/StatTile";
-import { getRegionOption, getRangeOption, historicalQuery, isArchiveRange, liveWindowFor, matchesRegion, type RegionOption, withFilters } from "@/lib/filters";
+import { getRegionOption, getRangeOption, historicalQuery, isArchiveRange, liveWindowFor, matchesRegion, type RegionOption, withFilters, labelOf } from "@/lib/filters";
 import { windowLoadingNote } from "@/lib/hotspots";
 import { useLiveHotspots } from "@/lib/useLiveHotspots";
 import type { AreaSummary, HistoricalCalendarResponse } from "@/types";
 import { areaRegionLabel } from "@/lib/adminRegion";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 /**
  * Figma source: file wasTTtlmYfsjK1ZkH1Kzim, node 169:7795 ("Desktop - 9"), the loose group of
@@ -43,10 +44,10 @@ const MAX_CLUSTERS_SHOWN = 20;
 
 type ClusterFilter = "all" | "highFrp";
 
-const TIER_STYLE: Record<AreaSummary["priorityTier"], { label: string; tone: "high" | "medium" | "low"; dot: string }> = {
-  high: { label: "HIGH RISK", tone: "high", dot: "bg-[#f04438]" },
-  medium: { label: "MEDIUM", tone: "medium", dot: "bg-orange-500" },
-  low: { label: "LOW / WATCH", tone: "low", dot: "bg-gray-400" },
+const TIER_STYLE: Record<AreaSummary["priorityTier"], { label: [string, string]; tone: "high" | "medium" | "low"; dot: string }> = {
+  high: { label: ["RISIKO TINGGI", "HIGH RISK"], tone: "high", dot: "bg-[#f04438]" },
+  medium: { label: ["SEDANG", "MEDIUM"], tone: "medium", dot: "bg-orange-500" },
+  low: { label: ["RENDAH / PANTAU", "LOW / WATCH"], tone: "low", dot: "bg-gray-400" },
 };
 
 function requestErrorMessage(error: unknown) {
@@ -85,6 +86,7 @@ function SensorCoverageBar({ modis, viirs }: { modis: number; viirs: number }) {
 }
 
 function ClusterRow({ area, rank }: { area: AreaSummary; rank: number }) {
+  const { tr, language } = useTranslation();
   const searchParams = useSearchParams();
   const [expanded, setExpanded] = useState(false);
   const tier = TIER_STYLE[area.priorityTier] ?? TIER_STYLE.low;
@@ -99,15 +101,15 @@ function ClusterRow({ area, rank }: { area: AreaSummary; rank: number }) {
             <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${tier.dot}`} />
             <div>
               <div className="font-bold text-gray-900 text-[11px]">
-                CL-{String(rank).padStart(2, "0")} &middot; {areaRegionLabel(area).title}
+                CL-{String(rank).padStart(2, "0")} &middot; {areaRegionLabel(area, language).title}
               </div>
-              <div className="text-gray-400 text-[11px] mt-0.5">{areaRegionLabel(area).caption}</div>
+              <div className="text-gray-400 text-[11px] mt-0.5">{areaRegionLabel(area, language).caption}</div>
             </div>
           </div>
         </td>
         <td className="py-3 pr-3 whitespace-nowrap">
           <span className="text-lg font-bold text-gray-900">{area.detections ?? "—"}</span>
-          <span className="text-[10px] text-gray-400 ml-1">pts</span>
+          <span className="text-[10px] text-gray-400 ml-1">{tr("titik", "pts")}</span>
         </td>
         <td className="py-3 pr-3 whitespace-nowrap">
           <div className="text-[12px] font-bold text-gray-900">
@@ -116,7 +118,7 @@ function ClusterRow({ area, rank }: { area: AreaSummary; rank: number }) {
           </div>
         </td>
         <td className="py-3 pr-3">
-          <Badge tone={tier.tone}>{tier.label}</Badge>
+          <Badge tone={tier.tone}>{tr(...tier.label)}</Badge>
         </td>
         <td className="py-3 pr-3">
           <SensorCoverageBar modis={modis} viirs={viirs} />
@@ -127,14 +129,14 @@ function ClusterRow({ area, rank }: { area: AreaSummary; rank: number }) {
               href={withFilters("/map", searchParams)}
               className="px-2.5 py-1 rounded-md bg-gray-900 text-white text-[10px] font-semibold hover:bg-gray-700 whitespace-nowrap"
             >
-              Peta
+              {tr("Peta", "Map")}
             </Link>
             <button
               type="button"
               onClick={() => setExpanded((value) => !value)}
               className="px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-semibold hover:bg-emerald-100 whitespace-nowrap"
             >
-              {expanded ? "Tutup" : "Detail"}
+              {expanded ? tr("Tutup", "Close") : tr("Detail", "Details")}
             </button>
           </div>
         </td>
@@ -144,23 +146,23 @@ function ClusterRow({ area, rank }: { area: AreaSummary; rank: number }) {
           <td colSpan={6} className="px-3 py-3">
             <dl className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[11px]">
               <div className="col-span-2 md:col-span-4">
-                <dt className="text-gray-400">Kriteria prioritas</dt>
+                <dt className="text-gray-400">{tr("Kriteria prioritas", "Priority criteria")}</dt>
                 <dd className="font-medium text-gray-800 font-mono mt-0.5">{area.attentionCriteria}</dd>
               </div>
               <div>
-                <dt className="text-gray-400">Deteksi pertama</dt>
+                <dt className="text-gray-400">{tr("Deteksi pertama", "First detection")}</dt>
                 <dd className="font-medium text-gray-800 mt-0.5">{area.firstDate}</dd>
               </div>
               <div>
-                <dt className="text-gray-400">Deteksi puncak</dt>
+                <dt className="text-gray-400">{tr("Deteksi puncak", "Peak detection")}</dt>
                 <dd className="font-medium text-gray-800 mt-0.5">{area.peakDate}</dd>
               </div>
               <div>
-                <dt className="text-gray-400">Deteksi terakhir</dt>
+                <dt className="text-gray-400">{tr("Deteksi terakhir", "Last detection")}</dt>
                 <dd className="font-medium text-gray-800 mt-0.5">{area.lastDate}</dd>
               </div>
               <div>
-                <dt className="text-gray-400">Hari aktif berturut-turut</dt>
+                <dt className="text-gray-400">{tr("Hari aktif berturut-turut", "Consecutive active days")}</dt>
                 <dd className="font-medium text-gray-800 mt-0.5">{area.consecutiveActiveDays ?? "—"}</dd>
               </div>
             </dl>
@@ -172,13 +174,14 @@ function ClusterRow({ area, rank }: { area: AreaSummary; rank: number }) {
 }
 
 function AnalyticsPageContent() {
+  const { tr, language } = useTranslation();
   const searchParams = useSearchParams();
   const activeRegion = getRegionOption(searchParams.get("region"));
   const activeRange = getRangeOption(searchParams.get("range"));
 
   const archiveRange = isArchiveRange(searchParams.get("range"));
   const liveWindow = liveWindowFor(searchParams.get("range"));
-  const periodLabel = archiveRange ? "24 Jam Terakhir" : activeRange.label;
+  const periodLabel = archiveRange ? tr("24 Jam Terakhir", "Last 24 Hours") : labelOf(activeRange, language);
   const { data, error, loading, refresh } = useLiveHotspots(liveWindow, { province: activeRegion.provinsi });
   const meta = data?.meta ?? null;
   const [clusterFilter, setClusterFilter] = useState<ClusterFilter>("all");
@@ -245,7 +248,7 @@ function AnalyticsPageContent() {
       return historicalMonths.map((month) => ({
         key: `${month.year}-${month.month}`,
         label: `${String(month.month).padStart(2, "0")}/${String(month.year).slice(2)}`,
-        title: `${month.year}-${String(month.month).padStart(2, "0")}: ${month.detections.toLocaleString()} deteksi`,
+        title: `${month.year}-${String(month.month).padStart(2, "0")}: ${month.detections.toLocaleString()} ${tr("deteksi", "detections")}`,
         value: month.detections,
         partial: false,
         modisOnly: month.year < 2012,
@@ -263,12 +266,12 @@ function AnalyticsPageContent() {
       .map(([year, { total, months }]) => ({
         key: String(year),
         label: `'${String(year).slice(2)}`,
-        title: `${year}: ${total.toLocaleString()} deteksi${months < 12 ? ` (data parsial, ${months} bulan)` : ""}${year < 2012 ? " — hanya MODIS" : ""}`,
+        title: `${year}: ${total.toLocaleString()} ${tr("deteksi", "detections")}${months < 12 ? tr(` (data parsial, ${months} bulan)`, ` (partial data, ${months} months)`) : ""}${year < 2012 ? tr(" — hanya MODIS", " — MODIS only") : ""}`,
         value: total,
         partial: months < 12,
         modisOnly: year < 2012,
       }));
-  }, [historicalMonths]);
+  }, [historicalMonths, tr]);
   const trendIsYearly = historicalMonths.length > 36;
   const historicalMax = Math.max(...trendBars.map((bar) => bar.value), 1);
 
@@ -279,13 +282,14 @@ function AnalyticsPageContent() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div>
             <div className="flex items-center gap-2 text-sm text-gray-500 font-medium mb-1">
-              <span>Fire Activity Intelligence</span>
+              <span>{tr("Intelijen Aktivitas Kebakaran", "Fire Activity Intelligence")}</span>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Analytics</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{tr("Analitik", "Analytics")}</h1>
             <p className="text-sm text-gray-500 max-w-2xl">
-              Statistik dan klaster spasial dari snapshot NASA FIRMS 24 jam terakhir, dibandingkan dengan arsip
-              historis nyata (2000–2026) untuk wilayah terpilih. Deteksi satelit adalah indikasi anomali termal,
-              bukan konfirmasi kebakaran — perlu verifikasi lapangan sebelum tindak lanjut.
+              {tr(
+                "Statistik dan klaster spasial dari data live NASA FIRMS untuk periode terpilih, dibandingkan dengan arsip historis nyata (2000–2026) untuk wilayah terpilih. Deteksi satelit adalah indikasi anomali termal, bukan konfirmasi kebakaran — perlu verifikasi lapangan sebelum tindak lanjut.",
+                "Statistics and spatial clusters from live NASA FIRMS data for the selected period, compared with the real historical archive (2000–2026) for the selected area. Satellite detections indicate thermal anomalies, not confirmed fires — field verification is needed before acting."
+              )}
             </p>
           </div>
           <button
@@ -294,20 +298,20 @@ function AnalyticsPageContent() {
             disabled={loading}
             className="h-9 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium text-blue-600 shadow-sm hover:bg-gray-50 disabled:text-gray-400"
           >
-            Refresh
+            {tr("Muat ulang", "Refresh")}
           </button>
         </div>
 
         {/* Info pills — now reflect the TopBar's region/range selection (?region=, ?range=) */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="h-8 px-3 inline-flex items-center bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 shadow-sm">
-            Periode: {activeRange.label}
+            {tr("Periode", "Period")}: {labelOf(activeRange, language)}
           </span>
           <span className="h-8 px-3 inline-flex items-center bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 shadow-sm">
-            Wilayah: {activeRegion.label}
+            {tr("Wilayah", "Region")}: {labelOf(activeRegion, language)}
           </span>
           <span className="h-8 px-3 inline-flex items-center bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 shadow-sm">
-            Sumber: NASA FIRMS (MODIS + VIIRS)
+            {tr("Sumber", "Source")}: NASA FIRMS (MODIS + VIIRS)
           </span>
         </div>
 
@@ -320,9 +324,9 @@ function AnalyticsPageContent() {
             {error
               ? error
               : loading
-                ? (windowLoadingNote(liveWindow) ?? "NASA live → Python processing…")
+                ? (windowLoadingNote(liveWindow, language) ?? tr("Memproses data live NASA…", "NASA live → Python processing…"))
                 : meta
-                  ? `${areas.length.toLocaleString()} area • ${sourcesAvailable}/4 feed NASA FIRMS aktif • diperbarui ${new Date(meta.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                  ? `${areas.length.toLocaleString()} ${tr("area", "areas")} • ${sourcesAvailable}/4 ${tr("feed NASA FIRMS aktif", "NASA FIRMS feeds live")} • ${tr("diperbarui", "updated")} ${new Date(meta.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
                   : ""}
           </span>
         </div>
@@ -331,8 +335,10 @@ function AnalyticsPageContent() {
           <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-900">
             <span className="material-symbols-outlined text-amber-600 text-base shrink-0">info</span>
             <p>
-              Grafik trend memakai arsip Jan 2023 – Des 2024. Statistik &amp; klaster di bawah tetap dari data live 24 jam
-              terakhir, karena arsip hanya berisi total harian per grid (tanpa skor prioritas).
+              {tr(
+                "Grafik tren memakai arsip Jan 2023 – Des 2024. Statistik & klaster di bawah tetap dari data live 24 jam terakhir, karena arsip hanya berisi total harian per grid (tanpa skor prioritas).",
+                "The trend chart uses the Jan 2023 – Dec 2024 archive. Stats & clusters below still use the last 24 hours of live data, because the archive only holds daily totals per grid cell (no priority scores)."
+              )}
             </p>
           </div>
         )}
@@ -342,27 +348,27 @@ function AnalyticsPageContent() {
           <StatTile
             icon="priority_high"
             iconTone="red"
-            label="Area Prioritas Tertinggi"
-            value={topArea ? areaRegionLabel(topArea).title : "—"}
+            label={tr("Area Prioritas Tertinggi", "Top Priority Area")}
+            value={topArea ? areaRegionLabel(topArea, language).title : "—"}
             caption={
               topArea
-                ? `${topArea.detections ?? 0} deteksi · ${TIER_STYLE[topArea.priorityTier].label}`
-                : "Belum ada area dengan deteksi"
+                ? `${topArea.detections ?? 0} ${tr("deteksi", "detections")} · ${tr(...TIER_STYLE[topArea.priorityTier].label)}`
+                : tr("Belum ada area dengan deteksi", "No areas with detections yet")
             }
           />
           <StatTile
             icon="local_fire_department"
             iconTone="amber"
-            label={`Total Deteksi (${periodLabel})`}
+            label={`${tr("Total Deteksi", "Total Detections")} (${periodLabel})`}
             value={totalDetections.toLocaleString()}
-            caption={meta ? `${sourcesAvailable}/4 feed NASA FIRMS aktif` : "Memuat sumber data…"}
+            caption={meta ? `${sourcesAvailable}/4 ${tr("feed NASA FIRMS aktif", "NASA FIRMS feeds live")}` : tr("Memuat sumber data…", "Loading data sources…")}
           />
           <StatTile
             icon="grid_view"
             iconTone="blue"
-            label="Rata-rata Deteksi / Grid Area"
+            label={tr("Rata-rata Deteksi / Sel Grid", "Avg Detections / Grid Cell")}
             value={avgPerGrid !== null ? avgPerGrid.toFixed(1) : "—"}
-            caption={`dari ${areas.length} grid 0.25° (~27km) terdeteksi`}
+            caption={tr(`dari ${areas.length} grid 0,25° (~27 km) terdeteksi`, `across ${areas.length} detected 0.25° (~27 km) cells`)}
           />
         </div>
 
@@ -370,15 +376,15 @@ function AnalyticsPageContent() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-stretch">
           <Card className="p-6 flex flex-col gap-4 lg:col-span-3 min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-gray-900">Grafik Trend</h2>
+              <h2 className="text-base font-bold text-gray-900">{tr("Grafik Tren", "Trend Chart")}</h2>
             </div>
             <p className="text-xs text-gray-400 -mt-2">
-              Total hotspot per bulan dari arsip NASA FIRMS untuk wilayah terpilih
-              {archiveRange ? " (Jan 2023 – Des 2024)" : " (seluruh arsip)"}.
+              {tr("Total titik panas dari arsip NASA FIRMS untuk wilayah terpilih", "Hotspot totals from the NASA FIRMS archive for the selected area")}
+              {archiveRange ? tr(" (Jan 2023 – Des 2024)", " (Jan 2023 – Dec 2024)") : tr(" (seluruh arsip)", " (full archive)")}.
             </p>
             {historicalLoading ? (
               <div className="flex-1 min-h-[200px] rounded-lg border border-dashed border-gray-200 bg-gray-50 flex items-center justify-center text-sm text-gray-500">
-                Memuat data historis…
+                {tr("Memuat data historis…", "Loading historical data…")}
               </div>
             ) : historicalError ? (
               <div className="flex-1 min-h-[200px] rounded-lg border border-dashed border-red-200 bg-red-50 flex items-center justify-center text-sm text-red-700 text-center px-6">
@@ -401,21 +407,30 @@ function AnalyticsPageContent() {
                   ))}
                 </div>
                 <p className="mt-3 text-[11px] text-gray-500">
-                  {trendIsYearly ? `Total per tahun (${trendBars.length} tahun)` : `Total per bulan (${trendBars.length} bulan)`} ·
-                  wilayah: {activeRegion.label}
-                  {trendBars.some((bar) => bar.partial) && " · batang pucat = tahun dengan data tidak lengkap"}
+                  {trendIsYearly
+                    ? tr(`Total per tahun (${trendBars.length} tahun)`, `Yearly totals (${trendBars.length} years)`)
+                    : tr(`Total per bulan (${trendBars.length} bulan)`, `Monthly totals (${trendBars.length} months)`)}{" "}
+                  · {tr("wilayah", "area")}: {labelOf(activeRegion, language)}
+                  {trendBars.some((bar) => bar.partial) &&
+                    tr(" · batang pucat = tahun dengan data tidak lengkap", " · pale bars = years with incomplete data")}
                   {trendBars.some((bar) => bar.modisOnly) &&
-                    " · batang abu-abu = sebelum 2012 (hanya MODIS; VIIRS mulai 20 Jan 2012, jadi lonjakan 2012 adalah perubahan sensor, bukan kebakaran)"}
+                    tr(
+                      " · batang abu-abu = sebelum 2012 (hanya MODIS; VIIRS mulai 20 Jan 2012, jadi lonjakan 2012 adalah perubahan sensor, bukan kebakaran)",
+                      " · grey bars = before 2012 (MODIS only; VIIRS starts 20 Jan 2012, so the 2012 jump is a sensor change, not more fire)"
+                    )}
                 </p>
               </div>
             ) : (
               <div className="flex-1 min-h-[200px] rounded-lg border border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-2 text-center px-6 py-8">
                 <span className="material-symbols-outlined text-3xl text-gray-300">bar_chart</span>
                 <p className="text-sm font-semibold text-gray-500 max-w-xs">
-                  Belum ada data historis untuk wilayah ini.
+                  {tr("Belum ada data historis untuk wilayah ini.", "No historical data for this area yet.")}
                 </p>
                 <p className="text-xs text-gray-400 max-w-sm">
-                  Nilai kosong berarti database historis tidak memiliki baris yang cocok, bukan nol deteksi.
+                  {tr(
+                    "Nilai kosong berarti database historis tidak memiliki baris yang cocok, bukan nol deteksi.",
+                    "An empty value means the archive has no matching rows, not zero detections."
+                  )}
                 </p>
               </div>
             )}
@@ -426,26 +441,29 @@ function AnalyticsPageContent() {
               <span className="material-symbols-outlined text-white text-lg">insights</span>
             </div>
             <div className="flex-1 space-y-4 min-w-0">
-              <h2 className="text-base font-bold text-emerald-950">Insight Aktivitas &amp; Rekomendasi</h2>
+              <h2 className="text-base font-bold text-emerald-950">{tr("Insight Aktivitas & Rekomendasi", "Activity Insight & Recommendations")}</h2>
               <p className="text-xs text-emerald-900 leading-relaxed">
                 {loading
-                  ? "Memuat data NASA FIRMS…"
+                  ? tr("Memuat data NASA FIRMS…", "Loading NASA FIRMS data…")
                   : totalDetections > 0
-                    ? `Dalam ${periodLabel.toLowerCase()}, terdeteksi ${totalDetections.toLocaleString()} hotspot tersebar di ${areas.length} grid area 0.25°${activeRegion.provinsi ? ` di ${activeRegion.label}` : ""}. ${highTierCount} area berada pada klasifikasi risiko tinggi dan memerlukan perhatian segera.`
-                    : `Tidak ada hotspot terdeteksi dalam ${periodLabel.toLowerCase()}.`}
+                    ? tr(
+                        `Dalam ${periodLabel.toLowerCase()}, terdeteksi ${totalDetections.toLocaleString()} titik panas tersebar di ${areas.length} sel grid 0,25°${activeRegion.provinsi ? ` di ${labelOf(activeRegion, language)}` : ""}. ${highTierCount} area berada pada klasifikasi risiko tinggi dan memerlukan perhatian segera.`,
+                        `In the ${periodLabel.toLowerCase()}, ${totalDetections.toLocaleString()} hotspots were detected across ${areas.length} 0.25° grid cells${activeRegion.provinsi ? ` in ${labelOf(activeRegion, language)}` : ""}. ${highTierCount} areas are classed high risk and need attention soon.`
+                      )
+                    : tr(`Tidak ada titik panas terdeteksi dalam ${periodLabel.toLowerCase()}.`, `No hotspots detected in the ${periodLabel.toLowerCase()}.`)}
               </p>
               <ul className="space-y-3">
                 <li className="flex gap-3 items-start text-[13px] text-emerald-900">
                   <span className="material-symbols-outlined text-emerald-600 text-base shrink-0">check_circle</span>
-                  <span>Prioritaskan verifikasi lapangan untuk area berklasifikasi risiko tinggi lebih dulu.</span>
+                  <span>{tr("Prioritaskan verifikasi lapangan untuk area berklasifikasi risiko tinggi lebih dulu.", "Prioritize field verification for high-risk areas first.")}</span>
                 </li>
                 <li className="flex gap-3 items-start text-[13px] text-emerald-900">
                   <span className="material-symbols-outlined text-emerald-600 text-base shrink-0">verified</span>
-                  <span>Area dengan FRP puncak jauh di atas rata-ratanya berpotensi memerlukan pemantauan lebih intensif.</span>
+                  <span>{tr("Area dengan FRP puncak jauh di atas rata-ratanya berpotensi memerlukan pemantauan lebih intensif.", "Areas whose peak FRP is far above their average may need closer monitoring.")}</span>
                 </li>
                 <li className="flex gap-3 items-start text-[13px] text-emerald-900">
                   <span className="material-symbols-outlined text-emerald-600 text-base shrink-0">arrow_forward</span>
-                  <span>Area yang hanya tercakup satu sensor (MODIS saja atau VIIRS saja) sebaiknya dikonfirmasi ulang sebelum tindak lanjut.</span>
+                  <span>{tr("Area yang hanya tercakup satu sensor (MODIS saja atau VIIRS saja) sebaiknya dikonfirmasi ulang sebelum tindak lanjut.", "Areas covered by only one sensor (MODIS-only or VIIRS-only) should be double-checked before acting.")}</span>
                 </li>
               </ul>
             </div>
@@ -457,14 +475,16 @@ function AnalyticsPageContent() {
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-gray-900">Identified Spatial Fire Clusters</h2>
+                <h2 className="text-lg font-bold text-gray-900">{tr("Klaster Kebakaran Spasial", "Identified Spatial Fire Clusters")}</h2>
                 <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
-                  {areas.length} AREA AKTIF
+                  {areas.length} {tr("AREA AKTIF", "ACTIVE AREAS")}
                 </span>
               </div>
               <p className="text-xs text-gray-500 mt-1 max-w-xl">
-                Setiap baris mewakili satu sel grid 0.25° (~27km) dari agregasi python fire_pipeline, bukan hasil
-                klasterisasi spasial DBSCAN.
+                {tr(
+                  "Setiap baris mewakili satu sel grid 0,25° (~27 km) dari agregasi python fire_pipeline, bukan hasil klasterisasi spasial DBSCAN.",
+                  "Each row is one 0.25° (~27 km) grid cell aggregated by the Python fire_pipeline, not a DBSCAN spatial cluster."
+                )}
               </p>
             </div>
             <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
@@ -475,7 +495,7 @@ function AnalyticsPageContent() {
                   clusterFilter === "all" ? "bg-blue-50 text-gray-900 border border-blue-200" : "text-gray-500 hover:bg-gray-50"
                 }`}
               >
-                Semua Area
+                {tr("Semua Area", "All Areas")}
               </button>
               <button
                 type="button"
@@ -484,7 +504,7 @@ function AnalyticsPageContent() {
                   clusterFilter === "highFrp" ? "bg-blue-50 text-gray-900 border border-blue-200" : "text-gray-500 hover:bg-gray-50"
                 }`}
               >
-                FRP Puncak &gt; 50MW
+                {tr("FRP Puncak > 50 MW", "Peak FRP > 50 MW")}
               </button>
             </div>
           </div>
@@ -493,12 +513,12 @@ function AnalyticsPageContent() {
             <table className="w-full text-xs min-w-[880px]">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-left">
-                  <th className="py-3 pr-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase">Cluster ID &amp; Lokasi</th>
-                  <th className="py-3 pr-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase">Hotspots</th>
-                  <th className="py-3 pr-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase">Avg / Peak FRP</th>
-                  <th className="py-3 pr-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase">Risk Classification</th>
-                  <th className="py-3 pr-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase">Cakupan Sensor</th>
-                  <th className="py-3 pl-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase text-right">Actions</th>
+                  <th className="py-3 pr-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase">{tr("ID Klaster & Lokasi", "Cluster ID & Location")}</th>
+                  <th className="py-3 pr-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase">{tr("Titik Panas", "Hotspots")}</th>
+                  <th className="py-3 pr-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase">{tr("FRP Rata-rata / Puncak", "Avg / Peak FRP")}</th>
+                  <th className="py-3 pr-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase">{tr("Klasifikasi Risiko", "Risk Classification")}</th>
+                  <th className="py-3 pr-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase">{tr("Cakupan Sensor", "Sensor Coverage")}</th>
+                  <th className="py-3 pl-3 font-bold text-gray-500 text-[10px] tracking-wide uppercase text-right">{tr("Aksi", "Actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -508,7 +528,7 @@ function AnalyticsPageContent() {
                 {!loading && !error && shownAreas.length === 0 && (
                   <tr>
                     <td colSpan={6} className="py-10 text-center text-sm text-gray-500">
-                      Tidak ada area dengan deteksi pada filter ini.
+                      {tr("Tidak ada area dengan deteksi pada filter ini.", "No areas with detections for this filter.")}
                     </td>
                   </tr>
                 )}
@@ -518,7 +538,10 @@ function AnalyticsPageContent() {
 
           <div className="flex items-center justify-between pt-3 mt-2 border-t border-gray-100 text-[10px] text-gray-400 font-semibold">
             <span>
-              MENAMPILKAN {shownAreas.length} DARI {filteredAreas.length} AREA AKTIF · REFRESH OTOMATIS SETIAP 5 MENIT
+              {tr(
+                `MENAMPILKAN ${shownAreas.length} DARI ${filteredAreas.length} AREA AKTIF · DIPERBARUI OTOMATIS SETIAP 5 MENIT`,
+                `SHOWING ${shownAreas.length} OF ${filteredAreas.length} ACTIVE AREAS · AUTO-REFRESH EVERY 5 MINUTES`
+              )}
             </span>
           </div>
         </Card>

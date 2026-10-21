@@ -178,3 +178,140 @@ export const SCENARIOS: Scenario[] = [
     safeAction: "Tunggu pengumuman resmi bahwa wilayah sudah aman untuk dihuni kembali sebelum pulang — jangan menilai sendiri dari kejauhan.",
   },
 ];
+
+interface ScenarioTextEn {
+  title: string;
+  prompt: string;
+  safeAction: string;
+  options: Record<string, { label: string; feedback: string }>;
+}
+
+/** English text for each scenario, keyed by scenario id then option id (Indonesian above is the original). */
+const SCENARIOS_EN: Record<string, ScenarioTextEn> = {
+  "asap-masuk-rumah": {
+    title: "Smoke starts coming into the house",
+    prompt: "You smell smoke and see it starting to come in through gaps around doors/windows. What do you do?",
+    options: {
+      a: {
+        label: "Close all doors and windows, plug gaps with a wet cloth, and follow official information",
+        feedback: "Right. Sealing gaps cuts the smoke coming in while you follow updates from official sources (BMKG/BNPB/local officials).",
+      },
+      b: {
+        label: "Open the windows to refresh the air inside",
+        feedback: "Risky — opening windows in thick smoke lets even more smoke particles into the house.",
+      },
+      c: {
+        label: "Ignore it because it usually goes away by itself",
+        feedback: "Risky — smoke exposure taken lightly can quietly get worse, especially for vulnerable family members.",
+      },
+    },
+    safeAction: "Close doors/windows, cut outdoor activity, and follow official BMKG/BNPB information.",
+  },
+  "hotspot-dekat-permukiman": {
+    title: "Satellite hotspot detected near homes",
+    prompt: "The app shows a satellite detection (hotspot) within a few kilometres of your home. What do you do?",
+    options: {
+      a: {
+        label: "Check the surroundings yourself, prepare the go-bag, and follow updates — without panic, since this isn't yet a confirmed active fire",
+        feedback: "Right. A satellite detection (MODIS/VIIRS) signals a heat anomaly, not a confirmed active fire — but it's still worth starting to prepare.",
+      },
+      b: {
+        label: "Evacuate immediately without checking anything",
+        feedback: "Too much at this stage — a satellite detection alone doesn't mean an active or nearby fire; full evacuation is usually decided by official instructions or real conditions on the ground.",
+      },
+      c: {
+        label: "Ignore it because you think the app is inaccurate",
+        feedback: "Risky — ignoring it completely means losing time to prepare if things get worse.",
+      },
+    },
+    safeAction: "Treat it as a signal to start preparing (not proof of a fire): check your surroundings, prepare the go-bag, follow updates.",
+  },
+  "evakuasi-diumumkan": {
+    title: "An official evacuation is announced",
+    prompt: "Village officials/BNPB announce an evacuation order for your area. What do you do?",
+    options: {
+      a: {
+        label: "Follow the evacuation instructions, take the go-bag, and head to the family's agreed meeting point",
+        feedback: "Right. Official evacuation orders are based on fuller field information than you can see from home — always follow them.",
+      },
+      b: {
+        label: "Stay home because it doesn't look that bad to you",
+        feedback: "High risk — conditions on the ground (wind direction, how fast the fire spreads) can change quickly and aren't always visible from inside the house.",
+      },
+      c: {
+        label: "Wait until you can actually see the smoke from home before moving",
+        feedback: "Risky — waiting for signs you can see from home means losing safe evacuation time.",
+      },
+    },
+    safeAction: "Always follow official evacuation orders right away, take the go-bag, and head to the family meeting point.",
+  },
+  "asma-sesak": {
+    title: "A family member with asthma becomes short of breath",
+    prompt: "A family member with a history of asthma starts struggling to breathe because of the smoke. What do you do?",
+    options: {
+      a: {
+        label: "Move them at once to a closed, smoke-free room, use their usual asthma medicine if available, and get medical help if it doesn't ease",
+        feedback: "Right. Getting away from the smoke and using their regular treatment is the first step; breathlessness that doesn't ease needs medical help right away.",
+      },
+      b: {
+        label: "Wait and see whether it gets better by itself",
+        feedback: "High risk — breathlessness in people with asthma can worsen quickly; waiting without acting is dangerous.",
+      },
+      c: {
+        label: "Put any cloth mask on them and tell them to carry on as usual",
+        feedback: "Risky — cloth masks don't filter smoke particles effectively, and activity while breathless makes it worse.",
+      },
+    },
+    safeAction: "Get them away from the smoke, use their usual asthma medicine, and seek medical help quickly if the breathlessness doesn't ease.",
+  },
+  "anggota-hilang": {
+    title: "A family member gets separated during evacuation",
+    prompt: "During the evacuation you realise one family member is missing. What do you do?",
+    options: {
+      a: {
+        label: "Keep going to the agreed meeting point, tell the evacuation officers/post, and call the family contact person",
+        feedback: "Right. A meeting point and contact person agreed in advance are the fastest way to find each other; post officers can also help search in a coordinated way.",
+      },
+      b: {
+        label: "Turn back alone towards the smoke/fire to look for them",
+        feedback: "Very dangerous — going back towards danger alone is high-risk, uncoordinated, and you don't know the conditions there.",
+      },
+      c: {
+        label: "Panic and stop moving where you are",
+        feedback: "Risky — stopping on the evacuation route can block others and doesn't help find the separated family member.",
+      },
+    },
+    safeAction: "Head to the agreed meeting point, report to the evacuation officers/post, and call the family contact person — don't search alone in dangerous areas.",
+  },
+  "kembali-setelah-reda": {
+    title: "Wanting to go home once the fire looks out",
+    prompt: "After evacuating, the fire looks out from a distance and you want to go home right away. What do you do?",
+    options: {
+      a: {
+        label: "Wait for an official announcement that the area is safe to live in again before going home",
+        feedback: "Right. Peat fires in particular can smoulder below the surface and reignite even when they look out — local authorities check that it's safe before residents return.",
+      },
+      b: {
+        label: "Go home straight away because the fire can't be seen any more",
+        feedback: "Risky — a fire that 'looks' out on the surface (especially on peat) can reignite, and the air may still be unsafe.",
+      },
+      c: {
+        label: "Send the children ahead to check on the house",
+        feedback: "Risky — vulnerable family members should never be the first to check an area that hasn't been declared safe.",
+      },
+    },
+    safeAction: "Wait for an official announcement that the area is safe to live in again before going home — don't judge it yourself from a distance.",
+  },
+};
+
+export function scenarioText(scenario: Scenario, language: "id" | "en"): Scenario {
+  const en = language === "en" ? SCENARIOS_EN[scenario.id] : undefined;
+  if (!en) return scenario;
+  return {
+    ...scenario,
+    title: en.title,
+    prompt: en.prompt,
+    safeAction: en.safeAction,
+    options: scenario.options.map((option) => ({ ...option, ...(en.options[option.id] ?? {}) })),
+  };
+}

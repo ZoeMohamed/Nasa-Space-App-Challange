@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from "react";
 import type { LocationState } from "../lib/useLocation";
 import { useRegion } from "@/lib/useRegion";
 import { formatAdminFull } from "@/lib/adminRegion";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 interface PlaceHit {
   level: "kecamatan" | "kabupatenKota";
@@ -54,6 +55,7 @@ function usePlaceSearch(query: string) {
  * an advanced option — most people don't know their coordinates).
  */
 export default function LocationPicker({ location, onDone }: { location: LocationState; onDone?: () => void }) {
+  const { tr } = useTranslation();
   const { geoStatus, errorMessage, fix, requestGeolocation, setManualFix } = location;
   const fixRegionLabel = formatAdminFull(useRegion(fix?.lat, fix?.lon));
   const [query, setQuery] = useState("");
@@ -74,11 +76,11 @@ export default function LocationPicker({ location, onDone }: { location: Locatio
     const lat = Number(latInput.replace(",", "."));
     const lon = Number(lonInput.replace(",", "."));
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-      setCoordError("Masukkan angka yang valid untuk lintang dan bujur.");
+      setCoordError(tr("Masukkan angka yang valid untuk lintang dan bujur.", "Enter valid numbers for latitude and longitude."));
       return;
     }
     if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-      setCoordError("Lintang harus -90..90 dan bujur -180..180.");
+      setCoordError(tr("Lintang harus -90..90 dan bujur -180..180.", "Latitude must be -90..90 and longitude -180..180."));
       return;
     }
     setCoordError(null);
@@ -90,9 +92,12 @@ export default function LocationPicker({ location, onDone }: { location: Locatio
   return (
     <div className="rounded-2xl border border-[var(--community-border)] bg-white p-4 space-y-4">
       <div>
-        <h2 className="text-sm font-bold text-[var(--community-ink)]">Atur lokasi Anda</h2>
+        <h2 className="text-sm font-bold text-[var(--community-ink)]">{tr("Atur lokasi Anda", "Set your location")}</h2>
         <p className="text-xs text-[var(--community-ink-muted)] mt-0.5">
-          Dipakai untuk status wilayah, jarak ke titik api, dan kualitas udara di sekitar Anda.
+          {tr(
+            "Dipakai untuk status wilayah, jarak ke titik api, dan kualitas udara di sekitar Anda.",
+            "Used for your area status, distance to hotspots, and the air quality around you."
+          )}
         </p>
       </div>
 
@@ -103,15 +108,18 @@ export default function LocationPicker({ location, onDone }: { location: Locatio
             <span className="material-symbols-outlined text-[18px]">
               {fix.source === "gps" ? "my_location" : "location_on"}
             </span>
-            {fix.source === "gps" ? "Lokasi GPS aktif" : "Lokasi dipilih manual"}
+            {fix.source === "gps" ? tr("Lokasi GPS aktif", "GPS location active") : tr("Lokasi dipilih manual", "Location picked manually")}
           </div>
           <div className="text-xs mt-1 font-medium">{fix.label ?? fixRegionLabel ?? `${fix.lat.toFixed(4)}, ${fix.lon.toFixed(4)}`}</div>
           <div className="text-[11px] mt-0.5 text-emerald-800/80">
             {fix.source === "gps"
               ? typeof fix.accuracyMeters === "number"
-                ? `Akurasi ±${Math.round(fix.accuracyMeters)} m`
-                : "Dari perangkat Anda"
-              : "Titik di dalam wilayah yang dipilih — jarak yang ditampilkan adalah perkiraan."}
+                ? `${tr("Akurasi", "Accuracy")} ±${Math.round(fix.accuracyMeters)} m`
+                : tr("Dari perangkat Anda", "From your device")
+              : tr(
+                  "Titik di dalam wilayah yang dipilih — jarak yang ditampilkan adalah perkiraan.",
+                  "A point inside the chosen area — distances shown are approximate."
+                )}
           </div>
         </div>
       )}
@@ -125,7 +133,11 @@ export default function LocationPicker({ location, onDone }: { location: Locatio
           className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--community-accent)] py-2.5 text-sm font-semibold text-white shadow-sm active:scale-[0.99] transition disabled:opacity-60"
         >
           <span className="material-symbols-outlined text-[18px]">my_location</span>
-          {geoStatus === "loading" ? "Mendeteksi lokasi…" : fix?.source === "gps" ? "Perbarui lokasi GPS" : "Gunakan lokasi saya (GPS)"}
+          {geoStatus === "loading"
+            ? tr("Mendeteksi lokasi…", "Detecting location…")
+            : fix?.source === "gps"
+              ? tr("Perbarui lokasi GPS", "Refresh GPS location")
+              : tr("Gunakan lokasi saya (GPS)", "Use my location (GPS)")}
         </button>
         {(geoStatus === "denied" || geoStatus === "unavailable") && errorMessage && (
           <p className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-900">{errorMessage}</p>
@@ -135,7 +147,7 @@ export default function LocationPicker({ location, onDone }: { location: Locatio
       {/* 2. Search by place name */}
       <div className="space-y-2">
         <label htmlFor={searchId} className="text-xs font-semibold text-[var(--community-ink)]">
-          Atau cari kecamatan / kota
+          {tr("Atau cari kecamatan / kota", "Or search a district / city")}
         </label>
         <div className="relative">
           <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-gray-400">
@@ -146,20 +158,23 @@ export default function LocationPicker({ location, onDone }: { location: Locatio
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Contoh: Jekan Raya, Pulang Pisau, Pekanbaru"
+            placeholder={tr("Contoh: Jekan Raya, Pulang Pisau, Pekanbaru", "e.g. Jekan Raya, Pulang Pisau, Pekanbaru")}
             autoComplete="off"
             className="w-full rounded-xl border border-[var(--community-border)] bg-white pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
           />
         </div>
         {!tooShort && (
           <div className="rounded-xl border border-[var(--community-border)] overflow-hidden">
-            {searching && <p className="px-3 py-2.5 text-xs text-[var(--community-ink-muted)]">Mencari…</p>}
+            {searching && <p className="px-3 py-2.5 text-xs text-[var(--community-ink-muted)]">{tr("Mencari…", "Searching…")}</p>}
             {!searching && searchError && (
-              <p className="px-3 py-2.5 text-xs text-rose-700">Pencarian lokasi sedang tidak tersedia.</p>
+              <p className="px-3 py-2.5 text-xs text-rose-700">{tr("Pencarian lokasi sedang tidak tersedia.", "Place search is unavailable right now.")}</p>
             )}
             {!searching && !searchError && hits.length === 0 && (
               <p className="px-3 py-2.5 text-xs text-[var(--community-ink-muted)]">
-                Tidak ditemukan. Coba nama kecamatan atau kabupaten/kota (nama desa belum didukung).
+                {tr(
+                  "Tidak ditemukan. Coba nama kecamatan atau kabupaten/kota (nama desa belum didukung).",
+                  "No results. Try a district or regency/city name (village names aren't supported yet)."
+                )}
               </p>
             )}
             {!searching && hits.length > 0 && (
@@ -183,7 +198,10 @@ export default function LocationPicker({ location, onDone }: { location: Locatio
           </div>
         )}
         <p className="text-[11px] text-[var(--community-ink-muted)]">
-          Batas wilayah BPS 2020. Pilihan manual diingat di perangkat ini sampai Anda menggantinya.
+          {tr(
+            "Batas wilayah BPS 2020. Pilihan manual diingat di perangkat ini sampai Anda menggantinya.",
+            "BPS 2020 boundaries. A manual pick is remembered on this device until you change it."
+          )}
         </p>
       </div>
 
@@ -194,23 +212,23 @@ export default function LocationPicker({ location, onDone }: { location: Locatio
           onClick={() => setCoordsOpen((open) => !open)}
           className="text-xs font-semibold text-[var(--community-accent)] underline underline-offset-2"
         >
-          {coordsOpen ? "Tutup input koordinat" : "Masukkan koordinat (lanjutan)"}
+          {coordsOpen ? tr("Tutup input koordinat", "Close coordinate input") : tr("Masukkan koordinat (lanjutan)", "Enter coordinates (advanced)")}
         </button>
         {coordsOpen && (
           <div className="mt-2 space-y-2">
-            <div className="flex gap-2" role="group" aria-label="Koordinat">
+            <div className="flex gap-2" role="group" aria-label={tr("Koordinat", "Coordinates")}>
               <input
                 inputMode="decimal"
-                placeholder="Lintang, mis. -2.21"
-                aria-label="Lintang (lat)"
+                placeholder={tr("Lintang, mis. -2.21", "Latitude, e.g. -2.21")}
+                aria-label={tr("Lintang (lat)", "Latitude")}
                 value={latInput}
                 onChange={(event) => setLatInput(event.target.value)}
                 className="w-1/2 rounded-lg border border-[var(--community-border)] bg-white px-3 py-2 text-sm"
               />
               <input
                 inputMode="decimal"
-                placeholder="Bujur, mis. 113.91"
-                aria-label="Bujur (lon)"
+                placeholder={tr("Bujur, mis. 113.91", "Longitude, e.g. 113.91")}
+                aria-label={tr("Bujur (lon)", "Longitude")}
                 value={lonInput}
                 onChange={(event) => setLonInput(event.target.value)}
                 className="w-1/2 rounded-lg border border-[var(--community-border)] bg-white px-3 py-2 text-sm"
@@ -226,7 +244,7 @@ export default function LocationPicker({ location, onDone }: { location: Locatio
               onClick={submitCoords}
               className="w-full rounded-lg border border-[var(--community-accent)] py-2 text-xs font-semibold text-[var(--community-accent)]"
             >
-              Gunakan koordinat ini
+              {tr("Gunakan koordinat ini", "Use these coordinates")}
             </button>
           </div>
         )}

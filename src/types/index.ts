@@ -107,6 +107,11 @@ export interface AreaSummary {
   priorityScore: number | null;
   priorityRank: number | null;
   priorityTier: "high" | "medium" | "low";
+  /** Events after collapsing VIIRS repeats of the same pixel by different satellites. */
+  dedupedEvents?: number;
+  viirsCrossSatelliteDuplicates?: number;
+  /** 24 h only: events from MODIS + one VIIRS platform, the population of that platform's archive table. */
+  referenceEvents?: Record<string, number> | null;
 }
 
 export interface DailyActivity {
@@ -166,6 +171,92 @@ export interface HistoricalMonth {
   modisDetections: number;
   viirsDetections: number;
   frpSum: number;
+  /** Events from provisional NRT rows (no vegetation-fire filter, replaced later by the archive). */
+  nrtDetections?: number;
+  /** "live": includes days after the archive's end, added from the live NRT feed. */
+  dataStatus?: "archive" | "nrt" | "mixed" | "live";
+}
+
+/** /api/historical/live-months -- calendar months after the archive ends (fire_pipeline/live_calendar.py). */
+export interface LiveMonthsResponse {
+  available: boolean;
+  reason?: string;
+  windowHours?: number;
+  archiveEndDate?: string;
+  liveStartDate?: string | null;
+  liveEndDate?: string | null;
+  gapDays?: number;
+  modisComplete?: boolean;
+  /** False when the Suomi-NPP feed was incomplete: the MODIS + VIIRS series then has no live counts. */
+  referenceComplete?: boolean;
+  months: {
+    year: number;
+    month: number;
+    firstDate: string;
+    lastDate: string;
+    daysCovered: number;
+    daysInMonth: number;
+    monthComplete: boolean;
+    /** null when some of the month's days couldn't be fetched for that series (see missingDays). */
+    modisDetections: number | null;
+    detections: number | null;
+    missingDays?: { modisDetections: string[]; detections: string[] };
+  }[];
+  monthToDate: {
+    year: number;
+    month: number;
+    throughDay: number;
+    prior: { year: number; modisDetections: number; detections: number }[];
+  } | null;
+}
+
+/** What the per-cell baselines are built from (historical.py _baseline_meta). */
+export interface HistoricalBaselineMeta {
+  reference: string;
+  population: string;
+  startDate: string;
+  excludedSources: string[];
+  minSampleDays: number;
+  excludedNrtRows: number;
+  nrtDateRange: [string, string] | null;
+  /** Present when cells are compared with the same month +-1 of earlier years (P1). */
+  seasonal?: { month: number; months: number[]; minSampleDays: number; minYears: number };
+}
+
+export type UnusualCellStatus = "unusual" | "within-baseline" | "insufficient-history" | "no-history" | "not-seen-by-reference";
+
+/** /api/historical/unusual -- live 24 h cells vs their archive baseline on a comparable population. */
+export interface UnusualComparisonResponse {
+  comparable: boolean;
+  reason?: string;
+  reference?: string;
+  baseline?: HistoricalBaselineMeta;
+  windowHours: number;
+  generatedAt?: string;
+  archiveReferences: string[];
+  summary: {
+    liveCells: number;
+    comparedCells: number;
+    unusualCells: number;
+    withinBaselineCells: number;
+    insufficientHistoryCells: number;
+    noHistoryCells: number;
+    notSeenByReferenceCells: number;
+    seasonalBaselineCells?: number;
+    fallbackBaselineCells?: number;
+  } | null;
+  cells: {
+    gridLat: number;
+    gridLon: number;
+    referenceEvents: number;
+    allSatelliteEvents: number;
+    dailyMean: number | null;
+    dailyStd: number | null;
+    sampleDays: number | null;
+    threshold: number | null;
+    baselineKind?: "seasonal" | "all-months-fallback" | "all-months" | null;
+    status: UnusualCellStatus;
+  }[];
 }
 
 /**
@@ -185,11 +276,16 @@ export interface HistoricalCell {
   dailyMeanDetections: number;
   dailyStdDetections: number | null;
   sampleDays: number;
+  /** "insufficient-history" below historical.MIN_BASELINE_SAMPLE_DAYS observed days. */
+  baselineStatus?: "ok" | "insufficient-history";
 }
 
 export interface HistoricalCalendarResponse {
   months: HistoricalMonth[];
   cells: HistoricalCell[];
+  baseline?: HistoricalBaselineMeta;
+  /** Distinct 0.25° cells with any archive activity inside the selected area. */
+  areaCells?: number;
 }
 
 /**

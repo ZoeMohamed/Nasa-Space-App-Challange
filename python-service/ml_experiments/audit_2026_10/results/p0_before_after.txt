@@ -1,0 +1,17 @@
+snapshot 2026-10-21 02:39:00 UTC: 22309 detections, 20493 harmonized events -> 14950 after VIIRS cross-satellite dedup (5543 repeats in 4439 groups); MODIS+S-NPP reference events: 5240
+        step  liveCells  compared  unusual share  excluded<min
+    A before       1106      1058      334 31.6%             1
+B +reference        669       647       54  8.3%             1
+    C +min10        669       645       53  8.2%             3
+    D +noNRT        669       635       60  9.4%            12
+production compare_live_to_baseline (D): {'liveCells': 1106, 'comparedCells': 635, 'unusualCells': 60, 'withinBaselineCells': 575, 'insufficientHistoryCells': 12, 'noHistoryCells': 22, 'notSeenByReferenceCells': 437}
+
+by province (A -> D, unusual/compared):
+  Kalimantan Tengah      36/124  (29.0%)  ->     9/103  ( 8.7%)
+  Kalimantan Barat        1/28   ( 3.6%)  ->     1/17   ( 5.9%)
+  Kalimantan Selatan     28/61   (45.9%)  ->     5/53   ( 9.4%)
+  Kalimantan Timur       24/98   (24.5%)  ->     3/71   ( 4.2%)
+  Sumatera Selatan       27/98   (27.6%)  ->     5/71   ( 7.0%)
+  Riau                    1/5    (20.0%)  ->     0/1    ( 0.0%)
+  Jambi                   6/35   (17.1%)  ->     2/20   (10.0%)
+  Papua                  55/128  (43.0%)  ->     8/101  ( 7.9%)

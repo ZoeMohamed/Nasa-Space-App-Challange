@@ -7,17 +7,20 @@ import WorkstationLayout from "@/components/layout/WorkstationLayout";
 import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
 import StatTile from "@/components/ui/StatTile";
-import { getRegionOption, getRangeOption, isArchiveRange, liveWindowFor, matchesRegion } from "@/lib/filters";
+import Link from "next/link";
+import { getRegionOption, getRangeOption, isArchiveRange, liveWindowFor, matchesRegion, labelOf, withFilters } from "@/lib/filters";
 import { windowLoadingNote } from "@/lib/hotspots";
 import { useLiveHotspots } from "@/lib/useLiveHotspots";
 import type { AreaSummary, CommunityReport, HotspotMarker } from "@/types";
 import { areaRegionLabel, formatAdminFull } from "@/lib/adminRegion";
+import MapLoadingText from "@/components/map/MapLoadingText";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 const FireMap = dynamic(() => import("@/components/map/FireMap"), {
   ssr: false,
   loading: () => (
     <div className="h-full w-full flex items-center justify-center bg-gray-100">
-      <span className="font-medium text-sm text-gray-500 animate-pulse">Memuat peta…</span>
+      <span className="font-medium text-sm text-gray-500 animate-pulse"><MapLoadingText /></span>
     </div>
   ),
 });
@@ -27,12 +30,13 @@ const MAX_AREAS_SHOWN = 20;
 type DetailTab = "overview" | "detections" | "actionplan";
 type DetectionFilter = "all" | "matched" | "viirs" | "modis";
 
-const MATCH_STATUS_LABEL: Record<string, string> = {
-  MATCHED: "Matched (MODIS + VIIRS)",
-  MODIS_ONLY: "MODIS saja",
-  VIIRS_ONLY: "VIIRS saja",
-  UNMATCHED: "Belum tervalidasi silang",
+const MATCH_STATUS_LABEL: Record<string, [string, string]> = {
+  MATCHED: ["Cocok (MODIS + VIIRS)", "Matched (MODIS + VIIRS)"],
+  MODIS_ONLY: ["MODIS saja", "MODIS only"],
+  VIIRS_ONLY: ["VIIRS saja", "VIIRS only"],
+  UNMATCHED: ["Belum dicocokkan", "Not cross-matched"],
 };
+type Tr = (id: string, en: string) => string;
 
 const MATCH_STATUS_TONE: Record<string, "info" | "neutral"> = {
   MATCHED: "info",
@@ -41,22 +45,23 @@ const MATCH_STATUS_TONE: Record<string, "info" | "neutral"> = {
   UNMATCHED: "neutral",
 };
 
-function formatAcquiredAt(value: string | undefined) {
-  if (!value) return "Waktu tidak tercatat";
+function formatAcquiredAt(value: string | undefined, language: "id" | "en") {
+  const missing = language === "en" ? "Time not recorded" : "Waktu tidak tercatat";
+  if (!value) return missing;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Waktu tidak tercatat";
+  if (Number.isNaN(date.getTime())) return missing;
   return (
-    date.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }) + " UTC"
+    date.toLocaleString(language === "en" ? "en-GB" : "id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }) + " UTC"
   );
 }
 
-const TIER_STYLE: Record<AreaSummary["priorityTier"], { bar: string; badgeBg: string; badgeText: string; badgeBorder: string; label: string; panelBg: string; panelBorder: string }> = {
+const TIER_STYLE: Record<AreaSummary["priorityTier"], { bar: string; badgeBg: string; badgeText: string; badgeBorder: string; label: [string, string]; panelBg: string; panelBorder: string }> = {
   high: {
     bar: "bg-[#f04438]",
     badgeBg: "bg-red-100",
     badgeText: "text-[#f04438]",
     badgeBorder: "border-red-200",
-    label: "Prioritas Tinggi",
+    label: ["Prioritas Tinggi", "High Priority"],
     panelBg: "bg-red-50",
     panelBorder: "border-red-100",
   },
@@ -65,7 +70,7 @@ const TIER_STYLE: Record<AreaSummary["priorityTier"], { bar: string; badgeBg: st
     badgeBg: "bg-orange-100",
     badgeText: "text-orange-700",
     badgeBorder: "border-orange-200",
-    label: "Prioritas Sedang",
+    label: ["Prioritas Sedang", "Medium Priority"],
     panelBg: "bg-orange-50",
     panelBorder: "border-orange-100",
   },
@@ -74,37 +79,47 @@ const TIER_STYLE: Record<AreaSummary["priorityTier"], { bar: string; badgeBg: st
     badgeBg: "bg-gray-100",
     badgeText: "text-gray-600",
     badgeBorder: "border-gray-200",
-    label: "Prioritas Rendah",
+    label: ["Prioritas Rendah", "Low Priority"],
     panelBg: "bg-gray-50",
     panelBorder: "border-gray-100",
   },
 };
 
-function trendLabel(growth: number | null) {
+function trendLabel(growth: number | null, tr: Tr) {
   if (growth === null || Number.isNaN(growth)) {
-    return { text: "Data belum cukup", icon: "remove", className: "text-gray-400" };
+    return { text: tr("Data belum cukup", "Not enough data"), icon: "remove", className: "text-gray-400" };
   }
-  if (growth > 0.1) return { text: "Meningkat", icon: "trending_up", className: "text-[#f04438]" };
-  if (growth < -0.1) return { text: "Menurun", icon: "trending_down", className: "text-emerald-600" };
-  return { text: "Stabil", icon: "trending_flat", className: "text-gray-500" };
+  if (growth > 0.1) return { text: tr("Meningkat", "Rising"), icon: "trending_up", className: "text-[#f04438]" };
+  if (growth < -0.1) return { text: tr("Menurun", "Falling"), icon: "trending_down", className: "text-emerald-600" };
+  return { text: tr("Stabil", "Stable"), icon: "trending_flat", className: "text-gray-500" };
 }
 
 /** Plain-language reasons, each read straight from this area's own pipeline fields. */
-function priorityReasons(area: AreaSummary): string[] {
+function priorityReasons(area: AreaSummary, tr: Tr, periodLabel: string): string[] {
   const reasons: string[] = [];
-  if (area.detections) reasons.push(`${area.detections} deteksi dalam 24 jam terakhir`);
-  if (area.frpMax !== null && area.frpMax > 0) reasons.push(`Intensitas panas tertinggi ${area.frpMax.toFixed(0)} MW`);
-  if ((area.modisDetections ?? 0) > 0 && (area.viirsDetections ?? 0) > 0) reasons.push("Terlihat oleh MODIS dan VIIRS");
+  if (area.detections) reasons.push(tr(`${area.detections} deteksi dalam ${periodLabel}`, `${area.detections} detections in the ${periodLabel}`));
+  if (area.frpMax !== null && area.frpMax > 0)
+    reasons.push(tr(`Intensitas panas tertinggi ${area.frpMax.toFixed(0)} MW`, `Peak heat intensity ${area.frpMax.toFixed(0)} MW`));
+  if ((area.modisDetections ?? 0) > 0 && (area.viirsDetections ?? 0) > 0) reasons.push(tr("Terlihat oleh MODIS dan VIIRS", "Seen by both MODIS and VIIRS"));
   if (area.consecutiveActiveDays !== null && area.consecutiveActiveDays > 1)
-    reasons.push(`Aktif ${area.consecutiveActiveDays} hari berturut-turut`);
-  if (area.growth !== null && area.growth > 0.1) reasons.push("Aktivitas sedang meningkat");
+    reasons.push(tr(`Aktif ${area.consecutiveActiveDays} hari berturut-turut`, `Active ${area.consecutiveActiveDays} days in a row`));
+  if (area.growth !== null && area.growth > 0.1) reasons.push(tr("Aktivitas sedang meningkat", "Activity is rising"));
   return reasons.slice(0, 3);
 }
 
-function AreaCard({ area, onOpenDetail }: { area: AreaSummary; onOpenDetail: (areaId: string) => void }) {
+function AreaCard({
+  area,
+  onOpenDetail,
+  periodLabel,
+}: {
+  area: AreaSummary;
+  onOpenDetail: (areaId: string) => void;
+  periodLabel: string;
+}) {
+  const { tr, language } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const style = TIER_STYLE[area.priorityTier] ?? TIER_STYLE.low;
-  const trend = trendLabel(area.growth);
+  const trend = trendLabel(area.growth, tr);
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 relative overflow-hidden">
@@ -113,21 +128,21 @@ function AreaCard({ area, onOpenDetail }: { area: AreaSummary; onOpenDetail: (ar
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
             <span className={`px-2.5 py-0.5 ${style.badgeBg} ${style.badgeText} text-xs font-bold rounded border ${style.badgeBorder} uppercase`}>
-              {style.label}
+              {tr(...style.label)}
             </span>
             {area.consecutiveActiveDays !== null && area.consecutiveActiveDays > 0 && (
               <span className="text-xs text-gray-500 font-medium flex items-center gap-1">
                 <span className="material-symbols-outlined text-[14px]">timer</span>
-                Aktif {area.consecutiveActiveDays} hari berturut-turut
+                {tr(`Aktif ${area.consecutiveActiveDays} hari berturut-turut`, `Active ${area.consecutiveActiveDays} days in a row`)}
               </span>
             )}
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-1">{areaRegionLabel(area).title}</h3>
-          <p className="text-sm text-gray-600 mb-4">{areaRegionLabel(area).caption}</p>
+          <h3 className="text-xl font-bold text-gray-900 mb-1">{areaRegionLabel(area, language).title}</h3>
+          <p className="text-sm text-gray-600 mb-4">{areaRegionLabel(area, language).caption}</p>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <div className="text-xs text-gray-500 mb-1">Jumlah Deteksi</div>
+              <div className="text-xs text-gray-500 mb-1">{tr("Jumlah Deteksi", "Detections")}</div>
               <div className="font-bold text-gray-900">{area.detections ?? "—"}</div>
             </div>
             <div>
@@ -135,13 +150,13 @@ function AreaCard({ area, onOpenDetail }: { area: AreaSummary; onOpenDetail: (ar
               <div className="font-bold text-gray-900">{area.frpSum !== null ? `${area.frpSum.toFixed(0)} MW` : "—"}</div>
             </div>
             <div>
-              <div className="text-xs text-gray-500 mb-1">Tren</div>
+              <div className="text-xs text-gray-500 mb-1">{tr("Tren", "Trend")}</div>
               <div className={`font-bold flex items-center gap-1 ${trend.className}`}>
                 <span className="material-symbols-outlined text-[14px]">{trend.icon}</span> {trend.text}
               </div>
             </div>
             <div>
-              <div className="text-xs text-gray-500 mb-1">Cakupan Sensor</div>
+              <div className="text-xs text-gray-500 mb-1">{tr("Cakupan Sensor", "Sensor Coverage")}</div>
               <div className="font-bold text-gray-900">
                 MODIS {area.modisDetections ?? 0} · VIIRS {area.viirsDetections ?? 0}
               </div>
@@ -151,19 +166,19 @@ function AreaCard({ area, onOpenDetail }: { area: AreaSummary; onOpenDetail: (ar
 
         <div className={`${style.panelBg} rounded-lg p-4 border ${style.panelBorder} w-full lg:w-72 flex flex-col justify-between shrink-0`}>
           <div>
-            <h4 className={`text-xs font-bold ${style.badgeText} mb-1 uppercase`}>Skor Prioritas</h4>
+            <h4 className={`text-xs font-bold ${style.badgeText} mb-1 uppercase`}>{tr("Skor Prioritas", "Priority Score")}</h4>
             <p className="mb-3 flex items-baseline gap-2">
               <span className="text-2xl font-bold text-gray-900">
                 {area.priorityScore !== null ? Math.round(area.priorityScore * 100) : "—"}
               </span>
               <span className="text-xs text-gray-500">/ 100</span>
               {area.priorityRank !== null && (
-                <span className="ml-auto text-xs font-semibold text-gray-600">Peringkat #{area.priorityRank}</span>
+                <span className="ml-auto text-xs font-semibold text-gray-600">{tr("Peringkat", "Rank")} #{area.priorityRank}</span>
               )}
             </p>
-            {priorityReasons(area).length > 0 && (
+            {priorityReasons(area, tr, periodLabel).length > 0 && (
               <ul className="space-y-1 mb-3">
-                {priorityReasons(area).map((reason) => (
+                {priorityReasons(area, tr, periodLabel).map((reason) => (
                   <li key={reason} className="flex items-start gap-1.5 text-xs text-gray-700">
                     <span className="material-symbols-outlined text-[14px] text-gray-500">check_small</span>
                     {reason}
@@ -171,7 +186,7 @@ function AreaCard({ area, onOpenDetail }: { area: AreaSummary; onOpenDetail: (ar
                 ))}
               </ul>
             )}
-            <p className="text-xs text-gray-600 mb-4">Langkah berikutnya: verifikasi lapangan.</p>
+            <p className="text-xs text-gray-600 mb-4">{tr("Langkah berikutnya: verifikasi lapangan.", "Next step: field verification.")}</p>
           </div>
           <div className="flex flex-col gap-2">
             <button
@@ -179,7 +194,7 @@ function AreaCard({ area, onOpenDetail }: { area: AreaSummary; onOpenDetail: (ar
               onClick={() => setExpanded((value) => !value)}
               className="w-full bg-white border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-semibold shadow-sm hover:bg-gray-50 transition-colors"
             >
-              {expanded ? "Sembunyikan detail" : "Lihat detail"}
+              {expanded ? tr("Sembunyikan detail", "Hide details") : tr("Lihat detail", "View details")}
             </button>
             <button
               type="button"
@@ -187,7 +202,7 @@ function AreaCard({ area, onOpenDetail }: { area: AreaSummary; onOpenDetail: (ar
               className="w-full bg-gray-900 text-white py-2 rounded-lg text-sm font-semibold shadow-sm hover:bg-gray-800 transition-colors flex items-center justify-center gap-1.5"
             >
               <span className="material-symbols-outlined text-[16px]">map</span>
-              Buka Analisis Area
+              {tr("Buka Analisis Area", "Open Area Analysis")}
             </button>
           </div>
         </div>
@@ -196,35 +211,35 @@ function AreaCard({ area, onOpenDetail }: { area: AreaSummary; onOpenDetail: (ar
       {expanded && (
         <dl className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
           <div>
-            <dt className="text-gray-500">Area ID</dt>
+            <dt className="text-gray-500">{tr("ID Area", "Area ID")}</dt>
             <dd className="font-medium text-gray-900">{area.areaId}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">Rank prioritas</dt>
+            <dt className="text-gray-500">{tr("Peringkat prioritas", "Priority rank")}</dt>
             <dd className="font-medium text-gray-900">#{area.priorityRank ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">Attention score</dt>
+            <dt className="text-gray-500">{tr("Skor atensi", "Attention score")}</dt>
             <dd className="font-medium text-gray-900">{area.attentionScore !== null ? area.attentionScore.toFixed(2) : "—"}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">Priority score</dt>
+            <dt className="text-gray-500">{tr("Skor prioritas", "Priority score")}</dt>
             <dd className="font-medium text-gray-900">{area.priorityScore !== null ? area.priorityScore.toFixed(2) : "—"}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">Deteksi pertama</dt>
+            <dt className="text-gray-500">{tr("Deteksi pertama", "First detection")}</dt>
             <dd className="font-medium text-gray-900">{area.firstDate}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">Deteksi puncak</dt>
+            <dt className="text-gray-500">{tr("Deteksi puncak", "Peak detection")}</dt>
             <dd className="font-medium text-gray-900">{area.peakDate}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">Deteksi terakhir</dt>
+            <dt className="text-gray-500">{tr("Deteksi terakhir", "Last detection")}</dt>
             <dd className="font-medium text-gray-900">{area.lastDate}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">Hari aktif (total)</dt>
+            <dt className="text-gray-500">{tr("Hari aktif (total)", "Active days (total)")}</dt>
             <dd className="font-medium text-gray-900">{area.activeDays ?? "—"}</dd>
           </div>
         </dl>
@@ -233,10 +248,10 @@ function AreaCard({ area, onOpenDetail }: { area: AreaSummary; onOpenDetail: (ar
   );
 }
 
-const DETAIL_TABS: { id: DetailTab; label: (count: number) => string }[] = [
-  { id: "overview", label: () => "Overview" },
-  { id: "detections", label: (count) => `Detections (${count})` },
-  { id: "actionplan", label: () => "Action Plan" },
+const DETAIL_TABS: { id: DetailTab; label: (count: number, tr: Tr) => string }[] = [
+  { id: "overview", label: (_count, tr) => tr("Ringkasan", "Overview") },
+  { id: "detections", label: (count, tr) => `${tr("Deteksi", "Detections")} (${count})` },
+  { id: "actionplan", label: (_count, tr) => tr("Rencana Aksi", "Action Plan") },
 ];
 
 function AreaDetailPanel({
@@ -250,10 +265,11 @@ function AreaDetailPanel({
   reports: CommunityReport[];
   onClose: () => void;
 }) {
+  const { tr, language } = useTranslation();
   const [tab, setTab] = useState<DetailTab>("overview");
   const [detectionFilter, setDetectionFilter] = useState<DetectionFilter>("all");
   const style = TIER_STYLE[area.priorityTier] ?? TIER_STYLE.low;
-  const trend = trendLabel(area.growth);
+  const trend = trendLabel(area.growth, tr);
 
   const areaMarkers = useMemo(
     () => markers.filter((marker) => marker.areaId === area.areaId),
@@ -305,11 +321,11 @@ function AreaDetailPanel({
       <div className={`flex items-center justify-between gap-3 p-4 border-b border-gray-100 ${style.panelBg}`}>
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Badge tone={area.priorityTier}>{style.label}</Badge>
+            <Badge tone={area.priorityTier}>{tr(...style.label)}</Badge>
             <span className="text-xs text-gray-500 font-mono">{area.areaId}</span>
           </div>
-          <h2 className="text-lg font-bold text-gray-900">{areaRegionLabel(area).title}</h2>
-          <p className="text-xs text-gray-500">{areaRegionLabel(area).caption}</p>
+          <h2 className="text-lg font-bold text-gray-900">{areaRegionLabel(area, language).title}</h2>
+          <p className="text-xs text-gray-500">{areaRegionLabel(area, language).caption}</p>
         </div>
         <button
           type="button"
@@ -317,7 +333,7 @@ function AreaDetailPanel({
           className="shrink-0 h-9 px-3 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 flex items-center gap-1"
         >
           <span className="material-symbols-outlined text-[16px]">close</span>
-          Tutup
+          {tr("Tutup", "Close")}
         </button>
       </div>
 
@@ -333,7 +349,7 @@ function AreaDetailPanel({
                 : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
-            {item.label(areaMarkers.length)}
+            {item.label(areaMarkers.length, tr)}
           </button>
         ))}
       </div>
@@ -359,8 +375,10 @@ function AreaDetailPanel({
               />
               {areaMarkers.length === 0 && areaReports.length === 0 && (
                 <div className="pointer-events-none absolute inset-x-3 bottom-3 z-[1050] rounded-lg bg-white/95 px-3 py-2 text-[11px] text-gray-600 shadow">
-                  Tidak ada deteksi satelit atau laporan warga tercatat untuk sel grid ini saat ini — peta
-                  menampilkan lokasinya saja, bukan kesalahan.
+                  {tr(
+                    "Tidak ada deteksi satelit atau laporan warga tercatat untuk sel grid ini saat ini — peta menampilkan lokasinya saja, bukan kesalahan.",
+                    "No satellite detections or citizen reports recorded for this grid cell right now — the map shows its location only, not an error."
+                  )}
                 </div>
               )}
             </div>
@@ -368,45 +386,46 @@ function AreaDetailPanel({
               <StatTile
                 icon="local_fire_department"
                 iconTone="red"
-                label="Total Deteksi"
+                label={tr("Total Deteksi", "Total Detections")}
                 value={area.detections ?? "—"}
                 trend={{ direction: trend.icon === "trending_up" ? "up" : trend.icon === "trending_down" ? "down" : "flat", label: trend.text }}
-                caption="Titik panas terkonfirmasi"
+                caption={tr("Titik panas satelit, belum dikonfirmasi lapangan", "Satellite hotspots, not field-confirmed")}
               />
               <StatTile
                 icon="timer"
                 iconTone="amber"
-                label="Periode Aktif"
-                value={area.activeDays !== null ? `${area.activeDays} Hari` : "—"}
+                label={tr("Periode Aktif", "Active Period")}
+                value={area.activeDays !== null ? tr(`${area.activeDays} Hari`, `${area.activeDays} Days`) : "—"}
                 caption={
                   area.consecutiveActiveDays && area.consecutiveActiveDays > 0
-                    ? `Aktif ${area.consecutiveActiveDays} hari berturut-turut`
-                    : "Belum ada rangkaian hari aktif"
+                    ? tr(`Aktif ${area.consecutiveActiveDays} hari berturut-turut`, `Active ${area.consecutiveActiveDays} days in a row`)
+                    : tr("Belum ada rangkaian hari aktif", "No run of active days yet")
                 }
               />
               <StatTile
                 icon="satellite_alt"
                 iconTone="blue"
-                label="Deteksi Terakhir"
+                label={tr("Deteksi Terakhir", "Last Detection")}
                 value={area.lastDate ?? "—"}
                 caption={
                   latestMarker
-                    ? `${latestMarker.satellite ?? latestMarker.sensor ?? "Sensor tidak tercatat"}`
-                    : "Belum ada deteksi"
+                    ? `${latestMarker.satellite ?? latestMarker.sensor ?? tr("Sensor tidak tercatat", "Sensor not recorded")}`
+                    : tr("Belum ada deteksi", "No detections yet")
                 }
               />
               <StatTile
                 icon="device_thermostat"
                 iconTone="gray"
-                label="Rerata FRP"
+                label={tr("Rerata FRP", "Mean FRP")}
                 value={area.frpMean !== null ? `${area.frpMean.toFixed(1)} MW` : "—"}
-                caption={area.frpMax !== null ? `Puncak ${area.frpMax.toFixed(1)} MW` : "Energi radiasi termal"}
+                caption={area.frpMax !== null ? `${tr("Puncak", "Peak")} ${area.frpMax.toFixed(1)} MW` : tr("Energi radiasi termal", "Thermal radiative energy")}
               />
             </div>
             <p className="lg:col-span-2 text-xs text-gray-500 border-t border-gray-100 pt-3">
-              Peta dan statistik di atas hanya mencakup deteksi yang sudah dikaitkan ke grid area ini. Data arah
-              angin, indeks kelembapan, tipe lahan, dan status akses jalur darat belum tersedia pada backend —
-              tidak ditampilkan agar tidak mengarang nilai.
+              {tr(
+                "Peta dan statistik di atas hanya mencakup deteksi yang sudah dikaitkan ke grid area ini. Indeks kelembapan, tipe lahan, dan status akses jalur darat belum tersedia — tidak ditampilkan agar tidak mengarang nilai.",
+                "The map and stats above only cover detections linked to this grid area. Moisture indices, land cover, and road access aren't available yet — they're left out rather than made up."
+              )}
             </p>
           </div>
         )}
@@ -416,12 +435,12 @@ function AreaDetailPanel({
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
                 <span className="material-symbols-outlined text-[18px] text-gray-500">history</span>
-                Detection Timeline
+                {tr("Linimasa Deteksi", "Detection Timeline")}
               </h3>
               <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg text-xs font-semibold">
                 {([
-                  ["all", `Semua (${matchCounts.all})`],
-                  ["matched", `Matched (${matchCounts.matched})`],
+                  ["all", `${tr("Semua", "All")} (${matchCounts.all})`],
+                  ["matched", `${tr("Cocok", "Matched")} (${matchCounts.matched})`],
                   ["viirs", `VIIRS (${matchCounts.viirs})`],
                   ["modis", `MODIS (${matchCounts.modis})`],
                 ] as [DetectionFilter, string][]).map(([key, label]) => (
@@ -441,7 +460,7 @@ function AreaDetailPanel({
 
             {filteredMarkers.length === 0 ? (
               <div className="text-center text-sm text-gray-500 py-10">
-                Tidak ada deteksi pada filter ini.
+                {tr("Tidak ada deteksi pada filter ini.", "No detections for this filter.")}
               </div>
             ) : (
               <ul className="divide-y divide-gray-100 border border-gray-100 rounded-lg">
@@ -449,22 +468,22 @@ function AreaDetailPanel({
                   <li key={marker.id} className="p-3 flex items-center justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-semibold text-gray-700">{formatAcquiredAt(marker.acquiredAt)}</span>
+                        <span className="text-xs font-semibold text-gray-700">{formatAcquiredAt(marker.acquiredAt, language)}</span>
                         <Badge tone={MATCH_STATUS_TONE[marker.matchStatus ?? "UNMATCHED"]}>
-                          {MATCH_STATUS_LABEL[marker.matchStatus ?? "UNMATCHED"]}
+                          {tr(...MATCH_STATUS_LABEL[marker.matchStatus ?? "UNMATCHED"])}
                         </Badge>
                       </div>
                       <p className="text-xs text-gray-500 truncate">
-                        {formatAdminFull(marker.admin) ?? "Wilayah tidak tercatat"} • {marker.lat.toFixed(4)}, {marker.lng.toFixed(4)}
+                        {formatAdminFull(marker.admin) ?? tr("Wilayah tidak tercatat", "Area not recorded")} • {marker.lat.toFixed(4)}, {marker.lng.toFixed(4)}
                       </p>
                     </div>
                     <div className="flex items-center gap-5 shrink-0 text-right">
                       <div>
-                        <div className="text-[10px] uppercase text-gray-400">Thermal Power</div>
+                        <div className="text-[10px] uppercase text-gray-400">{tr("Daya Termal", "Thermal Power")}</div>
                         <div className="text-sm font-bold text-gray-900">{marker.frp.toFixed(1)} MW</div>
                       </div>
                       <div>
-                        <div className="text-[10px] uppercase text-gray-400">Confidence</div>
+                        <div className="text-[10px] uppercase text-gray-400">{tr("Keyakinan", "Confidence")}</div>
                         <div className="text-sm font-bold text-gray-900">{marker.confidenceLabel ?? "—"}</div>
                       </div>
                     </div>
@@ -473,7 +492,10 @@ function AreaDetailPanel({
               </ul>
             )}
             <p className="text-xs text-gray-400 mt-3">
-              Menampilkan {filteredMarkers.length} dari {areaMarkers.length} deteksi tercatat untuk area ini.
+              {tr(
+                `Menampilkan ${filteredMarkers.length} dari ${areaMarkers.length} deteksi tercatat untuk area ini.`,
+                `Showing ${filteredMarkers.length} of ${areaMarkers.length} recorded detections for this area.`
+              )}
             </p>
           </div>
         )}
@@ -483,15 +505,18 @@ function AreaDetailPanel({
             <div>
               <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2 mb-1">
                 <span className="material-symbols-outlined text-[18px] text-gray-500">report</span>
-                Rencana Tindak Lanjut &amp; Analisis Klaster
+                {tr("Rencana Tindak Lanjut & Analisis Klaster", "Follow-up Plan & Cluster Analysis")}
               </h3>
               <p className="text-xs text-gray-500 mb-3">
-                Kriteria: <span className="font-mono">{area.attentionCriteria}</span>
+                {tr("Kriteria", "Criteria")}: <span className="font-mono">{area.attentionCriteria}</span>
               </p>
               <p className="text-sm text-gray-700 mb-2">
-                Wilayah ini dikategorikan sebagai{" "}
-                <Badge tone={area.priorityTier}>{style.label}</Badge> berdasarkan
-                konvergensi deteksi sensor berikut. Ini bukan konfirmasi kebakaran.
+                {tr("Wilayah ini dikategorikan sebagai", "This area is classed as")}{" "}
+                <Badge tone={area.priorityTier}>{tr(...style.label)}</Badge>{" "}
+                {tr(
+                  "berdasarkan konvergensi deteksi sensor berikut. Ini bukan konfirmasi kebakaran.",
+                  "based on the sensor detections below. This is not a fire confirmation."
+                )}
               </p>
             </div>
 
@@ -499,46 +524,51 @@ function AreaDetailPanel({
               <div className="border border-gray-100 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="material-symbols-outlined text-[16px] text-[#f04438]">local_fire_department</span>
-                  <span className="text-sm font-semibold text-gray-900">Deteksi Berulang</span>
+                  <span className="text-sm font-semibold text-gray-900">{tr("Deteksi Berulang", "Repeated Detections")}</span>
                 </div>
                 <p className="text-xs text-gray-600">
-                  Hotspot terdeteksi pada {area.activeDays ?? "—"} hari aktif
-                  {area.consecutiveActiveDays && area.consecutiveActiveDays > 0
-                    ? ` (${area.consecutiveActiveDays} hari berturut-turut)`
-                    : ""}
-                  , dari {area.firstDate} hingga {area.lastDate}.
+                  {tr(
+                    `Titik panas terdeteksi pada ${area.activeDays ?? "—"} hari aktif${area.consecutiveActiveDays && area.consecutiveActiveDays > 0 ? ` (${area.consecutiveActiveDays} hari berturut-turut)` : ""}, dari ${area.firstDate} hingga ${area.lastDate}.`,
+                    `Hotspots detected on ${area.activeDays ?? "—"} active days${area.consecutiveActiveDays && area.consecutiveActiveDays > 0 ? ` (${area.consecutiveActiveDays} in a row)` : ""}, from ${area.firstDate} to ${area.lastDate}.`
+                  )}
                 </p>
               </div>
               <div className="border border-gray-100 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="material-symbols-outlined text-[16px] text-emerald-600">check_circle</span>
-                  <span className="text-sm font-semibold text-gray-900">Sensor Agreement</span>
+                  <span className="text-sm font-semibold text-gray-900">{tr("Kesesuaian Sensor", "Sensor Agreement")}</span>
                 </div>
                 <p className="text-xs text-gray-600">
                   {areaMarkers.length > 0
-                    ? `Konfirmasi lintas sensor MODIS dan VIIRS pada ${matchedCount} dari ${areaMarkers.length} deteksi (${sensorAgreementPct}%).`
-                    : "Belum ada deteksi untuk dibandingkan antar sensor."}
+                    ? tr(
+                        `Terdeteksi MODIS dan VIIRS sekaligus pada ${matchedCount} dari ${areaMarkers.length} deteksi (${sensorAgreementPct}%).`,
+                        `Seen by both MODIS and VIIRS in ${matchedCount} of ${areaMarkers.length} detections (${sensorAgreementPct}%).`
+                      )
+                    : tr("Belum ada deteksi untuk dibandingkan antar sensor.", "No detections to compare across sensors yet.")}
                 </p>
               </div>
               <p className="text-xs text-gray-400">
-                Indeks bahan bakar kering (FFMC) belum tersedia pada backend — tidak ditampilkan.
+                {tr("Indeks bahan bakar kering (FFMC) belum tersedia — tidak ditampilkan.", "The fine-fuel moisture index (FFMC) isn't available yet — not shown.")}
               </p>
             </div>
 
             <div>
-              <h4 className="text-xs font-bold text-gray-700 uppercase mb-2">Rekomendasi Langkah Berikutnya</h4>
+              <h4 className="text-xs font-bold text-gray-700 uppercase mb-2">{tr("Rekomendasi Langkah Berikutnya", "Recommended Next Steps")}</h4>
               <ul className="space-y-2 text-sm text-gray-700">
                 <li className="flex items-start gap-2">
                   <span className="material-symbols-outlined text-[16px] text-emerald-600 mt-0.5">task_alt</span>
-                  Rekomendasikan verifikasi lapangan sebelum tindak lanjut.
+                  {tr("Rekomendasikan verifikasi lapangan sebelum tindak lanjut.", "Recommend field verification before acting.")}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="material-symbols-outlined text-[16px] text-blue-600 mt-0.5">satellite_alt</span>
-                  Pantau kelanjutan deteksi sensor MODIS/VIIRS untuk konfirmasi tambahan.
+                  {tr("Pantau kelanjutan deteksi sensor MODIS/VIIRS untuk konfirmasi tambahan.", "Keep watching MODIS/VIIRS detections for further evidence.")}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="material-symbols-outlined text-[16px] text-gray-500 mt-0.5">forward_to_inbox</span>
-                  Teruskan temuan ke otoritas lapangan (BPBD/Manggala Agni) untuk keputusan tindak lanjut selanjutnya.
+                  {tr(
+                    "Teruskan temuan ke otoritas lapangan (BPBD/Manggala Agni) untuk keputusan tindak lanjut selanjutnya.",
+                    "Pass findings to field authorities (BPBD/Manggala Agni) for the follow-up decision."
+                  )}
                 </li>
               </ul>
             </div>
@@ -550,11 +580,13 @@ function AreaDetailPanel({
 }
 
 function PriorityAreasPageContent() {
+  const { tr, language } = useTranslation();
   const searchParams = useSearchParams();
   const activeRegion = getRegionOption(searchParams.get("region"));
   const activeRange = getRangeOption(searchParams.get("range"));
   const archiveRange = isArchiveRange(searchParams.get("range"));
   const liveWindow = liveWindowFor(searchParams.get("range"));
+  const periodLabel = archiveRange ? tr("24 Jam Terakhir", "Last 24 Hours") : labelOf(activeRange, language);
 
   const { data, error, loading, refresh } = useLiveHotspots(liveWindow, { province: activeRegion.provinsi });
   const meta = data?.meta ?? null;
@@ -598,15 +630,17 @@ function PriorityAreasPageContent() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-2">
           <div>
             <div className="flex items-center gap-2 text-sm text-gray-500 font-medium mb-1">
-              <span>Areas of Attention & Priority</span>
+              <span>{tr("Area Perhatian & Prioritas", "Areas of Attention & Priority")}</span>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Priority Areas</h1>
-            <p className="text-xs text-gray-400 max-w-2xl mt-1.5">
-              Skor = formula deterministik (50% attention score + 30% tren pertumbuhan + 20% jumlah deteksi), bukan
-              AI atau model prediktif. Attention score sendiri = 45% FRP + 30% persistensi + 25% jumlah deteksi.
-              Bobot-bobot ini adalah default rekayasa untuk memberi sebaran High/Medium/Low yang wajar, belum
-              divalidasi terhadap kriteria instansi pemadam kebakaran sungguhan — perlakukan sebagai urutan
-              relatif untuk triase, bukan skor risiko yang terkalibrasi.
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{tr("Area Prioritas", "Priority Areas")}</h1>
+            <p className="text-xs text-gray-500 max-w-2xl mt-1.5">
+              {tr(
+                "Urutan area yang sebaiknya dicek lebih dulu. Ini bukan ukuran risiko kebakaran.",
+                "Areas worth checking first, in order. This is not a fire-risk measure."
+              )}{" "}
+              <Link href={`${withFilters("/data-model", searchParams)}#skor-prioritas`} className="font-semibold text-blue-600 hover:underline">
+                {tr("Cara skornya dihitung", "How the score works")} →
+              </Link>
             </p>
           </div>
           <button
@@ -615,7 +649,7 @@ function PriorityAreasPageContent() {
             disabled={loading}
             className="h-9 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium text-blue-600 shadow-sm hover:bg-gray-50 disabled:text-gray-400"
           >
-            Refresh
+            {tr("Muat ulang", "Refresh")}
           </button>
         </div>
 
@@ -627,13 +661,13 @@ function PriorityAreasPageContent() {
             {error
               ? error
               : loading
-                ? (windowLoadingNote(liveWindow) ?? "NASA live → Python processing…")
+                ? (windowLoadingNote(liveWindow, language) ?? tr("Memproses data live NASA…", "NASA live → Python processing…"))
                 : meta
-                  ? `${areas.length.toLocaleString()} area • diperbarui ${new Date(meta.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                  ? `${areas.length.toLocaleString()} ${tr("area", "areas")} • ${tr("diperbarui", "updated")} ${new Date(meta.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
                   : ""}
           </span>
           <span className="text-gray-400">
-            • Wilayah: {activeRegion.label} • Periode: {archiveRange ? "24 Jam Terakhir" : activeRange.label}
+            • {tr("Wilayah", "Region")}: {labelOf(activeRegion, language)} • {tr("Periode", "Period")}: {periodLabel}
           </span>
         </div>
 
@@ -643,16 +677,19 @@ function PriorityAreasPageContent() {
           <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-900">
             <span className="material-symbols-outlined text-amber-600 text-base shrink-0">info</span>
             <p>
-              Skor prioritas hanya bisa dihitung dari data live (24 jam, 7 hari, atau 30 hari). Arsip
-              &quot;{activeRange.label}&quot; hanya berisi total harian per grid, jadi daftar ini menampilkan 24 jam
-              terakhir.
+              {tr(
+                `Skor prioritas hanya bisa dihitung dari data live (24 jam, 7 hari, atau 30 hari). Arsip "${labelOf(activeRange, language)}" hanya berisi total harian per grid, jadi daftar ini menampilkan 24 jam terakhir.`,
+                `Priority scores can only be computed from live data (24 h, 7 days, or 30 days). The "${labelOf(activeRange, language)}" archive only holds daily totals per grid cell, so this list shows the last 24 hours.`
+              )}
             </p>
           </div>
         )}
         {meta?.markers?.truncated && (
           <p className="text-xs text-gray-500">
-            Skor area dihitung dari semua {meta.markers.total.toLocaleString()} deteksi; peta di detail area menampilkan{" "}
-            {meta.markers.shown.toLocaleString()} deteksi dengan FRP tertinggi.
+            {tr(
+              `Skor area dihitung dari semua ${meta.markers.total.toLocaleString()} deteksi; peta di detail area menampilkan ${meta.markers.shown.toLocaleString()} deteksi dengan FRP tertinggi.`,
+              `Area scores use all ${meta.markers.total.toLocaleString()} detections; the area-detail map shows the ${meta.markers.shown.toLocaleString()} highest-FRP ones.`
+            )}
           </p>
         )}
 
@@ -669,11 +706,11 @@ function PriorityAreasPageContent() {
         <div className="space-y-4">
           {!loading && !error && sorted.length === 0 && (
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-10 text-center text-sm text-gray-500">
-              Tidak ada area dengan deteksi pada periode ini.
+              {tr("Tidak ada area dengan deteksi pada periode ini.", "No areas with detections in this period.")}
             </div>
           )}
           {sorted.map((area) => (
-            <AreaCard key={area.areaId} area={area} onOpenDetail={setSelectedAreaId} />
+            <AreaCard key={area.areaId} area={area} onOpenDetail={setSelectedAreaId} periodLabel={periodLabel.toLowerCase()} />
           ))}
         </div>
       </div>

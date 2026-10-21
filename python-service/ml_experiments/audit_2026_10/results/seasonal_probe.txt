@@ -1,0 +1,38 @@
+test cell-days: 429865 years 2016-2025
+production baseline available (n>=2): 0.999 | with n>=10: 0.996
+seasonal baseline available (>=10 days, >=3 yrs in month+-1): 0.961
+
+on cell-days where both are available (n=413230): prod flag 3.182%, seasonal flag 3.749%, raw agreement 98.271%, chance agreement 93.308%, Cohen kappa 0.742
+
+== flags by calendar month ==
+       cell_days  prod_flags  seas_flags  prod_share_of_flags  seas_share_of_flags  share_of_cell_days  prod_rate  seas_rate
+month                                                                                                                       
+1          12067         284         554                0.021                0.036               0.028      0.024      0.046
+2          14457         305         618                0.022                0.040               0.034      0.021      0.043
+3          16559         418         818                0.031                0.053               0.039      0.025      0.049
+4          15148         237         710                0.017                0.046               0.035      0.016      0.047
+5          17401         188         770                0.014                0.050               0.040      0.011      0.044
+6          22843         302         684                0.022                0.044               0.053      0.013      0.030
+7          44265         894        1273                0.065                0.082               0.103      0.020      0.029
+8          76627        2532        2552                0.185                0.165               0.178      0.033      0.033
+9          92042        4352        3640                0.318                0.235               0.214      0.047      0.040
+10         75911        3233        2773                0.236                0.179               0.177      0.043      0.037
+11         31219         807         777                0.059                0.050               0.073      0.026      0.025
+12         11326         152         321                0.011                0.021               0.026      0.013      0.028
+
+Aug-Oct share of prod flags: 73.8%; of seasonal flags: 57.9%; of all cell-days: 56.9%
+
+== by test year ==
+      prod_rate  seas_rate  events
+Y                                 
+2016      0.028      0.042  109230
+2017      0.026      0.028   83364
+2018      0.031      0.035  176368
+2019      0.050      0.048  409751
+2020      0.026      0.029   80380
+2021      0.019      0.029   60319
+2022      0.019      0.028   49429
+2023      0.034      0.036  230540
+2024      0.026      0.031   92683
+2025      0.030      0.036   86278
+Spearman(yearly events, prod rate): 0.94  seasonal: 0.84

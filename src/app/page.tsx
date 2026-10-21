@@ -45,11 +45,15 @@ const SATELLITE_POINTS = [
 ];
 
 function HeroVisual() {
+  const { tr } = useTranslation();
   return (
     <div
       className="relative mx-auto w-full max-w-[420px] aspect-square"
       role="img"
-      aria-label="Ilustrasi jaringan pemantauan satelit yang menyorot beberapa titik panas dan satu laporan komunitas di atas grid wilayah"
+      aria-label={tr(
+        "Ilustrasi jaringan pemantauan satelit yang menyorot beberapa titik panas dan satu laporan komunitas di atas grid wilayah",
+        "Illustration of a satellite monitoring network highlighting several hotspots and one community report over a regional grid"
+      )}
     >
       <svg viewBox="0 0 400 400" className="w-full h-full">
         <defs>
@@ -154,7 +158,7 @@ async function fetchReports(signal?: AbortSignal): Promise<CommunityReport[]> {
 }
 
 export default function LandingPage() {
-  const { t, language } = useTranslation();
+  const { t, tr, language } = useTranslation();
   const [markers, setMarkers] = useState<HotspotMarker[]>([]);
   const [totalDetections, setTotalDetections] = useState(0);
   const [areas, setAreas] = useState<AreaSummary[]>([]);
@@ -398,7 +402,7 @@ export default function LandingPage() {
           <p className="text-sm text-[var(--color-text-muted)]">{t("recentReports.loading")}</p>
         ) : reportsError ? (
           <div className="rounded-2xl border border-[var(--color-border)] bg-white p-7 text-sm text-[var(--color-text-muted)]">
-            {reportsError}
+            {tr("Gagal memuat laporan warga.", "Failed to load citizen reports.")}
           </div>
         ) : recentReports.length === 0 ? (
           <div className="rounded-2xl border border-[var(--color-border)] bg-white p-7 text-sm text-[var(--color-text-muted)]">
@@ -412,7 +416,7 @@ export default function LandingPage() {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={`/api/reports/${report.id}/photo`}
-                    alt="Foto lampiran laporan warga"
+                    alt={tr("Foto lampiran laporan warga", "Photo attached to a citizen report")}
                     className="w-full h-36 object-cover bg-[var(--color-primary-light)]"
                   />
                 ) : (

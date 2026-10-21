@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLocationState } from "../lib/useLocation";
 import type { CommunityReport, HotspotApiResponse, HotspotMarker } from "@/types";
+import MapLoadingText from "@/components/map/MapLoadingText";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 const FireMap = dynamic(() => import("@/components/map/FireMap"), {
   ssr: false,
@@ -12,7 +14,7 @@ const FireMap = dynamic(() => import("@/components/map/FireMap"), {
     <div className="h-full w-full flex items-center justify-center bg-gray-50">
       <span className="text-xs font-medium text-emerald-800 animate-pulse flex items-center gap-2">
         <span className="material-symbols-outlined text-[18px] animate-spin">refresh</span>
-        Memuat peta…
+        <MapLoadingText />
       </span>
     </div>
   ),
@@ -28,6 +30,7 @@ const DEFAULT_PRESET_LOCATION = { lat: -3.125, lon: 114.15 };
  * on the Community homepage should point to, not /map.
  */
 export default function CommunityMapPage() {
+  const { tr } = useTranslation();
   const { fix } = useLocationState();
   const [markers, setMarkers] = useState<HotspotMarker[]>([]);
   const [reports, setReports] = useState<CommunityReport[]>([]);
@@ -80,9 +83,15 @@ export default function CommunityMapPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-base font-bold text-[#123027]">Peta Pemantauan</h1>
+          <h1 className="text-base font-bold text-[#123027]">{tr("Peta Pemantauan", "Monitoring Map")}</h1>
           <p className="text-xs text-[var(--community-ink-muted)] mt-0.5">
-            {loading ? "Memuat deteksi satelit & laporan warga…" : `${markers.length} deteksi satelit · ${reports.length} laporan warga`}
+            {loading
+              ? tr("Memuat deteksi satelit & laporan warga…", "Loading satellite detections & citizen reports…")
+              : tr(
+                  `${markers.length} deteksi satelit · ${reports.length} laporan warga`,
+                  `${markers.length} satellite detections · ${reports.length} citizen reports`
+                )}
+            {!fix && ` · ${tr("contoh: sekitar Pulang Pisau (lokasi belum diatur)", "example: around Pulang Pisau (location not set)")}`}
           </p>
         </div>
         <Link
@@ -90,7 +99,7 @@ export default function CommunityMapPage() {
           className="shrink-0 flex items-center gap-1.5 rounded-full bg-[#ba1a1a] hover:bg-[#a01616] text-white text-xs font-bold px-3.5 py-2 transition active:scale-95"
         >
           <span className="material-symbols-outlined text-[16px]">photo_camera</span>
-          Lapor
+          {tr("Lapor", "Report")}
         </Link>
       </div>
 
@@ -109,15 +118,17 @@ export default function CommunityMapPage() {
             description: r.description,
             createdAt: r.createdAt,
           }))}
-          userLocation={{ lat: activeLat, lng: activeLon, label: "Lokasimu", radiusKm: 10 }}
+          userLocation={fix ? { lat: fix.lat, lng: fix.lon, label: tr("Lokasimu", "Your location"), radiusKm: 10 } : undefined}
           actionHref={(marker) => `/community/alert/${marker.id}`}
-          actionLabel="Lihat detail"
+          actionLabel={tr("Lihat detail", "View details")}
         />
       </div>
 
       <p className="text-[11px] text-[var(--community-ink-muted)] leading-relaxed px-1">
-        🔥 pasangan MODIS+VIIRS yang cocok · ◯ hanya MODIS · ▢ hanya VIIRS · 👤 laporan warga. Deteksi satelit
-        menandai anomali suhu, bukan konfirmasi kebakaran aktif.
+        {tr(
+          "🔥 pasangan MODIS+VIIRS yang cocok · ★ hanya MODIS · ⬡ hanya VIIRS · 👤 laporan warga. Deteksi satelit menandai anomali suhu, bukan konfirmasi kebakaran aktif.",
+          "🔥 matched MODIS+VIIRS pair · ★ MODIS only · ⬡ VIIRS only · 👤 citizen report. Satellite detections mark temperature anomalies, not confirmed active fires."
+        )}
       </p>
     </div>
   );

@@ -46,26 +46,41 @@ function formatKm(km: number) {
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
 }
 
-export function computeAreaStatus(input: AreaStatusInput): AreaStatusResult {
+export function computeAreaStatus(input: AreaStatusInput, language: "id" | "en" = "id"): AreaStatusResult {
+  const en = language === "en";
   const reasons: AreaStatusReason[] = [];
   const { nearestHotspotKm, nearestVerifiedReportKm, nearestUpwindHotspotKm, usAqi } = input;
 
   if (nearestVerifiedReportKm !== null && nearestVerifiedReportKm <= STATUS_NEAR_KM) {
-    reasons.push({ level: "awas", text: `Laporan warga terverifikasi petugas ${formatKm(nearestVerifiedReportKm)} dari lokasimu` });
+    const km = formatKm(nearestVerifiedReportKm);
+    reasons.push({
+      level: "awas",
+      text: en ? `Officer-verified citizen report ${km} from you` : `Laporan warga terverifikasi petugas ${km} dari lokasimu`,
+    });
   }
   if (usAqi !== null) {
     const aqi = Math.round(usAqi);
-    if (aqi > 300) reasons.push({ level: "awas", text: `Kualitas udara Berbahaya (US AQI ${aqi})` });
-    else if (aqi > 200) reasons.push({ level: "siaga", text: `Kualitas udara Sangat tidak sehat (US AQI ${aqi})` });
-    else if (aqi > 150) reasons.push({ level: "waspada", text: `Kualitas udara Tidak sehat (US AQI ${aqi})` });
+    if (aqi > 300) reasons.push({ level: "awas", text: en ? `Hazardous air quality (US AQI ${aqi})` : `Kualitas udara Berbahaya (US AQI ${aqi})` });
+    else if (aqi > 200)
+      reasons.push({ level: "siaga", text: en ? `Very unhealthy air quality (US AQI ${aqi})` : `Kualitas udara Sangat tidak sehat (US AQI ${aqi})` });
+    else if (aqi > 150)
+      reasons.push({ level: "waspada", text: en ? `Unhealthy air quality (US AQI ${aqi})` : `Kualitas udara Tidak sehat (US AQI ${aqi})` });
   }
-  if (nearestHotspotKm !== null && nearestHotspotKm <= STATUS_NEAR_KM) {
-    reasons.push({ level: "siaga", text: `Titik panas satelit ${formatKm(nearestHotspotKm)} dari lokasimu` });
-  } else if (nearestHotspotKm !== null && nearestHotspotKm <= STATUS_RADIUS_KM) {
-    reasons.push({ level: "waspada", text: `Titik panas satelit ${formatKm(nearestHotspotKm)} dari lokasimu` });
+  if (nearestHotspotKm !== null && nearestHotspotKm <= STATUS_RADIUS_KM) {
+    const km = formatKm(nearestHotspotKm);
+    reasons.push({
+      level: nearestHotspotKm <= STATUS_NEAR_KM ? "siaga" : "waspada",
+      text: en ? `Satellite hotspot ${km} from you` : `Titik panas satelit ${km} dari lokasimu`,
+    });
   }
   if (nearestUpwindHotspotKm !== null && nearestUpwindHotspotKm <= STATUS_UPWIND_KM) {
-    reasons.push({ level: "waspada", text: `Titik panas ${formatKm(nearestUpwindHotspotKm)} searah angin — asapnya bisa terbawa ke lokasimu` });
+    const km = formatKm(nearestUpwindHotspotKm);
+    reasons.push({
+      level: "waspada",
+      text: en
+        ? `Hotspot ${km} upwind — its smoke may drift to you`
+        : `Titik panas ${km} searah angin — asapnya bisa terbawa ke lokasimu`,
+    });
   }
 
   const level = reasons.reduce<AreaStatusLevel>((max, r) => (RANK[r.level] > RANK[max] ? r.level : max), "aman");
@@ -78,3 +93,28 @@ export const STATUS_LABEL: Record<AreaStatusLevel, string> = {
   siaga: "Siaga",
   awas: "Awas",
 };
+
+export const STATUS_LABEL_EN: Record<AreaStatusLevel, string> = {
+  aman: "Safe",
+  waspada: "Watch",
+  siaga: "Alert",
+  awas: "Danger",
+};
+
+export function statusLabel(level: AreaStatusLevel, language: "id" | "en"): string {
+  return (language === "en" ? STATUS_LABEL_EN : STATUS_LABEL)[level];
+}
+
+/** python-service weather.py returns US AQI categories in Indonesian; this maps them for English. */
+const AQI_CATEGORY_EN: Record<string, string> = {
+  Baik: "Good",
+  Sedang: "Moderate",
+  "Tidak sehat (kelompok sensitif)": "Unhealthy for sensitive groups",
+  "Tidak sehat": "Unhealthy",
+  "Sangat tidak sehat": "Very unhealthy",
+  Berbahaya: "Hazardous",
+};
+
+export function aqiCategoryLabel(category: string, language: "id" | "en"): string {
+  return language === "en" ? (AQI_CATEGORY_EN[category] ?? category) : category;
+}

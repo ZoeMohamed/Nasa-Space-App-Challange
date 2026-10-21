@@ -134,9 +134,10 @@ export function bearingDeg(from: LatLon, to: LatLon): number {
 }
 
 const COMPASS_ID = ["Utara", "Timur Laut", "Timur", "Tenggara", "Selatan", "Barat Daya", "Barat", "Barat Laut"];
+const COMPASS_EN = ["North", "Northeast", "East", "Southeast", "South", "Southwest", "West", "Northwest"];
 
-export function compassLabel(deg: number): string {
-  return COMPASS_ID[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+export function compassLabel(deg: number, language: "id" | "en" = "id"): string {
+  return (language === "en" ? COMPASS_EN : COMPASS_ID)[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
 }
 
 /** Smallest absolute difference between two compass bearings (0–180). */

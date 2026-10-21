@@ -115,13 +115,24 @@ def test_extended_window_result_is_reused_while_chunks_are_unchanged(monkeypatch
         return original(*args, **kwargs)
 
     monkeypatch.setattr(live, "build_live_result", counting)
+    monkeypatch.setattr(live, "_window_results", {})
+    monkeypatch.setattr(live, "_window_refresh_threads", {})
     live._processed_cache.clear()
     first = live.load_live_result(map_key="k", window="7d")
     second = live.load_live_result(map_key="k", window="7d")
     assert calls["n"] == 1 and first is second
+    # Once the result expires it is still served, while a background refresh re-fetches; unchanged
+    # chunks (same frame objects) reuse the processed result, a refetched chunk rebuilds it.
+    live._window_results[("7d", False)] = (0.0, first)
+    assert live.load_live_result(map_key="k", window="7d") is first
+    live._window_refresh_threads[("7d", False)].join(5)
+    assert calls["n"] == 1
     fetched["frames"] = [frame.copy()]  # a refetched chunk is a new object
-    live.load_live_result(map_key="k", window="7d")
+    live._window_results[("7d", False)] = (0.0, first)
+    assert live.load_live_result(map_key="k", window="7d") is first
+    live._window_refresh_threads[("7d", False)].join(5)
     assert calls["n"] == 2
+    assert live.load_live_result(map_key="k", window="7d") is not first
 
 
 def test_render_view_filters_before_cap_and_reports_totals():

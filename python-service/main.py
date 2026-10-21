@@ -2,22 +2,28 @@ import base64
 import binascii
 import os
 
+import pandas as pd
+
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from fire_pipeline import reports as reports_store
-from fire_pipeline.admin_lookup import get_admin_index
+from fire_pipeline.admin_lookup import get_admin_index, parse_polygon
 from fire_pipeline.correlation import correlate_report
-from fire_pipeline.historical import load_calendar_summary, load_map_summary
+from fire_pipeline.historical import available_references, compare_live_to_baseline, load_calendar_summary, load_map_summary
 from fire_pipeline.live import (
+    REFERENCE_PLATFORMS,
     WINDOW_HOURS_BY_KEY,
     LiveDataError,
     default_historical_db_path,
     enabled_windows,
     load_live_hotspots,
+    ensure_reference_counts,
+    load_live_result,
     start_cache_warmer,
 )
+from fire_pipeline.live_calendar import live_months
 from fire_pipeline.weather import fetch_weather_and_air_quality
 
 app = FastAPI(title="AGNIBHUMI Live Processing API", version="1.1.0")
@@ -147,6 +153,14 @@ def live_hotspots(
         raise HTTPException(status_code=status, detail=str(exc)) from exc
 
 
+def _polygon(text: str | None):
+    """Parse a drawn area of interest ("lat,lon;lat,lon;..."); 422 with the reason if malformed."""
+    try:
+        return parse_polygon(text)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 @app.get("/api/historical/calendar")
 def historical_calendar(
     min_lat: float | None = None,
@@ -155,6 +169,7 @@ def historical_calendar(
     max_lon: float | None = None,
     province: str | None = None,
     admin_code: str | None = None,
+    polygon: str | None = None,
 ) -> dict:
     """Monthly aggregated historical totals plus per-grid-cell monthly
     baseline stats, read from the offline historical SQLite store (see
@@ -166,7 +181,7 @@ def historical_calendar(
     bounds = None
     if None not in (min_lat, max_lat, min_lon, max_lon):
         bounds = (min_lat, max_lat, min_lon, max_lon)
-    return load_calendar_summary(default_historical_db_path(), bounds=bounds, province=province, admin_code=admin_code)
+    return load_calendar_summary(default_historical_db_path(), bounds=bounds, province=province, admin_code=admin_code, polygon=_polygon(polygon))
 
 
 @app.get("/api/historical/map")
@@ -190,6 +205,86 @@ def historical_map(
         return load_map_summary(default_historical_db_path(), days=days, bounds=bounds, start_date=start_date, end_date=end_date, province=province, admin_code=admin_code)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid historical map date range") from exc
+
+
+@app.get("/api/historical/unusual")
+def historical_unusual(
+    map_key: str | None = Header(default=None, alias="X-FIRMS-Map-Key"),
+    min_lat: float | None = None,
+    max_lat: float | None = None,
+    min_lon: float | None = None,
+    max_lon: float | None = None,
+    province: str | None = None,
+    admin_code: str | None = None,
+    polygon: str | None = None,
+) -> dict:
+    """Live 24 h grid cells vs their own archive daily baseline, on a comparable sensor population.
+
+    The reference VIIRS platform is the first of REFERENCE_PLATFORMS that is available BOTH in this
+    live snapshot (its FIRMS feed and MODIS_NRT answered) and in the archive (a table exists). When
+    none is, the answer is `comparable: false` with the reason -- a count from a different VIIRS
+    satellite is never compared against a Suomi-NPP baseline, because their daily counts differ.
+    """
+    area = _polygon(polygon)
+    bounds = None
+    if None not in (min_lat, max_lat, min_lon, max_lon):
+        bounds = (min_lat, max_lat, min_lon, max_lon)
+    try:
+        result = ensure_reference_counts(load_live_result(map_key, window="24h"))
+    except LiveDataError as exc:
+        status = 503 if "not configured" in str(exc) else 502
+        raise HTTPException(status_code=status, detail=str(exc)) from exc
+    sqlite_path = default_historical_db_path()
+    live_populations = result.meta.get("referencePopulations", {})
+    archive_refs = available_references(sqlite_path)
+    chosen = next((p for p in REFERENCE_PLATFORMS if live_populations.get(p, {}).get("available") and p in archive_refs), None)
+    context = {
+        "windowHours": 24,
+        "generatedAt": result.meta.get("generatedAt"),
+        "livePopulations": live_populations,
+        "archiveReferences": archive_refs,
+    }
+    if chosen is None:
+        reasons = []
+        for platform in REFERENCE_PLATFORMS:
+            live_info = live_populations.get(platform, {})
+            if not live_info.get("available"):
+                reasons.append(f"{platform}: live {live_info.get('reason') or 'unavailable'}")
+            elif platform not in archive_refs:
+                reasons.append(f"{platform}: no archive table built")
+        return {"comparable": False, "reason": "; ".join(reasons), "summary": None, "cells": [], **context}
+    # Seasonal baseline for the month the live window ends in (UTC).
+    month = pd.Timestamp(result.meta.get("generatedAt") or pd.Timestamp.now(tz="UTC")).month
+    comparison = compare_live_to_baseline(result.areas, sqlite_path, chosen, bounds=bounds, province=province, admin_code=admin_code, month=month, polygon=area)
+    return {**comparison, **context}
+
+
+@app.get("/api/historical/live-months")
+def historical_live_months(
+    map_key: str | None = Header(default=None, alias="X-FIRMS-Map-Key"),
+    min_lat: float | None = None,
+    max_lat: float | None = None,
+    min_lon: float | None = None,
+    max_lon: float | None = None,
+    province: str | None = None,
+    admin_code: str | None = None,
+    polygon: str | None = None,
+) -> dict:
+    """Calendar months after the archive's end, from the longest enabled live window, on the
+    archive's definitions (see fire_pipeline/live_calendar.py). Slow only on a cold live cache."""
+    area = _polygon(polygon)
+    bounds = None
+    if None not in (min_lat, max_lat, min_lon, max_lon):
+        bounds = (min_lat, max_lat, min_lon, max_lon)
+    windows = [w for w in ("30d", "7d") if w in enabled_windows()]
+    if not windows:
+        return {"available": False, "reason": "no multi-day live window enabled (LIVE_WINDOWS)", "months": [], "monthToDate": None}
+    try:
+        result = load_live_result(map_key, window=windows[0])
+    except LiveDataError as exc:
+        status = 503 if "not configured" in str(exc) else 502
+        raise HTTPException(status_code=status, detail=str(exc)) from exc
+    return live_months(result, default_historical_db_path(), bounds=bounds, province=province, admin_code=admin_code, polygon=area)
 
 
 @app.get("/api/weather")

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { withFilters } from "@/lib/filters";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 /**
  * Nav structure, order, labels and icons are taken from the real Dashboard sidebar instance
@@ -36,17 +37,18 @@ import { withFilters } from "@/lib/filters";
  * yet. Placed in the primary group since it's an operational workflow screen like Dashboard /
  * Explore Map, not a reference/database screen.
  */
+// The burning activity calendar is the core of the Space Apps brief, so it leads the menu.
 const PRIMARY_LINKS = [
-  { label: "Dashboard", icon: "dashboard", href: "/operator" },
-  { label: "Explore Map", icon: "map", href: "/map" },
-  { label: "Citizen Reports", icon: "forum", href: "/citizen-reports" },
+  { label: "Burning Activity Calendar", labelId: "Kalender Kebakaran", icon: "calendar_month", href: "/calendar" },
+  { label: "Dashboard", labelId: "Dasbor", icon: "dashboard", href: "/operator" },
+  { label: "Explore Map", labelId: "Jelajahi Peta", icon: "map", href: "/map" },
+  { label: "Citizen Reports", labelId: "Laporan Warga", icon: "forum", href: "/citizen-reports" },
 ];
 
 const DATABASE_LINKS = [
-  { label: "Analytics", icon: "monitoring", href: "/analytics" },
-  { label: "Historical Insights", icon: "history", href: "/calendar" },
-  { label: "Areas of Attention", icon: "crisis_alert", href: "/priority-areas" },
-  { label: "About data", icon: "menu_book", href: "/data-model" },
+  { label: "Analytics", labelId: "Analitik", icon: "monitoring", href: "/analytics" },
+  { label: "Areas of Attention", labelId: "Area Prioritas", icon: "crisis_alert", href: "/priority-areas" },
+  { label: "About data", labelId: "Tentang Data", icon: "menu_book", href: "/data-model" },
 ];
 
 function NavLink({ label, icon, href, active }: { label: string; icon: string; href: string; active: boolean }) {
@@ -66,30 +68,33 @@ function NavLink({ label, icon, href, active }: { label: string; icon: string; h
 }
 
 function SidebarNav({ links }: { links: typeof PRIMARY_LINKS }) {
+  const { tr } = useTranslation();
   const pathname = usePathname();
   // Region/range live in the URL; carry them to the next page so the TopBar choice sticks.
   const searchParams = useSearchParams();
   return (
     <>
-      {links.map(({ label, icon, href }) => (
-        <NavLink key={label} label={label} icon={icon} href={withFilters(href, searchParams)} active={pathname === href} />
+      {links.map(({ label, labelId, icon, href }) => (
+        <NavLink key={label} label={tr(labelId, label)} icon={icon} href={withFilters(href, searchParams)} active={pathname === href} />
       ))}
     </>
   );
 }
 
 function SidebarNavFallback({ links }: { links: typeof PRIMARY_LINKS }) {
+  const { tr } = useTranslation();
   const pathname = usePathname();
   return (
     <>
-      {links.map(({ label, icon, href }) => (
-        <NavLink key={label} label={label} icon={icon} href={href} active={pathname === href} />
+      {links.map(({ label, labelId, icon, href }) => (
+        <NavLink key={label} label={tr(labelId, label)} icon={icon} href={href} active={pathname === href} />
       ))}
     </>
   );
 }
 
 export default function Sidebar() {
+  const { tr } = useTranslation();
 
   return (
     <aside className="w-[230px] bg-[var(--color-sidebar)] flex flex-col justify-between h-full shrink-0 overflow-y-auto custom-scroll">
@@ -117,7 +122,7 @@ export default function Sidebar() {
           {/* Database section */}
           <div className="flex flex-col gap-1 px-4">
             <div className="px-2 py-1 text-xs font-medium tracking-wide text-[var(--color-sidebar-foreground)]/60">
-              DATABASE
+              {tr("BASIS DATA", "DATABASE")}
             </div>
             <nav className="flex flex-col gap-1">
               <Suspense fallback={<SidebarNavFallback links={DATABASE_LINKS} />}>
@@ -137,7 +142,7 @@ export default function Sidebar() {
           className="flex items-center gap-1 text-sm font-medium text-[var(--color-sidebar-foreground)]/80 hover:text-[var(--color-sidebar-foreground)]"
         >
           <span className="material-symbols-outlined text-[16px]">chevron_left</span>
-          Back to main page
+          {tr("Kembali ke halaman utama", "Back to main page")}
         </Link>
       </div>
     </aside>

@@ -9,6 +9,7 @@ import {
   rememberLocationGrantedOnce,
   saveManualFix,
 } from "./geo";
+import { useTranslation, pick } from "@/lib/i18n/LanguageContext";
 
 export interface LocationState {
   geoStatus: GeoPermissionStatus;
@@ -29,9 +30,37 @@ export interface LocationState {
  * Beranda vanished on navigation). Two-tier GPS: high accuracy with a 6 s timeout, then
  * network/Wi-Fi positioning — common on desktops without GPS hardware.
  */
+const LOCATION_ERRORS = {
+  unsupported: [
+    "Perangkat atau browser ini tidak mendukung layanan lokasi. Cari nama tempat Anda di bawah.",
+    "This device or browser doesn't support location services. Search for your place below.",
+  ],
+  deniedBrowser: [
+    "Izin lokasi ditolak di browser. Izinkan akses lokasi, atau cari nama tempat Anda di bawah.",
+    "Location permission was denied in the browser. Allow location access, or search for your place below.",
+  ],
+  timeout: [
+    "Lokasi terlalu lama ditemukan. Cari nama tempat Anda di bawah.",
+    "Finding your location took too long. Search for your place below.",
+  ],
+  unavailable: [
+    "Lokasi tidak bisa ditentukan otomatis (umum di laptop/desktop). Cari nama tempat Anda di bawah.",
+    "Your location couldn't be found automatically (common on laptops/desktops). Search for your place below.",
+  ],
+  denied: [
+    "Izin lokasi ditolak. Anda tetap bisa mencari nama tempat Anda di bawah.",
+    "Location permission was denied. You can still search for your place below.",
+  ],
+} as const;
+
+type LocationErrorKey = keyof typeof LOCATION_ERRORS;
+
 function useLocationStateInternal(): LocationState {
+  const { language } = useTranslation();
   const [geoStatus, setGeoStatus] = useState<GeoPermissionStatus>("idle");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Stored as a key so the message follows the language toggle after the error happened.
+  const [errorKey, setErrorMessage] = useState<LocationErrorKey | null>(null);
+  const errorMessage = errorKey ? pick(language, LOCATION_ERRORS[errorKey][0], LOCATION_ERRORS[errorKey][1]) : null;
   const [fix, setFix] = useState<LocationFix | null>(null);
   const [ready, setReady] = useState(false);
   const didInit = useRef(false);
@@ -39,7 +68,7 @@ function useLocationStateInternal(): LocationState {
   const requestGeolocation = useCallback(() => {
     if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
       setGeoStatus("unavailable");
-      setErrorMessage("Perangkat atau browser ini tidak mendukung layanan lokasi. Cari nama tempat Anda di bawah.");
+      setErrorMessage("unsupported");
       return;
     }
 
@@ -65,14 +94,10 @@ function useLocationStateInternal(): LocationState {
         (error) => {
           if (error.code === error.PERMISSION_DENIED) {
             setGeoStatus("denied");
-            setErrorMessage("Izin lokasi ditolak di browser. Izinkan akses lokasi, atau cari nama tempat Anda di bawah.");
+            setErrorMessage("deniedBrowser");
           } else {
             setGeoStatus("unavailable");
-            setErrorMessage(
-              error.code === error.TIMEOUT
-                ? "Lokasi terlalu lama ditemukan. Cari nama tempat Anda di bawah."
-                : "Lokasi tidak bisa ditentukan otomatis (umum di laptop/desktop). Cari nama tempat Anda di bawah."
-            );
+            setErrorMessage(error.code === error.TIMEOUT ? "timeout" : "unavailable");
           }
         },
         { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 }
@@ -84,7 +109,7 @@ function useLocationStateInternal(): LocationState {
       (error) => {
         if (error.code === error.PERMISSION_DENIED) {
           setGeoStatus("denied");
-          setErrorMessage("Izin lokasi ditolak. Anda tetap bisa mencari nama tempat Anda di bawah.");
+          setErrorMessage("denied");
           return;
         }
         fallbackToLowAccuracy();

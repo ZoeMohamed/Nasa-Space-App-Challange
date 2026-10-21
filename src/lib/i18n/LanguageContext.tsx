@@ -11,6 +11,8 @@ interface LanguageContextValue {
   setLanguage: (language: Language) => void;
   toggleLanguage: () => void;
   t: (key: TranslationKey) => string;
+  /** Inline bilingual text: tr("Teks Indonesia", "English text"). */
+  tr: (id: string, en: string) => string;
 }
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
@@ -56,9 +58,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     [language]
   );
 
+  const tr = useCallback((id: string, en: string) => (language === "en" ? en : id), [language]);
+
   const value = useMemo(
-    () => ({ language, setLanguage, toggleLanguage, t }),
-    [language, setLanguage, toggleLanguage, t]
+    () => ({ language, setLanguage, toggleLanguage, t, tr }),
+    [language, setLanguage, toggleLanguage, t, tr]
   );
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
@@ -69,3 +73,10 @@ export function useTranslation() {
   if (!ctx) throw new Error("useTranslation must be used within LanguageProvider");
   return ctx;
 }
+
+/** For module-level helpers that receive the language explicitly. */
+export function pick(language: Language, id: string, en: string): string {
+  return language === "en" ? en : id;
+}
+
+export type { Language };

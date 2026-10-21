@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 export interface AreaHit {
   level: "kecamatan" | "kabupatenKota";
@@ -13,11 +14,13 @@ export interface AreaHit {
 /** Kecamatan / kabupaten-kota name search over the offline BPS boundaries (/api/region/search). */
 export default function AreaSearch({
   onPick,
-  placeholder = "Cari kabupaten/kota atau kecamatan…",
+  placeholder: placeholderProp,
 }: {
   onPick: (hit: AreaHit) => void;
   placeholder?: string;
 }) {
+  const { tr } = useTranslation();
+  const placeholder = placeholderProp ?? tr("Cari kabupaten/kota atau kecamatan…", "Search a regency/city or district…");
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<{ query: string; hits: AreaHit[] } | null>(null);
   const inputId = useId();
@@ -63,9 +66,9 @@ export default function AreaSearch({
       {trimmed.length >= 2 && (
         <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
           {!ready ? (
-            <p className="px-3 py-2 text-xs text-gray-500">Mencari…</p>
+            <p className="px-3 py-2 text-xs text-gray-500">{tr("Mencari…", "Searching…")}</p>
           ) : result.hits.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-gray-500">Tidak ditemukan.</p>
+            <p className="px-3 py-2 text-xs text-gray-500">{tr("Tidak ditemukan.", "No results.")}</p>
           ) : (
             <ul>
               {result.hits.map((hit) => (

@@ -31,7 +31,9 @@ import {
   TIME_RANGE_OPTIONS,
   getRegionOption,
   getRangeOption,
+  labelOf,
 } from "@/lib/filters";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 function useOutsideClick(ref: React.RefObject<HTMLElement | null>, onOutside: () => void) {
   useEffect(() => {
@@ -127,6 +129,7 @@ function SelectorDropdown({
 }
 
 function TopBarFallback() {
+  const { tr } = useTranslation();
   return (
     <header className="h-[78px] bg-[var(--color-sidebar)] px-6 flex items-center justify-between gap-4 shrink-0">
       <div className="relative w-[320px] shrink-0">
@@ -135,7 +138,7 @@ function TopBarFallback() {
         </span>
         <input
           type="text"
-          placeholder="Explore an area"
+          placeholder={tr("Jelajahi area", "Explore an area")}
           disabled
           className="w-full bg-white rounded-[10px] pl-10 pr-4 py-3 text-sm text-[var(--color-text-main)] outline-none"
         />
@@ -151,7 +154,7 @@ function TopBarFallback() {
           </div>
           <div className="hidden sm:flex flex-col">
             <span className="text-sm font-semibold text-[var(--color-sidebar-foreground)] leading-tight">Magnala Adi</span>
-            <span className="text-xs text-[var(--color-sidebar-foreground)]/60 leading-tight">Authorized Officer</span>
+            <span className="text-xs text-[var(--color-sidebar-foreground)]/60 leading-tight">{tr("Petugas Berwenang", "Authorized Officer")}</span>
           </div>
         </div>
       </div>
@@ -160,6 +163,7 @@ function TopBarFallback() {
 }
 
 function TopBarInner() {
+  const { tr, language } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -187,7 +191,7 @@ function TopBarInner() {
         </span>
         <input
           type="text"
-          placeholder="Explore an area"
+          placeholder={tr("Jelajahi area", "Explore an area")}
           className="w-full bg-white rounded-[10px] pl-10 pr-4 py-3 text-sm text-[var(--color-text-main)] outline-none focus:ring-2 focus:ring-emerald-400/50 transition-all"
         />
       </div>
@@ -196,20 +200,26 @@ function TopBarInner() {
       <div className="hidden lg:flex items-center gap-3 flex-1 min-w-0">
         <SelectorDropdown
           icon="location_on"
-          caption="Region"
-          activeLabel={activeRegion.label}
+          caption={tr("Wilayah", "Region")}
+          activeLabel={labelOf(activeRegion, language)}
           activeValue={activeRegion.value}
-          options={REGION_OPTIONS}
-          footnote="7 provinsi teratas = rawan karhutla. Batas provinsi BPS 2020 (34 provinsi, sebelum pemekaran Papua 2022)."
+          options={REGION_OPTIONS.map((option) => ({ value: option.value, label: labelOf(option, language) }))}
+          footnote={tr(
+            "7 provinsi teratas = rawan karhutla. Batas provinsi BPS 2020 (34 provinsi, sebelum pemekaran Papua 2022).",
+            "Top 7 = fire-prone provinces. BPS 2020 province boundaries (34 provinces, before the 2022 Papua split)."
+          )}
           onSelect={(value) => updateParam("region", value, DEFAULT_REGION)}
         />
         <SelectorDropdown
           icon="date_range"
-          caption="Time Range"
-          activeLabel={activeRange.label}
+          caption={tr("Rentang Waktu", "Time Range")}
+          activeLabel={labelOf(activeRange, language)}
           activeValue={activeRange.value}
-          options={TIME_RANGE_OPTIONS}
-          footnote="24 jam, 7 hari & 30 hari = data live NASA FIRMS. 2023–2024 = arsip harian per grid 0,25° (tanpa skor prioritas)."
+          options={TIME_RANGE_OPTIONS.map((option) => ({ value: option.value, label: labelOf(option, language) }))}
+          footnote={tr(
+            "24 jam, 7 hari & 30 hari = data live NASA FIRMS. 2023–2024 = arsip harian per grid 0,25° (tanpa skor prioritas).",
+            "24 h, 7 days & 30 days = live NASA FIRMS data. 2023–2024 = daily archive per 0.25° grid (no priority scores)."
+          )}
           onSelect={(value) => updateParam("range", value, DEFAULT_RANGE)}
         />
       </div>
@@ -217,7 +227,7 @@ function TopBarInner() {
       {/* Right actions */}
       <div className="flex items-center gap-4 shrink-0">
         <LanguageToggle className="!text-[var(--color-sidebar-foreground)]/80 !border-white/20 hover:!bg-white/10" />
-        <button type="button" aria-label="Notifications" className="text-[var(--color-sidebar-foreground)]/80 hover:text-[var(--color-sidebar-foreground)]">
+        <button type="button" aria-label={tr("Notifikasi", "Notifications")} className="text-[var(--color-sidebar-foreground)]/80 hover:text-[var(--color-sidebar-foreground)]">
           <span className="material-symbols-outlined text-[20px]">notifications</span>
         </button>
         <div className="flex items-center gap-3 border-l border-white/[0.12] pl-4">
@@ -226,7 +236,7 @@ function TopBarInner() {
           </div>
           <div className="hidden sm:flex flex-col">
             <span className="text-sm font-semibold text-[var(--color-sidebar-foreground)] leading-tight">Magnala Adi</span>
-            <span className="text-xs text-[var(--color-sidebar-foreground)]/60 leading-tight">Authorized Officer</span>
+            <span className="text-xs text-[var(--color-sidebar-foreground)]/60 leading-tight">{tr("Petugas Berwenang", "Authorized Officer")}</span>
           </div>
         </div>
       </div>

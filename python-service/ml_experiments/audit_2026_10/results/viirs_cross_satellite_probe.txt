@@ -1,0 +1,48 @@
+VIIRS_SNPP_NRT 4366 nominal+high rows in 24 h; overpass hours UTC: [4, 16, 18]
+VIIRS_NOAA20_NRT 7926 nominal+high rows in 24 h; overpass hours UTC: [4, 6, 15, 17, 18]
+VIIRS_NOAA21_NRT 8121 nominal+high rows in 24 h; overpass hours UTC: [3, 5, 6, 16, 17]
+SNPP -> nearest NOAA20: n=4359 km p10/p25/p50/p75/p90=[0.086, 0.157, 0.262, 0.552, 3.073]; time-diff of that neighbour min p50=19, share <=120 min: 70.9%
+    share with neighbour <= 0.375 km AND <= 120 min: 48.3%
+    share with neighbour <= 0.5 km AND <= 120 min: 54.4%
+    share with neighbour <= 0.75 km AND <= 120 min: 58.8%
+    share with neighbour <= 1.0 km AND <= 120 min: 60.8%
+SNPP -> nearest NOAA21: n=4363 km p10/p25/p50/p75/p90=[0.093, 0.148, 0.231, 0.475, 2.711]; time-diff of that neighbour min p50=36, share <=120 min: 84.8%
+    share with neighbour <= 0.375 km AND <= 120 min: 63.1%
+    share with neighbour <= 0.5 km AND <= 120 min: 67.8%
+    share with neighbour <= 0.75 km AND <= 120 min: 71.5%
+    share with neighbour <= 1.0 km AND <= 120 min: 73.3%
+NOAA20 -> nearest SNPP: n=7788 km p10/p25/p50/p75/p90=[0.124, 0.216, 0.61, 10.807, 84.397]; time-diff of that neighbour min p50=81, share <=120 min: 50.9%
+    share with neighbour <= 0.375 km AND <= 120 min: 28.7%
+    share with neighbour <= 0.5 km AND <= 120 min: 32.5%
+    share with neighbour <= 0.75 km AND <= 120 min: 35.1%
+    share with neighbour <= 1.0 km AND <= 120 min: 36.2%
+NOAA20 -> nearest NOAA21: n=7914 km p10/p25/p50/p75/p90=[0.105, 0.178, 0.332, 1.683, 8.315]; time-diff of that neighbour min p50=56, share <=120 min: 59.3%
+    share with neighbour <= 0.375 km AND <= 120 min: 34.2%
+    share with neighbour <= 0.5 km AND <= 120 min: 39.7%
+    share with neighbour <= 0.75 km AND <= 120 min: 43.6%
+    share with neighbour <= 1.0 km AND <= 120 min: 44.8%
+NOAA21 -> nearest SNPP: n=7968 km p10/p25/p50/p75/p90=[0.125, 0.205, 0.451, 6.044, 69.155]; time-diff of that neighbour min p50=37, share <=120 min: 68.2%
+    share with neighbour <= 0.375 km AND <= 120 min: 39.9%
+    share with neighbour <= 0.5 km AND <= 120 min: 43.8%
+    share with neighbour <= 0.75 km AND <= 120 min: 47.3%
+    share with neighbour <= 1.0 km AND <= 120 min: 49.1%
+NOAA21 -> nearest NOAA20: n=8112 km p10/p25/p50/p75/p90=[0.108, 0.18, 0.34, 1.748, 9.456]; time-diff of that neighbour min p50=56, share <=120 min: 56.2%
+    share with neighbour <= 0.375 km AND <= 120 min: 32.1%
+    share with neighbour <= 0.5 km AND <= 120 min: 36.6%
+    share with neighbour <= 0.75 km AND <= 120 min: 40.2%
+    share with neighbour <= 1.0 km AND <= 120 min: 41.7%
+SNPP -> nearest OTHER pixel, same satellite (must NOT merge): n=4343 km p10/p25/p50/p75/p90=[0.215, 0.368, 0.409, 0.508, 2.324]; time-diff of that neighbour min p50=0, share <=120 min: 99.2%
+    share with neighbour <= 0.375 km AND <= 120 min: 27.4%
+    share with neighbour <= 0.5 km AND <= 120 min: 74.1%
+    share with neighbour <= 0.75 km AND <= 120 min: 84.0%
+    share with neighbour <= 1.0 km AND <= 120 min: 85.8%
+NOAA20 -> nearest OTHER pixel, same satellite (must NOT merge): n=7916 km p10/p25/p50/p75/p90=[0.161, 0.286, 0.394, 0.563, 4.09]; time-diff of that neighbour min p50=0, share <=120 min: 77.8%
+    share with neighbour <= 0.375 km AND <= 120 min: 23.5%
+    share with neighbour <= 0.5 km AND <= 120 min: 53.8%
+    share with neighbour <= 0.75 km AND <= 120 min: 60.0%
+    share with neighbour <= 1.0 km AND <= 120 min: 61.7%
+NOAA21 -> nearest OTHER pixel, same satellite (must NOT merge): n=8107 km p10/p25/p50/p75/p90=[0.19, 0.346, 0.382, 0.54, 4.356]; time-diff of that neighbour min p50=0, share <=120 min: 80.3%
+    share with neighbour <= 0.375 km AND <= 120 min: 30.9%
+    share with neighbour <= 0.5 km AND <= 120 min: 58.6%
+    share with neighbour <= 0.75 km AND <= 120 min: 64.0%
+    share with neighbour <= 1.0 km AND <= 120 min: 66.0%

@@ -4,229 +4,199 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { CommunityReport } from "@/types";
+import { formatAdminFull } from "@/lib/adminRegion";
+import { useTranslation, type Language } from "@/lib/i18n/LanguageContext";
+import {
+  reportStatusDescription,
+  reportStatusLabel,
+  REPORT_STATUS_TONE,
+  REPORT_STATUS_TONE_CLASSES,
+} from "../../lib/reportStatus";
 
+function formatClock(iso: string | null | undefined, language: Language): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return `${date.toLocaleString(language === "en" ? "en-GB" : "id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Jakarta",
+  })} WIB`;
+}
+
+/**
+ * Status of one citizen report. Every line comes from GET /api/reports/{id} — there is no demo
+ * fallback: if the report can't be loaded, the page says so instead of showing a made-up one.
+ */
 export default function ReportStatusPage() {
+  const { tr, language } = useTranslation();
   const params = useParams<{ id: string }>();
-  const [state, setState] = useState<"loading" | "loaded" | "error">("loading");
+  const [state, setState] = useState<"loading" | "loaded" | "missing" | "error">("loading");
   const [report, setReport] = useState<CommunityReport | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/reports/${encodeURIComponent(params.id)}`, { cache: "no-store" })
       .then(async (res) => {
-        if (!res.ok) throw new Error("Gagal memuat status laporan.");
+        if (res.status === 404) return null;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return (await res.json()) as CommunityReport;
       })
       .then((body) => {
         if (cancelled) return;
         setReport(body);
-        setState("loaded");
+        setState(body ? "loaded" : "missing");
       })
       .catch(() => {
-        if (cancelled) return;
-        // Fallback demo report matching Figma Screen 05
-        setReport({
-          id: params.id || "CR-024",
-          lat: -2.9681,
-          lon: 114.2153,
-          description: "Asap di lahan gambut",
-          status: "under_review",
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-          observedAt: new Date(Date.now() - 3600000).toISOString(),
-          submitterToken: "demo",
-          photoFilename: null,
-          reviewNote: null,
-          reviewedAt: null,
-        });
-        setState("loaded");
+        if (!cancelled) setState("error");
       });
     return () => {
       cancelled = true;
     };
   }, [params.id]);
 
-  const reportIdDisplay = report ? (report.id.startsWith("CR-") ? report.id : `CR-${report.id.slice(0, 3)}`) : "CR-024";
+  const links = report?.satelliteLinks ?? [];
+  const nearestLink = [...links].sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))[0];
+  const place = report ? (formatAdminFull(report.admin) ?? `${report.lat.toFixed(4)}, ${report.lon.toFixed(4)}`) : "";
+  const reviewed = report ? report.status === "verified" || report.status === "rejected" : false;
+
+  const steps = report
+    ? [
+        {
+          done: true,
+          title: tr("Laporan diterima sistem", "Report received"),
+          time: formatClock(report.createdAt, language),
+          body: tr(
+            `Lokasi ${place}${report.photoFilename ? ", 1 foto terlampir" : ", tanpa foto"}.`,
+            `Location ${place}${report.photoFilename ? ", 1 photo attached" : ", no photo"}.`
+          ),
+        },
+        {
+          done: true,
+          title: tr("Dicocokkan otomatis dengan data satelit", "Automatically matched with satellite data"),
+          time: null,
+          body:
+            links.length > 0
+              ? tr(
+                  `${links.length} deteksi MODIS/VIIRS dalam 5 km & 24 jam${nearestLink?.distanceKm != null ? ` (terdekat ${nearestLink.distanceKm.toFixed(1)} km)` : ""}. Ini belum berarti kebakaran terkonfirmasi.`,
+                  `${links.length} MODIS/VIIRS detections within 5 km & 24 hours${nearestLink?.distanceKm != null ? ` (nearest ${nearestLink.distanceKm.toFixed(1)} km)` : ""}. This doesn't yet mean a fire is confirmed.`
+                )
+              : tr(
+                  "Tidak ada deteksi MODIS/VIIRS dalam 5 km & 24 jam dari laporan ini.",
+                  "No MODIS/VIIRS detection within 5 km & 24 hours of this report."
+                ),
+        },
+        {
+          done: reviewed,
+          title: tr("Ditinjau petugas", "Officer review"),
+          time: formatClock(report.reviewedAt, language),
+          body: reviewed
+            ? reportStatusDescription(report.status, language)
+            : tr("Belum ada keputusan petugas.", "No officer decision yet."),
+        },
+      ]
+    : [];
 
   return (
     <div className="max-w-xl mx-auto space-y-5 animate-fadeIn pb-12">
-      {/* Top Header */}
       <div className="flex items-center justify-between">
         <Link
           href="/community/saya"
           className="inline-flex items-center gap-1.5 text-xs font-bold text-[#123027] hover:text-[var(--community-accent)] transition"
         >
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-          <span>Laporan saya</span>
+          <span>{tr("Laporan saya", "My reports")}</span>
         </Link>
-      </div>
-
-      {/* Success Banner (Figma Screen 05) */}
-      <div className="rounded-3xl bg-gradient-to-br from-[#0c2e22] to-[#12382c] text-white p-5 space-y-1.5 shadow-md">
-        <div className="flex items-center gap-2 text-emerald-200">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white text-[14px] font-bold">
-            ✓
-          </span>
-          <span className="text-sm font-bold text-white">Terima kasih, laporan terkirim!</span>
-        </div>
-        <p className="text-xs text-emerald-100/90 pl-8 leading-relaxed">
-          Kamu akan mendapat notifikasi setiap kali status laporanmu berubah.
-        </p>
       </div>
 
       {state === "loading" && (
         <div className="py-12 text-center text-xs font-medium text-[var(--community-ink-muted)] animate-pulse">
-          Memuat status laporan…
+          {tr("Memuat status laporan…", "Loading report status…")}
+        </div>
+      )}
+
+      {(state === "missing" || state === "error") && (
+        <div className="rounded-2xl border border-dashed border-[var(--community-border)] bg-white p-6 text-center space-y-3">
+          <span className="material-symbols-outlined text-[32px] text-[var(--community-ink-muted)]">search_off</span>
+          <p className="text-sm font-semibold text-[#123027]">
+            {state === "missing"
+              ? tr("Laporan ini tidak ditemukan.", "This report was not found.")
+              : tr("Status laporan sedang tidak bisa dimuat.", "The report status can't be loaded right now.")}
+          </p>
+          <Link href="/community/saya" className="inline-block text-xs font-bold text-[var(--community-accent)] hover:underline">
+            {tr("Lihat semua laporan saya", "See all my reports")}
+          </Link>
         </div>
       )}
 
       {state === "loaded" && report && (
         <>
-          {/* Current Report Summary Card */}
-          <div className="rounded-2xl border border-[var(--community-border)] bg-white p-4 flex items-center gap-3.5 shadow-xs">
-            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-amber-800 to-amber-950 flex items-center justify-center text-white shrink-0 overflow-hidden shadow-xs">
-              <span className="material-symbols-outlined text-[24px]">cloud</span>
-            </div>
-            <div className="min-w-0 flex-1">
+          <div className="rounded-2xl border border-[var(--community-border)] bg-white p-4 space-y-2 shadow-xs">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-[10px] font-mono text-[var(--community-ink-muted)]">
-                {reportIdDisplay}
+                {tr("ID laporan", "Report ID")} {report.id.slice(0, 8).toUpperCase()}
               </span>
-              <h2 className="text-xs md:text-sm font-bold text-[#123027] truncate">
-                {report.description}
-              </h2>
-              <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5">
-                Pulang Pisau · 10 Okt 2026, 09.42 WIB
-              </p>
+              <span
+                className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                  REPORT_STATUS_TONE_CLASSES[REPORT_STATUS_TONE[report.status]]
+                }`}
+              >
+                {reportStatusLabel(report.status, language)}
+              </span>
             </div>
+            <h1 className="text-sm font-bold text-[#123027]">{report.description}</h1>
+            <p className="text-[11px] text-[var(--community-ink-muted)]">{place}</p>
+            <p className="text-[11px] text-[var(--community-ink-muted)]">
+              {tr("Dilihat", "Observed")}: {formatClock(report.observedAt, language) ?? "—"}
+            </p>
+            {report.photoFilename && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={`/api/reports/${report.id}/photo`}
+                alt={tr("Foto lampiran laporan", "Photo attached to the report")}
+                className="mt-1 h-48 w-full rounded-xl object-cover bg-gray-100"
+              />
+            )}
           </div>
 
-          {/* Perjalanan Laporanmu (Timeline) */}
           <section className="rounded-3xl border border-[var(--community-border)] bg-white p-5 space-y-4 shadow-xs">
             <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--community-ink-muted)]">
-              Perjalanan laporanmu
+              {tr("Perjalanan laporanmu", "Your report's journey")}
             </h2>
-
-            <div className="space-y-4 text-xs">
-              {/* Step 1 */}
-              <div className="flex gap-3">
-                <div className="flex flex-col items-center">
-                  <span className="h-5 w-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[12px] font-bold shrink-0">
-                    ✓
+            <ol className="space-y-4">
+              {steps.map((step, index) => (
+                <li key={step.title} className={`flex gap-3 ${step.done ? "" : "opacity-60"}`}>
+                  <span
+                    className={`h-6 w-6 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold ${
+                      step.done ? "bg-emerald-600 text-white" : "bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    {step.done ? "✓" : index + 1}
                   </span>
-                  <span className="w-0.5 h-10 bg-emerald-600 my-0.5" />
-                </div>
-                <div className="pt-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-[#123027]">01 Laporan &amp; bukti masuk</span>
-                    <span className="text-[10px] text-[var(--community-ink-muted)]">09.42 WIB</span>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-bold text-[#123027]">{step.title}</span>
+                      {step.time && <span className="text-[11px] text-[var(--community-ink-muted)]">{step.time}</span>}
+                    </div>
+                    <p className="text-xs text-[var(--community-ink-muted)] mt-0.5 leading-relaxed">{step.body}</p>
                   </div>
-                  <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5">
-                    2 foto · lokasi GPS ±15 m
-                  </p>
-                </div>
-              </div>
-
-              {/* Step 2 */}
-              <div className="flex gap-3">
-                <div className="flex flex-col items-center">
-                  <span className="h-5 w-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[12px] font-bold shrink-0">
-                    ✓
-                  </span>
-                  <span className="w-0.5 h-10 bg-emerald-600 my-0.5" />
-                </div>
-                <div className="pt-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-[#123027]">02 Pemeriksaan awal AI</span>
-                    <span className="text-[10px] text-[var(--community-ink-muted)]">09.43 WIB</span>
-                  </div>
-                  <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5">
-                    Asap teridentifikasi pada foto. Belum ada deteksi MODIS / VIIRS di lokasi ini.
-                  </p>
-                </div>
-              </div>
-
-              {/* Step 3 */}
-              <div className="flex gap-3">
-                <div className="flex flex-col items-center">
-                  <span className="h-5 w-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[11px] font-bold shrink-0 ring-4 ring-amber-100 animate-pulse">
-                    03
-                  </span>
-                  <span className="w-0.5 h-10 bg-gray-200 my-0.5" />
-                </div>
-                <div className="pt-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-[#123027]">03 Validasi petugas</span>
-                    <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded">
-                      Sedang ditinjau
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5">
-                    Petugas Manggala Agni memeriksa bukti &amp; lokasi
-                  </p>
-                </div>
-              </div>
-
-              {/* Step 4 */}
-              <div className="flex gap-3 opacity-50">
-                <div className="flex flex-col items-center">
-                  <span className="h-5 w-5 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-[11px] font-bold shrink-0">
-                    04
-                  </span>
-                </div>
-                <div className="pt-0.5">
-                  <span className="font-bold text-gray-600">04 Tindak lanjut</span>
-                  <p className="text-[11px] text-gray-500 mt-0.5">
-                    Patroli / pemadaman jika tervalidasi
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Laporan sebelumnya */}
-          <section className="space-y-2.5">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--community-ink-muted)]">
-              Laporan sebelumnya
-            </h2>
-            <div className="space-y-2">
-              <div className="rounded-2xl border border-[var(--community-border)] bg-white p-3.5 flex items-center justify-between gap-3 shadow-xs">
-                <div className="min-w-0">
-                  <h3 className="text-xs font-bold text-[#123027] truncate">
-                    CR-011 · Api dekat kebun
-                  </h3>
-                  <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5 truncate">
-                    2 Okt 2026 · Dipadamkan tim lapangan
-                  </p>
-                </div>
-                <span className="shrink-0 text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                  Tervalidasi
+                </li>
+              ))}
+            </ol>
+            {report.reviewNote && (
+              <div className="rounded-xl bg-gray-50 border border-gray-200 p-3 text-xs text-[#123027]">
+                <span className="block text-[10px] font-bold uppercase tracking-wide text-[var(--community-ink-muted)] mb-0.5">
+                  {tr("Catatan petugas", "Officer note")}
                 </span>
+                {report.reviewNote}
               </div>
-
-              <div className="rounded-2xl border border-[var(--community-border)] bg-white p-3.5 flex items-center justify-between gap-3 shadow-xs">
-                <div className="min-w-0">
-                  <h3 className="text-xs font-bold text-[#123027] truncate">
-                    CR-006 · Asap di tepi jalan
-                  </h3>
-                  <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5 truncate">
-                    24 Sep 2026 · Pembakaran sampah
-                  </p>
-                </div>
-                <span className="shrink-0 text-[10px] font-bold text-gray-600 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-md">
-                  Tidak valid
-                </span>
-              </div>
-            </div>
+            )}
+            {!reviewed && (
+              <p className="text-[11px] text-[var(--community-ink-muted)]">
+                {reportStatusDescription(report.status, language)}
+              </p>
+            )}
           </section>
-
-          {/* Appreciation card */}
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 flex items-center gap-3.5 shadow-xs">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-700 text-white font-extrabold text-sm">
-              2
-            </span>
-            <p className="text-xs text-emerald-950 font-medium leading-relaxed">
-              Laporanmu sudah membantu petugas menemukan kebakaran lebih cepat. Terima kasih sudah menjaga hutan.
-            </p>
-          </div>
         </>
       )}
     </div>

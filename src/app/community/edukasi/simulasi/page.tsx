@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { loadQuizProgress, saveQuizProgress } from "../../lib/checklistProgress";
-import { SCENARIOS } from "./scenarios";
+import { SCENARIOS, scenarioText } from "./scenarios";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 export default function SimulasiPage() {
+  const { tr, language } = useTranslation();
   const [progress, setProgress] = useState<Record<string, boolean> | null>(null);
   const [activeId, setActiveId] = useState<string>(SCENARIOS[0].id);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -14,7 +16,7 @@ export default function SimulasiPage() {
     Promise.resolve().then(() => setProgress(loadQuizProgress()));
   }, []);
 
-  const activeScenario = SCENARIOS.find((s) => s.id === activeId) ?? SCENARIOS[0];
+  const activeScenario = scenarioText(SCENARIOS.find((s) => s.id === activeId) ?? SCENARIOS[0], language);
   const completedCount = progress ? Object.values(progress).filter(Boolean).length : 0;
 
   const chooseOption = (optionId: string) => {
@@ -41,20 +43,24 @@ export default function SimulasiPage() {
   return (
     <div className="space-y-6">
       <Link href="/community/edukasi" className="text-xs font-semibold text-[var(--community-ink-muted)]">
-        ← Kembali ke Edukasi
+        ← {tr("Kembali ke Edukasi", "Back to Learn")}
       </Link>
 
       <section>
-        <h1 className="text-lg font-extrabold text-[#123027]">Simulasi Keadaan Darurat</h1>
+        <h1 className="text-lg font-extrabold text-[#123027]">{tr("Simulasi Keadaan Darurat", "Emergency Drill")}</h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-1 leading-relaxed">
-          Pilih tindakan untuk setiap skenario, lalu lihat penjelasannya. Anda bisa mencoba ulang kapan saja
-          — tujuannya belajar, bukan menguji.
+          {tr(
+            "Pilih tindakan untuk setiap skenario, lalu lihat penjelasannya. Anda bisa mencoba ulang kapan saja — tujuannya belajar, bukan menguji.",
+            "Pick an action for each scenario, then read the explanation. You can try again any time — the goal is to learn, not to test."
+          )}
         </p>
       </section>
 
       <div className="rounded-2xl border border-[var(--community-border)] bg-white p-4 flex items-center justify-between">
         <p className="text-sm font-bold text-[#123027]">
-          {progress === null ? "Memuat progres…" : `${completedCount}/${SCENARIOS.length} skenario selesai`}
+          {progress === null
+            ? tr("Memuat progres…", "Loading progress…")
+            : tr(`${completedCount}/${SCENARIOS.length} skenario selesai`, `${completedCount}/${SCENARIOS.length} scenarios done`)}
         </p>
         <div className="h-2.5 w-24 rounded-full bg-gray-100 overflow-hidden shrink-0">
           <div
@@ -81,7 +87,7 @@ export default function SimulasiPage() {
               }`}
             >
               {done && <span className="text-emerald-400">✓</span>}
-              {i + 1}. {s.title}
+              {i + 1}. {scenarioText(s, language).title}
             </button>
           );
         })}
@@ -123,7 +129,7 @@ export default function SimulasiPage() {
             }`}
           >
             <p className={`text-xs font-bold ${selected.isSafe ? "text-emerald-900" : "text-rose-900"}`}>
-              {selected.isSafe ? "Tindakan ini relatif lebih aman" : "Tindakan ini lebih berisiko"}
+              {selected.isSafe ? tr("Tindakan ini relatif lebih aman", "This is the safer choice") : tr("Tindakan ini lebih berisiko", "This choice is riskier")}
             </p>
             <p className="text-[11px] text-[var(--community-ink-muted)] mt-1 leading-relaxed">{selected.feedback}</p>
             <button
@@ -131,14 +137,14 @@ export default function SimulasiPage() {
               onClick={() => setSelectedOption(null)}
               className="mt-2 text-[11px] font-semibold text-[var(--community-accent)] underline"
             >
-              Coba pilihan lain
+              {tr("Coba pilihan lain", "Try another option")}
             </button>
           </div>
         )}
 
         {/* Safety guidance is always visible, regardless of the chosen option */}
         <div className="rounded-xl border border-[var(--community-border)] bg-gray-50 p-3">
-          <p className="text-[11px] font-bold text-[#123027]">Tindakan yang disarankan</p>
+          <p className="text-[11px] font-bold text-[#123027]">{tr("Tindakan yang disarankan", "Recommended action")}</p>
           <p className="text-[11px] text-[var(--community-ink-muted)] mt-1 leading-relaxed">{activeScenario.safeAction}</p>
         </div>
       </div>

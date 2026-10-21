@@ -1,0 +1,36 @@
+== live snapshot 2026-10-21 02:39:00 UTC (month 10, seasonal window [9, 10, 11]) ==
+P0 all-months: unusual 60/635 = 9.4%; insufficient 12; seasonal 0, fallback 0
+P1 seasonal  : unusual 46/635 = 7.2%; insufficient 12; seasonal 625, fallback 10
+
+== rolling-origin 2016-2025, 429865 active cell-days ==
+P0 compared 99.56%, flag rate 3.17%
+P1 compared 99.56% (seasonal 96.13%, fallback 3.43%), flag rate 3.71%
+agreement 98.33%, chance 93.35%, Cohen kappa 0.749
+Aug-Oct share of flags: P0 74.1%, P1 56.9%; share of active cell-days 56.9%
+       cell_days    p0    p1  p0_rate  p1_rate
+month                                         
+1          12067   270   623   0.0224   0.0516
+2          14457   292   662   0.0202   0.0458
+3          16559   408   860   0.0246   0.0519
+4          15148   232   745   0.0153   0.0492
+5          17401   183   809   0.0105   0.0465
+6          22843   295   710   0.0129   0.0311
+7          44265   888  1291   0.0201   0.0292
+8          76627  2509  2575   0.0327   0.0336
+9          92042  4326  3671   0.0470   0.0399
+10         75911  3211  2803   0.0423   0.0369
+11         31219   795   805   0.0255   0.0258
+12         11326   144   341   0.0127   0.0301
+      events      p0      p1
+year                        
+2016  109230  0.0270  0.0451
+2017   83364  0.0254  0.0292
+2018  176368  0.0308  0.0356
+2019  409751  0.0495  0.0492
+2020   80380  0.0258  0.0304
+2021   60319  0.0184  0.0298
+2022   49429  0.0182  0.0289
+2023  230540  0.0339  0.0360
+2024   92683  0.0259  0.0314
+2025   86278  0.0302  0.0359
+Spearman(yearly events, flag rate): P0 0.95  P1 0.88

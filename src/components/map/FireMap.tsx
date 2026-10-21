@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { HotspotMarker } from "@/types";
 import { formatAdminFull } from "@/lib/adminRegion";
+import { useTranslation, pick, type Language } from "@/lib/i18n/LanguageContext";
 
 /** A community-submitted field report pin, rendered alongside satellite markers. */
 export interface CommunityReportPin {
@@ -63,11 +64,31 @@ const SEVERITY_COLOR: Record<string, string> = {
   LOW: "#facc15", // yellow-400
 };
 
-const SEVERITY_LABEL_ID: Record<string, string> = {
-  HIGH: "Tinggi (>70 MW)",
-  MEDIUM: "Sedang (25–70 MW)",
-  LOW: "Rendah (<25 MW)",
+const SEVERITY_LABEL: Record<string, readonly [string, string]> = {
+  HIGH: ["Tinggi (>70 MW)", "High (>70 MW)"],
+  MEDIUM: ["Sedang (25–70 MW)", "Medium (25–70 MW)"],
+  LOW: ["Rendah (<25 MW)", "Low (<25 MW)"],
 };
+
+const REPORT_STATUS_TEXT: Record<string, readonly [string, string]> = {
+  submitted: ["Terkirim", "Submitted"],
+  under_review: ["Sedang ditinjau", "Under review"],
+  satellite_matched: ["Cocok dengan satelit", "Satellite match"],
+  verified: ["Terverifikasi petugas", "Verified by officer"],
+  rejected: ["Ditolak", "Rejected"],
+};
+
+function reportStatusText(status: string, language: Language): string {
+  const pair = REPORT_STATUS_TEXT[status];
+  return pair ? pick(language, ...pair) : status;
+}
+
+/** Backend labels read "<sensor> active fire"; localize that one known pattern. */
+function markerLabel(marker: HotspotMarker, language: Language): string {
+  const match = /^(.*) active fire$/.exec(marker.label);
+  if (!match || language === "en") return marker.label;
+  return `Titik api ${match[1]}`;
+}
 
 const REPORT_PIN_COLOR = "#2563eb"; // blue-600
 
@@ -221,12 +242,13 @@ function starPoints(size: number): string {
   return points.join(" ");
 }
 
-function formatAcquiredAt(acquiredAt: string | undefined) {
-  if (!acquiredAt) return "Waktu tidak tercatat";
+function formatAcquiredAt(acquiredAt: string | undefined, language: Language) {
+  if (!acquiredAt) return pick(language, "Waktu tidak tercatat", "Time not recorded");
   const parsed = new Date(acquiredAt);
-  if (Number.isNaN(parsed.getTime())) return "Waktu tidak tercatat";
-  const date = parsed.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-  const time = parsed.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+  if (Number.isNaN(parsed.getTime())) return pick(language, "Waktu tidak tercatat", "Time not recorded");
+  const locale = language === "en" ? "en-GB" : "id-ID";
+  const date = parsed.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  const time = parsed.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
   return `${date} · ${time} UTC`;
 }
 
@@ -243,12 +265,13 @@ export default function FireMap({
   userLocation,
   showDetailPanel = true,
   actionHref,
-  actionLabel = "Lihat Detail Peringatan",
+  actionLabel,
   allowFullScreenToggle = false,
   isFullScreen = false,
   onToggleFullScreen,
   autoFitOnLoad = false,
 }: FireMapProps) {
+  const { tr, language } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const markerLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
@@ -380,7 +403,7 @@ export default function FireMap({
         zIndexOffset: 500,
       }).addTo(layer);
 
-      userMarker.bindTooltip(userLocation.label ?? "Lokasi Anda", {
+      userMarker.bindTooltip(userLocation.label ?? pick(language, "Lokasi Anda", "Your location"), {
         direction: "top",
         className: "firesight-tooltip",
       });
@@ -390,7 +413,7 @@ export default function FireMap({
         setPanelExpanded(false);
       });
     });
-  }, [ready, userLocation]);
+  }, [ready, userLocation, language]);
 
   // Render Markers and Non-intrusive Selection Interactions (NO popup balloons!)
   useEffect(() => {
@@ -433,8 +456,8 @@ export default function FireMap({
         // Hover tooltip ONLY - NOT a large intrusive popup!
         const label =
           group.members.length > 1
-            ? "🔥 Harmonized (MODIS + VIIRS)"
-            : `🔥 ${group.members[0].label}`;
+            ? pick(language, "🔥 Terharmonisasi (MODIS + VIIRS)", "🔥 Harmonized (MODIS + VIIRS)")
+            : `🔥 ${markerLabel(group.members[0], language)}`;
         point.bindTooltip(label, {
           direction: "top",
           className: "firesight-tooltip",
@@ -490,7 +513,9 @@ export default function FireMap({
         }).addTo(layer);
 
         point.bindTooltip(
-          `${marker.label} (${marker.sensor ?? "Satelit"})${isLowConfidence ? " · confidence rendah/menengah" : ""}`,
+          `${markerLabel(marker, language)} (${marker.sensor ?? pick(language, "Satelit", "Satellite")})${
+            isLowConfidence ? pick(language, " · confidence rendah", " · low confidence") : ""
+          }`,
           {
             direction: "top",
             className: "firesight-tooltip",
@@ -520,7 +545,7 @@ export default function FireMap({
           zIndexOffset: isSelected ? 1300 : 700,
         }).addTo(layer);
 
-        point.bindTooltip(`Laporan Warga: ${report.status}`, {
+        point.bindTooltip(`${pick(language, "Laporan warga", "Citizen report")}: ${reportStatusText(report.status, language)}`, {
           direction: "top",
           className: "firesight-tooltip",
         });
@@ -537,7 +562,7 @@ export default function FireMap({
     return () => {
       isMounted = false;
     };
-  }, [markers, reports, ready, onMarkerSelect, onReportSelect, selectedEntity]);
+  }, [markers, reports, ready, onMarkerSelect, onReportSelect, selectedEntity, language]);
 
   // Render Highlight Halo for Selected Entity
   useEffect(() => {
@@ -637,7 +662,7 @@ export default function FireMap({
         <div className="absolute inset-0 z-[2000] flex items-center justify-center bg-emerald-50/70 backdrop-blur-xs">
           <div className="flex items-center gap-2.5 font-bold text-xs text-emerald-900 bg-white/90 px-4 py-2.5 rounded-full shadow-md border border-emerald-200">
             <span className="material-symbols-outlined text-[18px] animate-spin text-emerald-600">refresh</span>
-            <span>MEMUAT ENGINE PETA…</span>
+            <span>{tr("MEMUAT PETA…", "LOADING MAP…")}</span>
           </div>
         </div>
       )}
@@ -651,7 +676,7 @@ export default function FireMap({
         <button
           type="button"
           onClick={handleZoomIn}
-          aria-label="Perbesar peta"
+          aria-label={tr("Perbesar peta", "Zoom in")}
           className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-gray-800 shadow-md border border-gray-200/80 hover:bg-white active:scale-95 transition"
         >
           <span className="material-symbols-outlined text-[20px]">add</span>
@@ -660,7 +685,7 @@ export default function FireMap({
         <button
           type="button"
           onClick={handleZoomOut}
-          aria-label="Perkecil peta"
+          aria-label={tr("Perkecil peta", "Zoom out")}
           className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-gray-800 shadow-md border border-gray-200/80 hover:bg-white active:scale-95 transition"
         >
           <span className="material-symbols-outlined text-[20px]">remove</span>
@@ -669,8 +694,8 @@ export default function FireMap({
         <button
           type="button"
           onClick={handleRecenter}
-          title={userLocation ? "Pusatkan ke lokasi Anda" : "Pusatkan peta"}
-          aria-label="Pusatkan peta"
+          title={userLocation ? tr("Pusatkan ke lokasi Anda", "Center on your location") : tr("Pusatkan peta", "Recenter map")}
+          aria-label={tr("Pusatkan peta", "Recenter map")}
           className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-emerald-800 shadow-md border border-gray-200/80 hover:bg-white active:scale-95 transition"
         >
           <span className="material-symbols-outlined text-[19px]">my_location</span>
@@ -679,8 +704,8 @@ export default function FireMap({
         <button
           type="button"
           onClick={handleFitAll}
-          title="Tampilkan seluruh titik api"
-          aria-label="Tampilkan seluruh titik api"
+          title={tr("Tampilkan seluruh titik api", "Show all hotspots")}
+          aria-label={tr("Tampilkan seluruh titik api", "Show all hotspots")}
           className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-gray-700 shadow-md border border-gray-200/80 hover:bg-white active:scale-95 transition"
         >
           <span className="material-symbols-outlined text-[19px]">crop_free</span>
@@ -690,8 +715,8 @@ export default function FireMap({
           <button
             type="button"
             onClick={onToggleFullScreen}
-            title={isFullScreen ? "Keluar layar penuh" : "Buka layar penuh"}
-            aria-label={isFullScreen ? "Keluar layar penuh" : "Buka layar penuh"}
+            title={isFullScreen ? tr("Keluar layar penuh", "Exit full screen") : tr("Buka layar penuh", "Full screen")}
+            aria-label={isFullScreen ? tr("Keluar layar penuh", "Exit full screen") : tr("Buka layar penuh", "Full screen")}
             className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-[#075640] shadow-md border border-emerald-200 hover:bg-white active:scale-95 transition"
           >
             <span className="material-symbols-outlined text-[19px]">
@@ -708,20 +733,20 @@ export default function FireMap({
           {showSeverityLegend && (
             <div className="rounded-lg bg-white/97 backdrop-blur-xs border border-gray-200 shadow-md px-3 py-2 text-[11px] text-gray-700">
               <div className="font-extrabold text-[10px] text-[#123027] uppercase tracking-wide pb-1.5">
-                Tingkat Keparahan (FRP)
+                {tr("Tingkat Keparahan (FRP)", "Severity (FRP)")}
               </div>
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-full bg-red-600 ring-1 ring-red-200" />
-                  Tinggi
+                  {tr("Tinggi", "High")}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-full bg-orange-400 ring-1 ring-orange-200" />
-                  Sedang
+                  {tr("Sedang", "Medium")}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-full bg-yellow-400 ring-1 ring-yellow-200" />
-                  Rendah
+                  {tr("Rendah", "Low")}
                 </span>
               </div>
             </div>
@@ -734,7 +759,7 @@ export default function FireMap({
                 onClick={() => setShowLegendModal(!showLegendModal)}
                 className="flex w-full items-center justify-between gap-2 font-extrabold text-[10px] text-[#123027] uppercase tracking-wide"
               >
-                <span>Sumber Data &amp; Bentuk</span>
+                <span>{tr("Sumber Data & Bentuk", "Data Source & Shape")}</span>
                 <span className="material-symbols-outlined text-[14px] text-gray-400">
                   {showLegendModal ? "expand_less" : "expand_more"}
                 </span>
@@ -743,34 +768,34 @@ export default function FireMap({
                 <div className="mt-1.5 space-y-1 pt-1.5 border-t border-gray-100">
                   <div className="flex items-center gap-2">
                     <span className="flex h-3.5 w-3.5 items-center justify-center text-[10px]">🔥</span>
-                    <span>Harmonized (MODIS + VIIRS)</span>
+                    <span>{tr("Terharmonisasi (MODIS + VIIRS)", "Harmonized (MODIS + VIIRS)")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-[12px] text-slate-500">star</span>
-                    <span>Hanya MODIS (Terra/Aqua)</span>
+                    <span>{tr("Hanya MODIS (Terra/Aqua)", "MODIS only (Terra/Aqua)")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-[12px] text-slate-500">hexagon</span>
-                    <span>Hanya VIIRS (Suomi-NPP)</span>
+                    <span>{tr("Hanya VIIRS (S-NPP/NOAA-20/21)", "VIIRS only (S-NPP/NOAA-20/21)")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-[14px] text-blue-600">person_pin_circle</span>
-                    <span>Laporan warga</span>
+                    <span>{tr("Laporan warga", "Citizen report")}</span>
                   </div>
                   {hasAnyLowConfidenceMarker && (
                     <div className="flex items-center gap-2">
                       <span className="h-2.5 w-2.5 rounded-full border border-dashed border-gray-400 bg-gray-300 opacity-50" />
-                      <span>Marker pudar/putus-putus = confidence rendah</span>
+                      <span>{tr("Marker pudar/putus-putus = confidence rendah", "Faded/dashed marker = low confidence")}</span>
                     </div>
                   )}
                   {userLocation && (
                     <div className="flex items-center gap-2">
                       <span className="h-2.5 w-2.5 rounded-full bg-blue-600 ring-2 ring-white" />
-                      <span className="font-semibold text-blue-900">Lokasi Anda (Bukan api)</span>
+                      <span className="font-semibold text-blue-900">{tr("Lokasi Anda (bukan api)", "Your location (not a fire)")}</span>
                     </div>
                   )}
                   <p className="text-[10px] text-gray-400 leading-snug pt-1 border-t border-gray-100">
-                    Deteksi satelit adalah anomali radiasi termal near-real-time.
+                    {tr("Deteksi satelit adalah anomali radiasi termal mendekati waktu nyata.", "Satellite detections are near-real-time thermal anomalies.")}
                   </p>
                 </div>
               )}
@@ -821,20 +846,20 @@ export default function FireMap({
                   <h3 className="text-xs md:text-sm font-bold text-[#123027] truncate">
                     {selectedEntity.kind === "hotspot"
                       ? selectedEntity.marker.matchStatus === "MATCHED"
-                        ? "Titik Api (MODIS + VIIRS)"
-                        : `Titik Api ${selectedEntity.marker.sensor ?? "Satelit"}`
+                        ? tr("Titik Api (MODIS + VIIRS)", "Hotspot (MODIS + VIIRS)")
+                        : `${tr("Titik Api", "Hotspot")} ${selectedEntity.marker.sensor ?? tr("Satelit", "Satellite")}`
                       : selectedEntity.kind === "report"
-                        ? "Laporan Lapangan Warga"
-                        : selectedEntity.location.label ?? "Lokasi Anda"}
+                        ? tr("Laporan Lapangan Warga", "Citizen Field Report")
+                        : selectedEntity.location.label ?? tr("Lokasi Anda", "Your location")}
                   </h3>
                   <div className="flex items-center gap-2 text-[11px] text-gray-500 truncate mt-0.5 font-medium">
                     {distanceToSelected !== null && (
                       <span className="font-bold text-emerald-800">
-                        {formatDistance(distanceToSelected)} dari Anda
+                        {formatDistance(distanceToSelected)} {tr("dari Anda", "from you")}
                       </span>
                     )}
                     {selectedEntity.kind === "hotspot" && (
-                      <span>{formatAcquiredAt(selectedEntity.marker.acquiredAt).split("·")[1] ?? ""}</span>
+                      <span>{formatAcquiredAt(selectedEntity.marker.acquiredAt, language).split("·")[1] ?? ""}</span>
                     )}
                   </div>
                 </div>
@@ -846,8 +871,8 @@ export default function FireMap({
                   <button
                     type="button"
                     onClick={() => setPanelExpanded(!panelExpanded)}
-                    title={panelExpanded ? "Sembunyikan rincian" : "Tampilkan rincian lengkap"}
-                    aria-label={panelExpanded ? "Sembunyikan rincian" : "Tampilkan rincian lengkap"}
+                    title={panelExpanded ? tr("Sembunyikan rincian", "Hide details") : tr("Tampilkan rincian lengkap", "Show full details")}
+                    aria-label={panelExpanded ? tr("Sembunyikan rincian", "Hide details") : tr("Tampilkan rincian lengkap", "Show full details")}
                     className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
                   >
                     <span className="material-symbols-outlined text-[17px]">
@@ -862,8 +887,8 @@ export default function FireMap({
                     onMarkerSelect?.(null);
                     onReportSelect?.(null);
                   }}
-                  title="Tutup panel"
-                  aria-label="Tutup panel"
+                  title={tr("Tutup panel", "Close panel")}
+                  aria-label={tr("Tutup panel", "Close panel")}
                   className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
                 >
                   <span className="material-symbols-outlined text-[16px]">close</span>
@@ -875,7 +900,7 @@ export default function FireMap({
             {selectedEntity.kind === "hotspot" && (
               <div className="flex items-center justify-between text-xs py-0.5">
                 <span className="text-[11px] text-gray-500 font-medium">
-                  {selectedEntity.marker.label}
+                  {markerLabel(selectedEntity.marker, language)}
                 </span>
                 <span
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
@@ -886,7 +911,9 @@ export default function FireMap({
                         : "bg-yellow-50 text-yellow-800 border-yellow-200"
                   }`}
                 >
-                  {SEVERITY_LABEL_ID[selectedEntity.marker.severity] ?? selectedEntity.marker.severity}
+                  {SEVERITY_LABEL[selectedEntity.marker.severity]
+                    ? tr(...SEVERITY_LABEL[selectedEntity.marker.severity])
+                    : selectedEntity.marker.severity}
                 </span>
               </div>
             )}
@@ -894,9 +921,9 @@ export default function FireMap({
             {selectedEntity.kind === "report" && (
               <div className="space-y-1.5 text-xs text-gray-700">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-500">Status verifikasi:</span>
+                  <span className="text-gray-500">{tr("Status verifikasi", "Verification status")}:</span>
                   <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
-                    {selectedEntity.report.status}
+                    {reportStatusText(selectedEntity.report.status, language)}
                   </span>
                 </div>
                 <p className="text-[11px] text-gray-600 leading-relaxed bg-gray-50 p-2 rounded-xl">
@@ -907,7 +934,7 @@ export default function FireMap({
 
             {selectedEntity.kind === "user" && (
               <div className="text-xs text-gray-600 space-y-1">
-                <p>Ini adalah titik acuan lokasi Anda untuk menghitung radius pantau kebakaran.</p>
+                <p>{tr("Ini adalah titik acuan lokasi Anda untuk menghitung radius pantau kebakaran.", "This is your reference location for the fire-watch radius.")}</p>
                 <div className="text-[11px] font-mono text-gray-500">
                   {selectedEntity.location.lat.toFixed(4)}°, {selectedEntity.location.lng.toFixed(4)}°
                 </div>
@@ -920,7 +947,7 @@ export default function FireMap({
                 {/* FRP Meter */}
                 <div>
                   <div className="flex items-center justify-between text-[11px] font-medium text-gray-600 mb-1">
-                    <span>Daya Radiasi (FRP)</span>
+                    <span>{tr("Daya Radiasi (FRP)", "Radiative Power (FRP)")}</span>
                     <span className="font-extrabold text-[#123027]">
                       {selectedEntity.marker.frp.toFixed(1)} MW
                     </span>
@@ -938,44 +965,48 @@ export default function FireMap({
                 {/* Details Grid */}
                 <div className="grid grid-cols-2 gap-2 text-[11px] bg-gray-50/80 p-2.5 rounded-xl border border-gray-100">
                   <div>
-                    <span className="text-gray-400 block text-[10px]">Sensor / Satelit</span>
+                    <span className="text-gray-400 block text-[10px]">{tr("Sensor / Satelit", "Sensor / Satellite")}</span>
                     <span className="font-semibold text-gray-800">
                       {selectedEntity.marker.sensor ?? selectedEntity.marker.source ?? "NASA FIRMS"}
                       {selectedEntity.marker.satellite ? ` (${selectedEntity.marker.satellite})` : ""}
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-400 block text-[10px]">Tingkat Keyakinan</span>
+                    <span className="text-gray-400 block text-[10px]">{tr("Tingkat Keyakinan", "Confidence")}</span>
                     <span className="font-semibold text-gray-800">
                       {selectedEntity.marker.confidenceLabel ??
                         (typeof selectedEntity.marker.confidence === "number"
                           ? `${selectedEntity.marker.confidence.toFixed(0)}%`
-                          : "Tersedia")}
+                          : tr("Tersedia", "Available"))}
                     </span>
                   </div>
                   <div className="col-span-2">
-                    <span className="text-gray-400 block text-[10px]">Waktu Pengamatan</span>
+                    <span className="text-gray-400 block text-[10px]">{tr("Waktu Pengamatan", "Observed At")}</span>
                     <span className="font-semibold text-gray-800">
-                      {formatAcquiredAt(selectedEntity.marker.acquiredAt)}
+                      {formatAcquiredAt(selectedEntity.marker.acquiredAt, language)}
                     </span>
                   </div>
                   <div className="col-span-2">
-                    <span className="text-gray-400 block text-[10px]">Wilayah</span>
-                    <span className="text-gray-700">{formatAdminFull(selectedEntity.marker.admin) ?? "Tidak tercatat"}</span>
+                    <span className="text-gray-400 block text-[10px]">{tr("Wilayah", "Area")}</span>
+                    <span className="text-gray-700">{formatAdminFull(selectedEntity.marker.admin) ?? tr("Tidak tercatat", "Not recorded")}</span>
                   </div>
                   <div className="col-span-2">
-                    <span className="text-gray-400 block text-[10px]">Koordinat Deteksi</span>
+                    <span className="text-gray-400 block text-[10px]">{tr("Koordinat Deteksi", "Detection Coordinates")}</span>
                     <span className="font-mono text-gray-700">
                       {selectedEntity.marker.lat.toFixed(4)}°, {selectedEntity.marker.lng.toFixed(4)}°
                     </span>
                   </div>
                   {selectedEntity.marker.matchStatus && (
                     <div className="col-span-2">
-                      <span className="text-gray-400 block text-[10px]">Validasi Silang Sensor</span>
+                      <span className="text-gray-400 block text-[10px]">{tr("Validasi Silang Sensor", "Cross-Sensor Check")}</span>
                       <span className="font-semibold text-emerald-800">
                         {selectedEntity.marker.matchStatus === "MATCHED"
-                          ? "Cocok lintas sensor (MODIS + VIIRS)"
-                          : selectedEntity.marker.matchStatus.replaceAll("_", " ")}
+                          ? tr("Cocok lintas sensor (MODIS + VIIRS)", "Matched across sensors (MODIS + VIIRS)")
+                          : selectedEntity.marker.matchStatus === "MODIS_ONLY"
+                            ? tr("Hanya MODIS", "MODIS only")
+                            : selectedEntity.marker.matchStatus === "VIIRS_ONLY"
+                              ? tr("Hanya VIIRS", "VIIRS only")
+                              : selectedEntity.marker.matchStatus.replaceAll("_", " ")}
                       </span>
                     </div>
                   )}
@@ -983,7 +1014,10 @@ export default function FireMap({
 
                 {/* Caution Note */}
                 <p className="text-[10px] text-amber-900 bg-amber-50/80 border border-amber-200/60 p-2 rounded-xl leading-relaxed">
-                  Deteksi satelit adalah anomali radiasi termal near-real-time, bukan konfirmasi resmi kebakaran di lapangan.
+                  {tr(
+                    "Deteksi satelit adalah anomali radiasi termal mendekati waktu nyata, bukan konfirmasi resmi kebakaran di lapangan.",
+                    "Satellite detections are near-real-time thermal anomalies, not official confirmation of a fire on the ground."
+                  )}
                 </p>
 
                 {/* Action Link (e.g., Detail Peringatan or Lapor) */}
@@ -992,14 +1026,14 @@ export default function FireMap({
                     href={actionHref(selectedEntity.marker)}
                     className="block w-full text-center py-2 px-3 rounded-xl bg-[#075640] hover:bg-[#054030] text-white font-bold text-xs shadow-xs transition active:scale-[0.99]"
                   >
-                    {actionLabel}
+                    {actionLabel ?? tr("Lihat Detail Peringatan", "View Alert Details")}
                   </Link>
                 ) : (
                   <Link
                     href={`/community/alert/${selectedEntity.marker.id}`}
                     className="block w-full text-center py-2 px-3 rounded-xl bg-[#075640] hover:bg-[#054030] text-white font-bold text-xs shadow-xs transition active:scale-[0.99]"
                   >
-                    Lihat Panduan &amp; Detail Peringatan
+                    {tr("Lihat Panduan & Detail Peringatan", "View Guidance & Alert Details")}
                   </Link>
                 )}
               </div>
@@ -1012,7 +1046,7 @@ export default function FireMap({
                 onClick={() => setPanelExpanded(!panelExpanded)}
                 className="w-full text-center text-[11px] font-bold text-emerald-800 hover:text-emerald-950 pt-1 border-t border-gray-100 flex items-center justify-center gap-1"
               >
-                <span>{panelExpanded ? "Ciutkan rincian" : "Lihat rincian lengkap deteksi"}</span>
+                <span>{panelExpanded ? tr("Ciutkan rincian", "Collapse details") : tr("Lihat rincian lengkap deteksi", "See full detection details")}</span>
                 <span className="material-symbols-outlined text-[14px]">
                   {panelExpanded ? "expand_less" : "expand_more"}
                 </span>

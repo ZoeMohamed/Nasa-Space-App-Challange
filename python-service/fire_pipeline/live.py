@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
@@ -17,7 +17,14 @@ import pandas as pd
 from .admin_lookup import get_admin_index
 from .clean import add_quality_flags, confidence_tier, deduplicate_detections, harmonize, high_confidence_mask, usable_confidence_mask
 from .features import aggregate_grid, attention_features, temporal_features
-from .harmonize_events import build_harmonized_events
+from .harmonize_events import (
+    VIIRS_CROSS_SATELLITE_KM,
+    VIIRS_CROSS_SATELLITE_MINUTES,
+    build_harmonized_events,
+    collapse_viirs_cross_satellite,
+    deduplicated_event_keys,
+    viirs_platform,
+)
 from .matching import haversine_km, match_modis_viirs
 from .model import deterministic_priority, historical_baseline
 
@@ -78,6 +85,14 @@ def default_historical_db_path() -> str:
 
 _cache_lock = threading.Lock()
 _cache: tuple[float, tuple[list[pd.DataFrame], list[dict]]] | None = None
+# Serializes 24 h FIRMS fetches; _refresh_thread is the background refresh started for a stale cache.
+_fetch_24h_lock = threading.Lock()
+_refresh_thread: threading.Thread | None = None
+# Last built 7d/30d result per (window, include_all_confidence) and its background refresh thread.
+_window_results: dict[tuple[str, bool], tuple[float, "LiveResult"]] = {}
+_window_refresh_threads: dict[tuple[str, bool], threading.Thread] = {}
+# After a refresh in which every feed failed, keep serving the old data and retry after this long.
+FAILED_REFRESH_RETRY_SECONDS = 60
 _window_locks = {key: threading.Lock() for key in WINDOW_HOURS_BY_KEY}
 _chunk_cache_lock = threading.Lock()
 _chunk_cache: dict[tuple[str, str, int], tuple[float, pd.DataFrame, dict]] = {}
@@ -123,15 +138,26 @@ def _fetch_extended_window(map_key: str, window_hours: int) -> tuple[list[pd.Dat
     plan = chunk_plan(window_hours, today)
     jobs = [(source_id, sensor, start, n) for source_id, sensor in SOURCES for start, n in plan]
     frames: list[pd.DataFrame] = []
-    per_source = {source_id: {"id": source_id, "sensor": sensor, "rawCount": 0, "highConfidenceCount": 0, "usableConfidenceCount": 0, "ok": 0, "failed": 0} for source_id, sensor in SOURCES}
+    per_source = {
+        source_id: {"id": source_id, "sensor": sensor, "rawCount": 0, "highConfidenceCount": 0, "usableConfidenceCount": 0, "ok": 0, "failed": 0, "failedRanges": []}
+        for source_id, sensor in SOURCES
+    }
     with ThreadPoolExecutor(max_workers=12) as executor:
-        futures = {executor.submit(_fetch_chunk_cached, map_key, source_id, sensor, start, n, today): source_id for source_id, sensor, start, n in jobs}
+        futures = {
+            executor.submit(_fetch_chunk_cached, map_key, source_id, sensor, start, n, today): (source_id, start, n)
+            for source_id, sensor, start, n in jobs
+        }
         for future in as_completed(futures):
-            entry = per_source[futures[future]]
+            source_id, start, n = futures[future]
+            entry = per_source[source_id]
             try:
                 frame, summary = future.result()
             except LiveDataError:
                 entry["failed"] += 1
+                # Which acquisition dates are missing, so callers (e.g. the calendar) can mark exactly
+                # those days incomplete instead of presenting a gap as low activity.
+                end = (pd.Timestamp(start) + pd.Timedelta(days=n - 1)).strftime("%Y-%m-%d")
+                entry["failedRanges"].append([start, end])
                 continue
             frames.append(frame)
             entry["ok"] += 1
@@ -145,6 +171,7 @@ def _fetch_extended_window(map_key: str, window_hours: int) -> tuple[list[pd.Dat
         summary["available"] = entry["failed"] == 0
         if entry["failed"]:
             summary["error"] = f"{entry['failed']} of {entry['ok'] + entry['failed']} periods unavailable"
+            summary["failedRanges"] = sorted(entry["failedRanges"])
         summaries.append(summary)
     return frames, summaries
 
@@ -324,11 +351,16 @@ class LiveResult:
     markers: pd.DataFrame
     areas: list[dict]
     meta: dict
+    # (detections, source summaries, window hours) kept for 24 h results so the reference-population
+    # counts can be computed on first request (ensure_reference_counts) instead of on every build.
+    reference_input: tuple | None = field(default=None, repr=False)
 
 
-def _marker_frame(detections: pd.DataFrame, matches: pd.DataFrame, areas: pd.DataFrame) -> pd.DataFrame:
+def _marker_frame(detections: pd.DataFrame, matches: pd.DataFrame, areas: pd.DataFrame, viirs_groups: pd.DataFrame | None = None) -> pd.DataFrame:
     """Vectorized equivalent of the former per-row marker loop (same fields, same marker ids,
-    same keep-first de-duplication), plus `confidenceTier` and flat admin_* columns."""
+    same keep-first de-duplication), plus `confidenceTier`, flat admin_* columns and
+    `viirsDuplicate` (True for a VIIRS detection that repeats another satellite's detection of the
+    same pixel; it stays on the map, it just isn't counted again in `dedupedEvents`)."""
     if detections.empty:
         return pd.DataFrame(columns=["id"])
     det = detections.reset_index(drop=True)
@@ -390,6 +422,7 @@ def _marker_frame(detections: pd.DataFrame, matches: pd.DataFrame, areas: pd.Dat
             "areaId": grid_lat.astype(str) + "_" + grid_lon.astype(str),
             "matchStatus": match_status,
             "matchedDetectionId": pd.Series(matched_id, dtype=object),
+            "viirsDuplicate": ~viirs_groups["viirs_primary"].to_numpy() if viirs_groups is not None else False,
         }
     )
     frame = frame.drop_duplicates(subset="id", keep="first").reset_index(drop=True)
@@ -477,15 +510,79 @@ def _daily_summary(markers: pd.DataFrame) -> list[dict]:
     return sorted(rows, key=lambda r: (r["date"], r["provinsi"] or ""))
 
 
+# Reference-population counts are only needed to compare one day against the archive's daily
+# baseline (/api/historical/unusual), so they are skipped for the 7- and 30-day windows.
+REFERENCE_MAX_WINDOW_HOURS = 24
+# Which live feed carries each VIIRS platform (the archive tables are built per platform, see
+# historical.REFERENCE_TABLES).
+_PLATFORM_SOURCE = {"SNPP": "VIIRS_SNPP_NRT", "NOAA20": "VIIRS_NOAA20_NRT", "NOAA21": "VIIRS_NOAA21_NRT"}
+# Platforms with an archive table the live count can be compared with (historical.REFERENCE_TABLES):
+# Suomi-NPP today, NOAA-20 once its FIRMS archive is downloaded and built.
+REFERENCE_PLATFORMS = ("SNPP", "NOAA20")
+
+
+def _area_ids(frame: pd.DataFrame) -> pd.Series:
+    grid_lat = (np.floor(frame.latitude / 0.25) * 0.25).round(6)
+    grid_lon = (np.floor(frame.longitude / 0.25) * 0.25).round(6)
+    return grid_lat.astype(str) + "_" + grid_lon.astype(str)
+
+
+def _deduplicated_counts(detections: pd.DataFrame, events: pd.DataFrame, viirs_groups: pd.DataFrame):
+    """Per-area event counts after collapsing VIIRS cross-satellite repeats, plus the number of
+    repeats per area. A group whose members straddle a cell edge is counted in the cell of its
+    first event (by event order), so the per-area counts add up to the total."""
+    if events.empty:
+        return {}, {}, 0
+    keys = deduplicated_event_keys(events, viirs_groups)
+    per_event = pd.DataFrame({"key": keys.to_numpy(), "area_id": _area_ids(events).to_numpy()})
+    first = per_event.drop_duplicates(subset="key", keep="first")
+    deduped = first.groupby("area_id").size().to_dict()
+    det = detections.reset_index(drop=True)
+    repeats = _area_ids(det)[~viirs_groups["viirs_primary"].to_numpy()]
+    return deduped, repeats.value_counts().to_dict(), int(len(first))
+
+
+def _reference_populations(detections: pd.DataFrame, source_summaries: list[dict], window_hours: int, with_counts: bool = True) -> dict:
+    """Per VIIRS platform: are MODIS and that platform both present in this snapshot, and if so,
+    the per-area event counts of MODIS + that platform only, harmonized exactly like the archive
+    (which is MODIS + Suomi-NPP). A platform whose feed failed is reported as unavailable -- it is
+    never silently replaced by another satellite, because their per-day counts differ."""
+    available_feeds = {s.get("id") for s in source_summaries if s.get("available")}
+    know_feeds = any("id" in s for s in source_summaries)  # tests may pass bare summaries
+    det = detections.reset_index(drop=True)
+    platform = viirs_platform(det)
+    is_modis = det["sensor"].astype(str).eq("MODIS").to_numpy()
+    populations = {}
+    for name in REFERENCE_PLATFORMS:
+        has_rows = bool((platform == name).any())
+        if know_feeds:
+            available = _PLATFORM_SOURCE[name] in available_feeds and "MODIS_NRT" in available_feeds
+            reason = None if available else ("MODIS_NRT unavailable" if "MODIS_NRT" not in available_feeds else f"{_PLATFORM_SOURCE[name]} unavailable")
+        else:
+            available = has_rows and bool(is_modis.any())
+            reason = None if available else "no rows for this platform or for MODIS"
+        info = {"available": bool(available), "reason": reason, "counts": {}}
+        if with_counts and available and window_hours <= REFERENCE_MAX_WINDOW_HOURS:
+            subset = det[is_modis | (platform == name).to_numpy()].reset_index(drop=True)
+            matches = match_modis_viirs(subset) if not subset.empty else pd.DataFrame(columns=["detection_id", "match_status", "matched_detection_id"])
+            reference_events = build_harmonized_events(subset, matches)
+            info["counts"] = _area_ids(reference_events).value_counts().to_dict() if not reference_events.empty else {}
+            info["events"] = int(len(reference_events))
+        populations[name] = info
+    return populations
+
+
 def build_live_result(
     frames: list[pd.DataFrame],
     source_summaries: list[dict],
     include_all_confidence: bool = False,
     window_hours: int = WINDOW_HOURS,
+    now: pd.Timestamp | None = None,
 ) -> LiveResult:
     """Full pipeline for one window. Default confidence filter = nominal + high (FIRMS classes,
     see clean.usable_confidence_mask); include_all_confidence=True also keeps "low", each marker
-    labelled with its `confidenceTier`."""
+    labelled with its `confidenceTier`. `now` (naive UTC) pins the window end for tests and
+    frozen-snapshot measurements; it defaults to the current time."""
     if not frames:
         raise LiveDataError("All NASA FIRMS feeds are unavailable")
     detections = add_quality_flags(harmonize(pd.concat(frames, ignore_index=True, sort=False)))
@@ -496,7 +593,8 @@ def build_live_result(
     # processing lag (see FETCH_DAY_RANGE's comment), so trim back down to the
     # real window here -- otherwise the advertised windowHours would be a lie.
     if "acq_datetime" in detections.columns:
-        cutoff = pd.Timestamp.now(tz="UTC").tz_localize(None) - pd.Timedelta(hours=window_hours)
+        end = now if now is not None else pd.Timestamp.now(tz="UTC").tz_localize(None)
+        cutoff = end - pd.Timedelta(hours=window_hours)
         detections = detections[detections["acq_datetime"] >= cutoff].reset_index(drop=True)
     detections = deduplicate_detections(detections).reset_index(drop=True)
     matches = match_modis_viirs(detections) if not detections.empty else pd.DataFrame(columns=["detection_id", "match_status", "matched_detection_id"])
@@ -513,9 +611,21 @@ def build_live_result(
         areas[["modis_detections", "viirs_detections"]] = areas[["modis_detections", "viirs_detections"]].fillna(0)
     areas = deterministic_priority(historical_baseline(attention_features(temporal_features(areas)), sqlite_path=default_historical_db_path()))
 
-    markers = _marker_frame(detections, matches, areas)
+    # Everything above (matches, events, areas, priority) is the unchanged harmonization. The
+    # cross-satellite and reference-population numbers below are additions on top of it.
+    viirs_groups = collapse_viirs_cross_satellite(detections)
+    markers = _marker_frame(detections, matches, areas, viirs_groups)
     area_summaries = summarize_areas(areas)
     _attach_area_admin(area_summaries, markers)
+    deduped_by_area, duplicates_by_area, deduped_total = _deduplicated_counts(detections, events, viirs_groups)
+    # Availability only here; the counts need two extra MODIS matchings (~3 s on a busy day), so they
+    # are computed once, on first use, by ensure_reference_counts() (/api/historical/unusual).
+    populations = _reference_populations(detections, source_summaries, window_hours, with_counts=False)
+    for area in area_summaries:
+        area_id = area["areaId"]
+        area["dedupedEvents"] = int(deduped_by_area.get(area_id, 0))
+        area["viirsCrossSatelliteDuplicates"] = int(duplicates_by_area.get(area_id, 0))
+        area["referenceEvents"] = None
 
     matched_count = int((matches["match_status"] == "MATCHED").sum()) if not matches.empty else 0
     meta = {
@@ -532,9 +642,49 @@ def build_live_result(
             "matchedDetections": matched_count,
             "areasAnalyzed": int(len(areas)),
             "steps": ["clean", "match", "grid", "attention", "priority"],
+            "harmonizedEvents": int(len(events)),
+            "dedupedEvents": int(deduped_total),
+            "viirsCrossSatellite": {
+                "radiusKm": VIIRS_CROSS_SATELLITE_KM,
+                "timeMinutes": VIIRS_CROSS_SATELLITE_MINUTES,
+                "viirsDetections": int(viirs_groups["viirs_platform"].notna().sum()),
+                "duplicates": int((~viirs_groups["viirs_primary"]).sum()),
+                "groups": int(viirs_groups.loc[viirs_groups.viirs_group >= 0, "viirs_group"].nunique()),
+            },
+        },
+        "referencePopulations": {
+            platform: {key: value for key, value in info.items() if key != "counts"} for platform, info in populations.items()
         },
     }
-    return LiveResult(markers=markers, areas=area_summaries, meta={**meta, "_daily": _daily_summary(markers)})
+    return LiveResult(
+        markers=markers,
+        areas=area_summaries,
+        meta={**meta, "_daily": _daily_summary(markers)},
+        reference_input=(detections, source_summaries, window_hours) if window_hours <= REFERENCE_MAX_WINDOW_HOURS else None,
+    )
+
+
+_reference_lock = threading.Lock()
+
+
+def ensure_reference_counts(result: LiveResult) -> LiveResult:
+    """Fill each area's `referenceEvents` (MODIS + one VIIRS platform per available platform) and the
+    per-platform event totals in meta, once per cached result. No-op for multi-day windows, whose
+    `referenceEvents` stay None."""
+    with _reference_lock:
+        if result.reference_input is None:
+            return result
+        detections, summaries, window_hours = result.reference_input
+        populations = _reference_populations(detections, summaries, window_hours)
+        for area in result.areas:
+            area["referenceEvents"] = {
+                platform: int(info["counts"].get(area["areaId"], 0)) for platform, info in populations.items() if info["available"]
+            }
+        result.meta["referencePopulations"] = {
+            platform: {key: value for key, value in info.items() if key != "counts"} for platform, info in populations.items()
+        }
+        result.reference_input = None
+    return result
 
 
 def _marker_to_dict(row: dict) -> dict:
@@ -636,39 +786,105 @@ def load_live_result(map_key: str | None = None, include_all_confidence: bool = 
     if window not in WINDOW_HOURS_BY_KEY:
         raise ValueError(f"window must be one of {sorted(WINDOW_HOURS_BY_KEY)}")
     if window != "24h":
-        window_hours = WINDOW_HOURS_BY_KEY[window]
-        with _window_locks[window]:
-            frames, summaries = _fetch_extended_window(key, window_hours)
-            if not frames:
-                raise LiveDataError("All NASA FIRMS feeds are unavailable")
-            return _cached_result(window, include_all_confidence, frames, summaries, window_hours)
+        # Same stale-while-revalidate as 24 h below: once a window has been built, an expired result
+        # is served immediately while one background thread re-fetches its newest chunks (measured
+        # 2026-10-21: 65-105 s per expired 7d/30d request when FIRMS is slow).
+        result_key = (window, include_all_confidence)
+        with _cache_lock:
+            hit = _window_results.get(result_key)
+            thread = _window_refresh_threads.get(result_key)
+            if hit is not None and hit[0] <= time.monotonic() and (thread is None or not thread.is_alive()):
+                thread = threading.Thread(
+                    target=_refresh_window, args=(key, window, include_all_confidence), daemon=True, name=f"firms-{window}-refresh"
+                )
+                _window_refresh_threads[result_key] = thread
+                thread.start()
+        if hit is not None:
+            return hit[1]
+        return _build_window(key, window, include_all_confidence)
+    # Stale-while-revalidate: FIRMS answers can take 20-45 s per feed on a slow day, which used to
+    # block every request whenever the 5-minute cache ran out. Now only the very first request (no
+    # data at all yet) waits; afterwards an expired cache is served as-is while one background
+    # thread fetches the next snapshot.
+    global _refresh_thread
     with _cache_lock:
-        if not (_cache and _cache[0] > time.monotonic()):
-            frames, summaries_by_id = [], {}
-            with ThreadPoolExecutor(max_workers=len(SOURCES)) as executor:
-                futures = {executor.submit(_fetch_source, key, source_id, sensor): (source_id, sensor) for source_id, sensor in SOURCES}
-                for future in as_completed(futures):
-                    source_id, sensor = futures[future]
-                    try:
-                        frame, summary = future.result()
-                        frames.append(frame)
-                        summaries_by_id[source_id] = summary
-                    except LiveDataError:
-                        summaries_by_id[source_id] = {
-                            "id": source_id,
-                            "sensor": sensor,
-                            "rawCount": 0,
-                            "highConfidenceCount": 0,
-                            "usableConfidenceCount": 0,
-                            "available": False,
-                            "error": "Temporarily unavailable",
-                        }
-            summaries = [summaries_by_id[source_id] for source_id, _ in SOURCES]
-            _cache = (time.monotonic() + CACHE_SECONDS, (frames, summaries))
-        frames, summaries = _cache[1]
+        cached = _cache
+        if cached is not None and cached[0] <= time.monotonic() and (_refresh_thread is None or not _refresh_thread.is_alive()):
+            _refresh_thread = threading.Thread(target=_refresh_24h, args=(key,), daemon=True, name="firms-24h-refresh")
+            _refresh_thread.start()
+    if cached is None:
+        _refresh_24h(key)
+        cached = _cache
+    if cached is None:
+        raise LiveDataError("All NASA FIRMS feeds are unavailable")
+    frames, summaries = cached[1]
     if not frames:
         raise LiveDataError("All NASA FIRMS feeds are unavailable")
     return _cached_result("24h", include_all_confidence, frames, summaries, WINDOW_HOURS)
+
+
+def _build_window(key: str, window: str, include_all_confidence: bool) -> LiveResult:
+    window_hours = WINDOW_HOURS_BY_KEY[window]
+    with _window_locks[window]:
+        frames, summaries = _fetch_extended_window(key, window_hours)
+        if not frames:
+            raise LiveDataError("All NASA FIRMS feeds are unavailable")
+        result = _cached_result(window, include_all_confidence, frames, summaries, window_hours)
+    with _cache_lock:
+        _window_results[(window, include_all_confidence)] = (time.monotonic() + CACHE_SECONDS, result)
+    return result
+
+
+def _refresh_window(key: str, window: str, include_all_confidence: bool) -> None:
+    """Background rebuild of an expired 7d/30d result. On failure the old result stays in place and
+    is retried after FAILED_REFRESH_RETRY_SECONDS."""
+    try:
+        _build_window(key, window, include_all_confidence)
+    except Exception:  # noqa: BLE001 -- keep serving the previous result
+        with _cache_lock:
+            hit = _window_results.get((window, include_all_confidence))
+            if hit is not None:
+                _window_results[(window, include_all_confidence)] = (time.monotonic() + FAILED_REFRESH_RETRY_SECONDS, hit[1])
+
+
+def _fetch_all_24h(key: str) -> tuple[list[pd.DataFrame], list[dict]]:
+    frames, summaries_by_id = [], {}
+    with ThreadPoolExecutor(max_workers=len(SOURCES)) as executor:
+        futures = {executor.submit(_fetch_source, key, source_id, sensor): (source_id, sensor) for source_id, sensor in SOURCES}
+        for future in as_completed(futures):
+            source_id, sensor = futures[future]
+            try:
+                frame, summary = future.result()
+                frames.append(frame)
+                summaries_by_id[source_id] = summary
+            except LiveDataError:
+                summaries_by_id[source_id] = {
+                    "id": source_id,
+                    "sensor": sensor,
+                    "rawCount": 0,
+                    "highConfidenceCount": 0,
+                    "usableConfidenceCount": 0,
+                    "available": False,
+                    "error": "Temporarily unavailable",
+                }
+    return frames, [summaries_by_id[source_id] for source_id, _ in SOURCES]
+
+
+def _refresh_24h(key: str) -> None:
+    """Fetch a fresh 24 h snapshot into `_cache`. One fetch at a time; a caller that waited for
+    another fetch to finish reuses its result. If every feed fails, existing data is kept (and
+    retried after FAILED_REFRESH_RETRY_SECONDS) rather than replaced by nothing."""
+    global _cache
+    with _fetch_24h_lock:
+        current = _cache
+        if current is not None and current[0] > time.monotonic():
+            return
+        frames, summaries = _fetch_all_24h(key)
+        with _cache_lock:
+            if frames or _cache is None:
+                _cache = (time.monotonic() + CACHE_SECONDS, (frames, summaries))
+            else:
+                _cache = (time.monotonic() + FAILED_REFRESH_RETRY_SECONDS, _cache[1])
 
 
 def load_live_hotspots(

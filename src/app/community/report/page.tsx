@@ -10,28 +10,31 @@ import { useLocationState } from "../lib/useLocation";
 import { useRegion } from "@/lib/useRegion";
 import { formatAdminFull } from "@/lib/adminRegion";
 import type { ReportCreateResponse } from "@/types";
+import { useTranslation, type Language } from "@/lib/i18n/LanguageContext";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/gif"];
 const VALID_SOURCES: LocationSource[] = ["gps", "manual-coords", "manual-area"];
 
+// label = [Indonesian, English]. The Indonesian label is what gets stored in the report text, so
+// officers see one consistent prefix whatever language the reporter's UI was in.
 const REPORT_CATEGORIES = [
-  { id: "api", label: "Api terlihat", icon: "local_fire_department" },
-  { id: "asap", label: "Asap", icon: "cloud" },
-  { id: "bekas", label: "Lahan bekas terbakar", icon: "landscape" },
-  { id: "lainnya", label: "Lainnya", icon: "more_horiz" },
-];
+  { id: "api", label: ["Api terlihat", "Visible fire"], icon: "local_fire_department" },
+  { id: "asap", label: ["Asap", "Smoke"], icon: "cloud" },
+  { id: "bekas", label: ["Lahan bekas terbakar", "Burned land"], icon: "landscape" },
+  { id: "lainnya", label: ["Lainnya", "Other"], icon: "more_horiz" },
+] as const;
 
 const DISTANCE_OPTIONS = ["< 100 m", "100–500 m", "> 500 m"];
 
 function readFileAsBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Gagal membaca file foto."));
+    reader.onerror = () => reject(new Error(""));
     reader.onload = () => {
       const result = reader.result;
       if (typeof result !== "string") {
-        reject(new Error("Gagal membaca file foto."));
+        reject(new Error(""));
         return;
       }
       const commaIndex = result.indexOf(",");
@@ -41,14 +44,15 @@ function readFileAsBase64(file: File): Promise<string> {
   });
 }
 
-function formatClock(iso: string): string {
+function formatClock(iso: string, language: Language): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-  return `${date.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" })} WIB`;
+  return `${date.toLocaleString(language === "en" ? "en-GB" : "id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" })} WIB`;
 }
 
 /** Timeline built only from what the backend actually returned for this report. */
 function SubmittedView({ report }: { report: ReportCreateResponse }) {
+  const { tr, language } = useTranslation();
   const links = report.satelliteLinks ?? [];
   const nearestLink = [...links].sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))[0];
   const place = formatAdminFull(report.admin) ?? `${report.lat.toFixed(4)}, ${report.lon.toFixed(4)}`;
@@ -56,22 +60,44 @@ function SubmittedView({ report }: { report: ReportCreateResponse }) {
   const steps = [
     {
       done: true,
-      title: "Laporan terkirim",
-      time: formatClock(report.createdAt),
-      body: `Tersimpan dengan lokasi ${place}${report.photoFilename ? " dan 1 foto" : " tanpa foto"}.`,
+      title: tr("Laporan terkirim", "Report sent"),
+      time: formatClock(report.createdAt, language),
+      body: tr(
+        `Tersimpan dengan lokasi ${place}${report.photoFilename ? " dan 1 foto" : " tanpa foto"}.`,
+        `Saved with location ${place}${report.photoFilename ? " and 1 photo" : ", no photo"}.`
+      ),
     },
     {
       done: !report.correlationWarning,
-      title: "Dicocokkan otomatis dengan data satelit",
+      title: tr("Dicocokkan otomatis dengan data satelit", "Automatically matched with satellite data"),
       time: null,
       body: report.correlationWarning
-        ? "Pencocokan otomatis belum bisa dijalankan (data satelit live sedang tidak tersedia). Laporan tetap tersimpan."
+        ? tr(
+            "Pencocokan otomatis belum bisa dijalankan (data satelit live sedang tidak tersedia). Laporan tetap tersimpan.",
+            "Automatic matching couldn't run (live satellite data is unavailable right now). Your report is still saved."
+          )
         : links.length > 0
-          ? `${links.length} deteksi satelit dalam 5 km & 24 jam dari laporanmu${nearestLink?.distanceKm != null ? ` (terdekat ${nearestLink.distanceKm.toFixed(1)} km)` : ""}. Ini belum berarti kebakaran terkonfirmasi.`
-          : "Belum ada deteksi satelit dalam 5 km & 24 jam dari laporanmu. Laporan tetap diteruskan ke petugas.",
+          ? tr(
+              `${links.length} deteksi satelit dalam 5 km & 24 jam dari laporanmu${nearestLink?.distanceKm != null ? ` (terdekat ${nearestLink.distanceKm.toFixed(1)} km)` : ""}. Ini belum berarti kebakaran terkonfirmasi.`,
+              `${links.length} satellite detections within 5 km & 24 hours of your report${nearestLink?.distanceKm != null ? ` (nearest ${nearestLink.distanceKm.toFixed(1)} km)` : ""}. This doesn't yet mean a fire is confirmed.`
+            )
+          : tr(
+              "Belum ada deteksi satelit dalam 5 km & 24 jam dari laporanmu. Laporan tetap diteruskan ke petugas.",
+              "No satellite detections within 5 km & 24 hours of your report yet. It is still passed on to officers."
+            ),
     },
-    { done: false, title: "Ditinjau petugas", time: null, body: "Menunggu petugas memeriksa bukti & lokasi." },
-    { done: false, title: "Tindak lanjut", time: null, body: "Patroli / pemadaman jika laporan terverifikasi." },
+    {
+      done: false,
+      title: tr("Ditinjau petugas", "Officer review"),
+      time: null,
+      body: tr("Menunggu petugas memeriksa bukti & lokasi.", "Waiting for an officer to check the evidence & location."),
+    },
+    {
+      done: false,
+      title: tr("Tindak lanjut", "Follow-up"),
+      time: null,
+      body: tr("Patroli / pemadaman jika laporan terverifikasi.", "Patrol / firefighting if the report is verified."),
+    },
   ];
 
   return (
@@ -79,21 +105,24 @@ function SubmittedView({ report }: { report: ReportCreateResponse }) {
       <div className="rounded-3xl bg-gradient-to-br from-[#0c2e22] to-[#12382c] text-white p-5 md:p-6 space-y-1.5">
         <div className="flex items-center gap-2">
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-[14px] font-bold">✓</span>
-          <span className="text-sm md:text-base font-bold">Terima kasih, laporan terkirim!</span>
+          <span className="text-sm md:text-base font-bold">{tr("Terima kasih, laporan terkirim!", "Thank you, your report was sent!")}</span>
         </div>
         <p className="text-xs text-emerald-100/90 pl-8 leading-relaxed">
-          Status laporanmu akan muncul di halaman Notifikasi setiap kali berubah.
+          {tr(
+            "Status laporanmu akan muncul di halaman Notifikasi setiap kali berubah.",
+            "Your report's status will appear on the Notifications page whenever it changes."
+          )}
         </p>
       </div>
 
       <div className="rounded-2xl border border-[var(--community-border)] bg-white p-4">
-        <p className="text-[11px] text-[var(--community-ink-muted)]">ID laporan {report.id.slice(0, 8).toUpperCase()}</p>
+        <p className="text-[11px] text-[var(--community-ink-muted)]">{tr("ID laporan", "Report ID")} {report.id.slice(0, 8).toUpperCase()}</p>
         <h2 className="text-sm font-bold text-[#123027] mt-0.5">{report.description}</h2>
         <p className="text-[11px] text-[var(--community-ink-muted)] mt-1">{place}</p>
       </div>
 
       <section className="rounded-3xl border border-[var(--community-border)] bg-white p-5 space-y-4">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--community-ink-muted)]">Perjalanan laporanmu</h2>
+        <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--community-ink-muted)]">{tr("Perjalanan laporanmu", "Your report's journey")}</h2>
         <ol className="space-y-4">
           {steps.map((step, index) => (
             <li key={step.title} className={`flex gap-3 ${step.done ? "" : "opacity-60"}`}>
@@ -121,10 +150,10 @@ function SubmittedView({ report }: { report: ReportCreateResponse }) {
           href={`/community/reports/${report.id}`}
           className="block text-center rounded-xl border border-[var(--community-border)] bg-white py-3 text-sm font-bold text-[#123027]"
         >
-          Lihat detail laporan
+          {tr("Lihat detail laporan", "View report details")}
         </Link>
         <Link href="/community" className="block text-center rounded-xl bg-[#0c2e22] text-white py-3 text-sm font-bold">
-          Kembali ke Beranda
+          {tr("Kembali ke Beranda", "Back to Home")}
         </Link>
       </div>
     </div>
@@ -132,6 +161,7 @@ function SubmittedView({ report }: { report: ReportCreateResponse }) {
 }
 
 function ReportPageContent() {
+  const { tr } = useTranslation();
   const searchParams = useSearchParams();
   const location = useLocationState();
   const { fix } = location;
@@ -168,11 +198,11 @@ function ReportPageContent() {
     event.target.value = "";
     if (!file) return;
     if (!ACCEPTED_PHOTO_TYPES.includes(file.type)) {
-      setPhotoError("Format foto harus JPEG, PNG, atau GIF.");
+      setPhotoError(tr("Format foto harus JPEG, PNG, atau GIF.", "The photo must be JPEG, PNG, or GIF."));
       return;
     }
     if (file.size > MAX_PHOTO_BYTES) {
-      setPhotoError("Ukuran foto maksimal 5 MB.");
+      setPhotoError(tr("Ukuran foto maksimal 5 MB.", "The photo can be at most 5 MB."));
       return;
     }
     setPhoto({ file, previewUrl: URL.createObjectURL(file) });
@@ -182,12 +212,12 @@ function ReportPageContent() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!fix) {
-      setSubmitError("Atur lokasi kejadian dulu sebelum mengirim laporan.");
+      setSubmitError(tr("Atur lokasi kejadian dulu sebelum mengirim laporan.", "Set the incident location before sending the report."));
       setShowLocationPicker(true);
       return;
     }
     setSubmitError(null);
-    const categoryLabel = REPORT_CATEGORIES.find((c) => c.id === selectedCategory)?.label ?? "Laporan";
+    const categoryLabel = REPORT_CATEGORIES.find((c) => c.id === selectedCategory)?.label[0] ?? "Laporan";
     const prefix = `[${categoryLabel} · Jarak ${distanceEstimate}]`;
     const finalDescription = description.trim() ? `${prefix} ${description.trim()}` : prefix;
 
@@ -206,11 +236,11 @@ function ReportPageContent() {
         }),
       });
       const body = (await response.json()) as ReportCreateResponse & { detail?: string; error?: string };
-      if (!response.ok) throw new Error(body.detail ?? body.error ?? "Gagal mengirim laporan.");
+      if (!response.ok) throw new Error(body.detail ?? body.error ?? tr("Gagal mengirim laporan.", "Failed to send the report."));
       setSubmittedReport(body);
       window.scrollTo({ top: 0 });
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Gagal mengirim laporan.");
+      setSubmitError(error instanceof Error && error.message ? error.message : tr("Gagal mengirim laporan.", "Failed to send the report."));
     } finally {
       setSubmitting(false);
     }
@@ -224,14 +254,14 @@ function ReportPageContent() {
         <Link
           href="/community"
           className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/5 text-[#123027] transition"
-          aria-label="Tutup"
+          aria-label={tr("Tutup", "Close")}
         >
           <span className="material-symbols-outlined text-[20px]">close</span>
         </Link>
         <div>
-          <h1 className="text-base md:text-xl font-black text-[#123027]">Lapor kebakaran</h1>
+          <h1 className="text-base md:text-xl font-black text-[#123027]">{tr("Lapor kebakaran", "Report a fire")}</h1>
           <p className="text-[11px] md:text-xs text-[var(--community-ink-muted)]">
-            Isi yang kamu tahu saja — lokasi wajib, sisanya opsional.
+            {tr("Isi yang kamu tahu saja — lokasi wajib, sisanya opsional.", "Fill in only what you know — location is required, the rest is optional.")}
           </p>
         </div>
       </div>
@@ -240,7 +270,7 @@ function ReportPageContent() {
         {/* Left: what happened */}
         <div className="space-y-5">
           <fieldset className="space-y-2">
-            <legend className="text-xs font-bold text-[#123027] mb-2">Apa yang kamu lihat?</legend>
+            <legend className="text-xs font-bold text-[#123027] mb-2">{tr("Apa yang kamu lihat?", "What did you see?")}</legend>
             <div className="grid grid-cols-2 gap-2">
               {REPORT_CATEGORIES.map((cat) => {
                 const selected = selectedCategory === cat.id;
@@ -257,7 +287,7 @@ function ReportPageContent() {
                     }`}
                   >
                     <span className="material-symbols-outlined text-[18px]" aria-hidden="true">{cat.icon}</span>
-                    {cat.label}
+                    {tr(cat.label[0], cat.label[1])}
                   </button>
                 );
               })}
@@ -265,41 +295,44 @@ function ReportPageContent() {
           </fieldset>
 
           <div className="space-y-2">
-            <span className="text-xs font-bold text-[#123027]">Foto bukti (opsional, 1 foto)</span>
+            <span className="text-xs font-bold text-[#123027]">{tr("Foto bukti (opsional, 1 foto)", "Photo evidence (optional, 1 photo)")}</span>
             {photo ? (
               <div className="relative overflow-hidden rounded-2xl border border-gray-200">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo.previewUrl} alt="Pratinjau foto bukti" className="h-48 md:h-64 w-full object-cover" />
+                <img src={photo.previewUrl} alt={tr("Pratinjau foto bukti", "Evidence photo preview")} className="h-48 md:h-64 w-full object-cover" />
                 <button
                   type="button"
                   onClick={() => setPhoto(null)}
                   className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
                 >
                   <span className="material-symbols-outlined text-[14px]">close</span>
-                  Hapus
+                  {tr("Hapus", "Remove")}
                 </button>
               </div>
             ) : (
               <label className="flex h-32 md:h-44 cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 text-[var(--community-accent)] hover:bg-emerald-50 transition">
                 <span className="material-symbols-outlined text-[28px]">add_a_photo</span>
-                <span className="text-xs font-bold">Tambah foto</span>
-                <span className="text-[11px] text-[var(--community-ink-muted)]">JPEG / PNG / GIF, maks. 5 MB</span>
+                <span className="text-xs font-bold">{tr("Tambah foto", "Add photo")}</span>
+                <span className="text-[11px] text-[var(--community-ink-muted)]">{tr("JPEG / PNG / GIF, maks. 5 MB", "JPEG / PNG / GIF, max 5 MB")}</span>
                 <input type="file" accept="image/jpeg,image/png,image/gif" onChange={handlePhotoAdd} className="sr-only" />
               </label>
             )}
-            <p className="text-[11px] text-[var(--community-ink-muted)]">Ambil foto dari jarak aman — jangan mendekati api.</p>
+            <p className="text-[11px] text-[var(--community-ink-muted)]">{tr("Ambil foto dari jarak aman — jangan mendekati api.", "Take the photo from a safe distance — don't approach the fire.")}</p>
             {photoError && <p className="text-xs text-rose-600 font-medium">{photoError}</p>}
           </div>
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#123027]" htmlFor="keterangan">
-              Keterangan (opsional)
+              {tr("Keterangan (opsional)", "Details (optional)")}
             </label>
             <textarea
               id="keterangan"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Contoh: asap putih tebal dari arah lahan gambut belakang kebun, sejak sekitar jam 9 pagi."
+              placeholder={tr(
+                "Contoh: asap putih tebal dari arah lahan gambut belakang kebun, sejak sekitar jam 9 pagi.",
+                "e.g. thick white smoke from the peatland behind the garden, since about 9 am."
+              )}
               rows={4}
               className="w-full rounded-2xl border border-[var(--community-border)] bg-white p-3 text-sm text-[#123027] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
             />
@@ -309,7 +342,7 @@ function ReportPageContent() {
         {/* Right: where + send (sticky on desktop) */}
         <div className="space-y-5 md:sticky md:top-24">
           <div className="space-y-2">
-            <span className="text-xs font-bold text-[#123027]">Lokasi kejadian</span>
+            <span className="text-xs font-bold text-[#123027]">{tr("Lokasi kejadian", "Incident location")}</span>
             <div
               className={`rounded-2xl border bg-white p-3.5 flex items-center justify-between gap-3 ${
                 fix ? "border-[var(--community-border)]" : "border-amber-300 bg-amber-50/50"
@@ -321,14 +354,14 @@ function ReportPageContent() {
                 </span>
                 <div className="min-w-0">
                   <div className="text-xs font-bold text-[#123027] truncate">
-                    {fix ? (fix.label ?? fixRegionLabel ?? `${fix.lat.toFixed(4)}, ${fix.lon.toFixed(4)}`) : "Lokasi belum diatur"}
+                    {fix ? (fix.label ?? fixRegionLabel ?? `${fix.lat.toFixed(4)}, ${fix.lon.toFixed(4)}`) : tr("Lokasi belum diatur", "Location not set")}
                   </div>
                   <div className="text-[11px] text-[var(--community-ink-muted)] truncate mt-0.5">
                     {fix
                       ? fix.source === "gps"
-                        ? `GPS · akurasi ±${Math.round(fix.accuracyMeters ?? 0)} m`
-                        : "Dipilih manual — titik perkiraan"
-                      : "Wajib diisi sebelum mengirim"}
+                        ? `GPS · ${tr("akurasi", "accuracy")} ±${Math.round(fix.accuracyMeters ?? 0)} m`
+                        : tr("Dipilih manual — titik perkiraan", "Picked manually — approximate point")
+                      : tr("Wajib diisi sebelum mengirim", "Required before sending")}
                   </div>
                 </div>
               </div>
@@ -337,7 +370,7 @@ function ReportPageContent() {
                 onClick={() => setShowLocationPicker((open) => !open)}
                 className="shrink-0 text-xs font-bold text-[var(--community-accent)] hover:underline"
               >
-                {showLocationPicker ? "Tutup" : fix ? "Ubah" : "Atur"}
+                {showLocationPicker ? tr("Tutup", "Close") : fix ? tr("Ubah", "Change") : tr("Atur", "Set")}
               </button>
             </div>
             {(showLocationPicker || !fix) && (
@@ -348,7 +381,7 @@ function ReportPageContent() {
           </div>
 
           <fieldset className="space-y-2">
-            <legend className="text-xs font-bold text-[#123027] mb-2">Perkiraan jarak dari kamu</legend>
+            <legend className="text-xs font-bold text-[#123027] mb-2">{tr("Perkiraan jarak dari kamu", "Approximate distance from you")}</legend>
             <div className="grid grid-cols-3 gap-2">
               {DISTANCE_OPTIONS.map((dist) => {
                 const selected = distanceEstimate === dist;
@@ -374,8 +407,10 @@ function ReportPageContent() {
           <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3.5 flex items-start gap-3">
             <span className="material-symbols-outlined text-[20px] text-[var(--community-accent)] shrink-0 mt-0.5">verified_user</span>
             <p className="text-[11px] text-emerald-950 leading-relaxed">
-              Laporan dikirim tanpa nama atau nomor HP — hanya ditandai per perangkat agar kamu bisa memantau statusnya.
-              Lokasi & waktunya otomatis dicocokkan dengan deteksi satelit MODIS / VIIRS terdekat, lalu ditinjau petugas.
+              {tr(
+                "Laporan dikirim tanpa nama atau nomor HP — hanya ditandai per perangkat agar kamu bisa memantau statusnya. Lokasi & waktunya otomatis dicocokkan dengan deteksi satelit MODIS / VIIRS terdekat, lalu ditinjau petugas.",
+                "Reports are sent without your name or phone number — only tagged per device so you can follow their status. The location & time are automatically matched with the nearest MODIS / VIIRS satellite detections, then reviewed by an officer."
+              )}
             </p>
           </div>
 
@@ -391,7 +426,7 @@ function ReportPageContent() {
             className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#ba1a1a] hover:bg-[#a01616] py-3.5 text-sm font-bold text-white transition active:scale-[0.99] disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-[18px]">send</span>
-            {submitting ? "Mengirim laporan…" : "Kirim Laporan"}
+            {submitting ? tr("Mengirim laporan…", "Sending report…") : tr("Kirim Laporan", "Send Report")}
           </button>
         </div>
       </div>
@@ -400,8 +435,9 @@ function ReportPageContent() {
 }
 
 export default function LaporPage() {
+  const { tr } = useTranslation();
   return (
-    <Suspense fallback={<div className="p-8 text-center text-xs animate-pulse">Memuat form…</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-xs animate-pulse">{tr("Memuat form…", "Loading form…")}</div>}>
       <ReportPageContent />
     </Suspense>
   );

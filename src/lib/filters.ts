@@ -16,6 +16,7 @@ import type { AdminRegion } from "@/types";
 export interface RegionOption {
   value: string;
   label: string;
+  labelEn?: string;
   /** Exact `provinsi` string from the boundary store; null = Seluruh Indonesia (no filter). */
   provinsi: string | null;
   fireProne?: boolean;
@@ -48,7 +49,7 @@ function displayName(name: string) {
 }
 
 export const REGION_OPTIONS: RegionOption[] = [
-  { value: "indonesia", label: "Seluruh Indonesia", provinsi: null },
+  { value: "indonesia", label: "Seluruh Indonesia", labelEn: "All of Indonesia", provinsi: null },
   ...FIRE_PRONE.map((p) => ({ value: slug(p), label: displayName(p), provinsi: p, fireProne: true })),
   ...OTHER_PROVINCES.map((p) => ({ value: slug(p), label: displayName(p), provinsi: p })),
 ];
@@ -70,6 +71,7 @@ export type LiveWindow = "24h" | "7d" | "30d";
 export interface TimeRangeOption {
   value: string;
   label: string;
+  labelEn: string;
   /** Live FIRMS window for /api/hotspots; null = offline archive range. */
   window: LiveWindow | null;
   /** Archive-only ranges: inclusive dates for /api/historical/map. */
@@ -78,10 +80,17 @@ export interface TimeRangeOption {
 }
 
 export const TIME_RANGE_OPTIONS: TimeRangeOption[] = [
-  { value: "24h", label: "24 Jam Terakhir", window: "24h" },
-  { value: "7d", label: "7 Hari Terakhir", window: "7d" },
-  { value: "30d", label: "30 Hari Terakhir", window: "30d" },
-  { value: "2023-2024", label: "Jan 2023 – Des 2024 (arsip)", window: null, startDate: "2023-01-01", endDate: "2024-12-31" },
+  { value: "24h", label: "24 Jam Terakhir", labelEn: "Last 24 Hours", window: "24h" },
+  { value: "7d", label: "7 Hari Terakhir", labelEn: "Last 7 Days", window: "7d" },
+  { value: "30d", label: "30 Hari Terakhir", labelEn: "Last 30 Days", window: "30d" },
+  {
+    value: "2023-2024",
+    label: "Jan 2023 – Des 2024 (arsip)",
+    labelEn: "Jan 2023 – Dec 2024 (archive)",
+    window: null,
+    startDate: "2023-01-01",
+    endDate: "2024-12-31",
+  },
 ];
 
 export const DEFAULT_RANGE = TIME_RANGE_OPTIONS[0].value;
@@ -115,4 +124,9 @@ export function withFilters(path: string, searchParams: { get(name: string): str
   }
   const query = params.toString();
   return query ? `${path}?${query}` : path;
+}
+
+/** Display label for a region/range option in the active language. */
+export function labelOf(option: { label: string; labelEn?: string }, language: "id" | "en"): string {
+  return language === "en" && option.labelEn ? option.labelEn : option.label;
 }

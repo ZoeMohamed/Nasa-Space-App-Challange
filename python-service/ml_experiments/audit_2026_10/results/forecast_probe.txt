@@ -1,0 +1,45 @@
+cells=3176 days=5276 nationally-empty days=3 load 2s
+samples=375129 issue dates=733 base rate any=0.548 >=5=0.245 build 4s
+
+######## target y_any
+                         auc     ap   p@50  brier
+model                                            
+recency (rule)         0.668  0.677  0.615    NaN
+persistence a7 (rule)  0.702  0.696  0.657    NaN
+climatology (rule)     0.749  0.738  0.656    NaN
+logistic               0.783  0.782  0.707  0.185
+gradient boosting      0.789  0.786  0.713  0.183
+base rate (mean over test years): 0.494
+model  climatology (rule)  gradient boosting  logistic  persistence a7 (rule)  recency (rule)
+Y                                                                                            
+2018                0.794              0.825     0.835                  0.761           0.748
+2019                0.863              0.884     0.884                  0.830           0.811
+2020                0.687              0.763     0.742                  0.649           0.628
+2021                0.668              0.735     0.735                  0.638           0.600
+2022                0.593              0.655     0.652                  0.545           0.532
+2023                0.837              0.866     0.865                  0.801           0.773
+2024                0.758              0.799     0.791                  0.698           0.676
+2025                0.708              0.760     0.754                  0.648           0.648
+
+######## target y_5
+                         auc     ap   p@50  brier
+model                                            
+recency (rule)         0.741  0.476  0.349    NaN
+persistence a7 (rule)  0.788  0.508  0.376    NaN
+climatology (rule)     0.812  0.533  0.364    NaN
+logistic               0.861  0.622  0.418    0.1
+gradient boosting      0.866  0.626  0.423    0.1
+base rate (mean over test years): 0.188
+model  climatology (rule)  gradient boosting  logistic  persistence a7 (rule)  recency (rule)
+Y                                                                                            
+2018                0.591              0.665     0.683                  0.582           0.562
+2019                0.699              0.762     0.767                  0.696           0.661
+2020                0.485              0.613     0.591                  0.477           0.427
+2021                0.468              0.565     0.566                  0.446           0.377
+2022                0.358              0.472     0.467                  0.327           0.317
+2023                0.673              0.745     0.748                  0.660           0.617
+2024                0.519              0.605     0.590                  0.465           0.434
+2025                0.471              0.576     0.567                  0.411           0.418
+
+Isolation Forest anomaly score, Spearman with e7: 0.45  with f7: 0.33  with nat7: -0.28  | AUC for y_any: 0.586 (not its purpose; shown only to show it is not a forecaster)
+total 121s

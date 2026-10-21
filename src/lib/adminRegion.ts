@@ -30,20 +30,31 @@ export interface RegionLookupResponse {
 }
 
 /** Title + honest caption for a 0.25° grid area (a cell can span several kecamatan). */
-export function areaRegionLabel(area: {
-  gridLat: number;
-  gridLon: number;
-  admin?: AdminRegion | null;
-}): { title: string; caption: string } {
+export function areaRegionLabel(
+  area: { gridLat: number; gridLon: number; admin?: AdminRegion | null },
+  language: "id" | "en" = "id"
+): { title: string; caption: string } {
+  const en = language === "en";
   const grid = `Grid ${area.gridLat.toFixed(2)}, ${area.gridLon.toFixed(2)}`;
   const admin = area.admin;
   if (!admin) {
-    return { title: grid, caption: "Di luar batas wilayah tercatat — koordinat grid 0,25° ditampilkan apa adanya." };
+    return {
+      title: grid,
+      caption: en
+        ? "Outside recorded administrative boundaries — 0.25° grid coordinates shown as-is."
+        : "Di luar batas wilayah tercatat — koordinat grid 0,25° ditampilkan apa adanya.",
+    };
   }
-  const share = admin.dominantShare != null ? `${Math.round(admin.dominantShare * 100)}% deteksi` : "deteksi terbanyak";
-  const spread = admin.kecamatanCount && admin.kecamatanCount > 1 ? ` · sel mencakup ${admin.kecamatanCount} kecamatan` : "";
+  const pct = admin.dominantShare != null ? Math.round(admin.dominantShare * 100) : null;
+  const share = pct !== null ? (en ? `${pct}% of detections` : `${pct}% deteksi`) : en ? "most detections" : "deteksi terbanyak";
+  const spread =
+    admin.kecamatanCount && admin.kecamatanCount > 1
+      ? en
+        ? ` · cell spans ${admin.kecamatanCount} districts`
+        : ` · sel mencakup ${admin.kecamatanCount} kecamatan`
+      : "";
   return {
     title: formatAdminShort(admin) ?? grid,
-    caption: `Kec. ${admin.kecamatan} (${share})${spread} · ${grid}`,
+    caption: `${en ? "District" : "Kec."} ${admin.kecamatan} (${share})${spread} · ${grid}`,
   };
 }

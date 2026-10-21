@@ -4,27 +4,28 @@ import Link from "next/link";
 import { useState } from "react";
 import { formatDistanceKm } from "../lib/geo";
 import {
-  REPORT_STATUS_DESCRIPTION,
-  REPORT_STATUS_LABEL,
+  reportStatusDescription,
+  reportStatusLabel,
   REPORT_STATUS_TONE,
   REPORT_STATUS_TONE_CLASSES,
 } from "../lib/reportStatus";
 import type { CommunityReport, HotspotMarker } from "@/types";
 import { formatAdminFull } from "@/lib/adminRegion";
+import { useTranslation, pick, type Language } from "@/lib/i18n/LanguageContext";
 
-const MATCH_STATUS_LABEL: Record<string, string> = {
-  MATCHED: "Cocok lintas sensor (MODIS + VIIRS)",
-  MODIS_ONLY: "MODIS saja",
-  VIIRS_ONLY: "VIIRS saja",
-  UNMATCHED: "Belum tervalidasi silang",
+const MATCH_STATUS_LABEL: Record<string, readonly [string, string]> = {
+  MATCHED: ["Cocok lintas sensor (MODIS + VIIRS)", "Matched across sensors (MODIS + VIIRS)"],
+  MODIS_ONLY: ["MODIS saja", "MODIS only"],
+  VIIRS_ONLY: ["VIIRS saja", "VIIRS only"],
+  UNMATCHED: ["Belum tervalidasi silang", "Not cross-checked"],
 };
 
-function formatAcquiredAt(value: string | undefined): string {
-  if (!value) return "Waktu tidak tercatat";
+function formatAcquiredAt(value: string | undefined, language: Language): string {
+  if (!value) return pick(language, "Waktu tidak tercatat", "Time not recorded");
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Waktu tidak tercatat";
+  if (Number.isNaN(date.getTime())) return pick(language, "Waktu tidak tercatat", "Time not recorded");
   return (
-    date.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }) + " UTC"
+    date.toLocaleString(language === "en" ? "en-GB" : "id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }) + " UTC"
   );
 }
 
@@ -39,13 +40,16 @@ export interface NearbyReportItem {
 }
 
 export function NearbyHotspotList({ items }: { items: NearbyHotspot[] }) {
+  const { tr, language } = useTranslation();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   if (items.length === 0) {
     return (
       <p className="text-sm text-[var(--community-ink-muted)] rounded-xl border border-dashed border-[var(--community-border)] p-4">
-        Tidak ada deteksi satelit di sekitar lokasi Anda saat ini. Ini bisa berarti memang belum ada titik
-        panas terdeteksi dalam 24 jam terakhir — bukan berarti data gagal dimuat.
+        {tr(
+          "Tidak ada deteksi satelit di sekitar lokasi Anda saat ini. Ini bisa berarti memang belum ada titik panas terdeteksi dalam 24 jam terakhir — bukan berarti data gagal dimuat.",
+          "No satellite detections around you right now. That can simply mean no hotspot was detected in the last 24 hours — not that the data failed to load."
+        )}
       </p>
     );
   }
@@ -79,42 +83,45 @@ export function NearbyHotspotList({ items }: { items: NearbyHotspot[] }) {
                 </span>
               </div>
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[var(--community-ink-muted)]">
-                <span>{marker.sensor ?? marker.satellite ?? "Sensor tidak tercatat"}</span>
+                <span>{marker.sensor ?? marker.satellite ?? tr("Sensor tidak tercatat", "Sensor not recorded")}</span>
                 <span>FRP {typeof marker.frp === "number" ? `${marker.frp.toFixed(1)} MW` : "—"}</span>
                 {marker.matchStatus && (
-                  <span>{MATCH_STATUS_LABEL[marker.matchStatus] ?? marker.matchStatus}</span>
+                  <span>{MATCH_STATUS_LABEL[marker.matchStatus] ? tr(...MATCH_STATUS_LABEL[marker.matchStatus]) : marker.matchStatus}</span>
                 )}
               </div>
 
               {expanded && (
                 <dl className="mt-2 pt-2 border-t border-[var(--community-border)] grid grid-cols-2 gap-2 text-[11px]">
                   <div>
-                    <dt className="text-[var(--community-ink-muted)]">Terdeteksi</dt>
-                    <dd className="font-medium">{formatAcquiredAt(marker.acquiredAt)}</dd>
+                    <dt className="text-[var(--community-ink-muted)]">{tr("Terdeteksi", "Detected")}</dt>
+                    <dd className="font-medium">{formatAcquiredAt(marker.acquiredAt, language)}</dd>
                   </div>
                   <div>
-                    <dt className="text-[var(--community-ink-muted)]">Keyakinan</dt>
+                    <dt className="text-[var(--community-ink-muted)]">{tr("Keyakinan", "Confidence")}</dt>
                     <dd className="font-medium">
                       {marker.confidenceLabel ??
                         (typeof marker.confidence === "number" ? `${marker.confidence}%` : "—")}
                     </dd>
                   </div>
                   <div className="col-span-2">
-                    <dt className="text-[var(--community-ink-muted)]">Wilayah</dt>
-                    <dd className="font-medium">{formatAdminFull(marker.admin) ?? "Di luar batas wilayah tercatat"}</dd>
+                    <dt className="text-[var(--community-ink-muted)]">{tr("Wilayah", "Area")}</dt>
+                    <dd className="font-medium">{formatAdminFull(marker.admin) ?? tr("Di luar batas wilayah tercatat", "Outside recorded boundaries")}</dd>
                   </div>
                   <div>
-                    <dt className="text-[var(--community-ink-muted)]">Koordinat</dt>
+                    <dt className="text-[var(--community-ink-muted)]">{tr("Koordinat", "Coordinates")}</dt>
                     <dd className="font-medium font-mono">
                       {marker.lat.toFixed(4)}, {marker.lng.toFixed(4)}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[var(--community-ink-muted)]">Tingkat</dt>
+                    <dt className="text-[var(--community-ink-muted)]">{tr("Tingkat", "Level")}</dt>
                     <dd className="font-medium">{marker.severity}</dd>
                   </div>
                   <p className="col-span-2 text-[var(--community-ink-muted)]">
-                    Deteksi satelit menunjukkan titik panas, bukan konfirmasi kebakaran di lapangan.
+                    {tr(
+                      "Deteksi satelit menunjukkan titik panas, bukan konfirmasi kebakaran di lapangan.",
+                      "A satellite detection shows a hotspot, not a confirmed fire on the ground."
+                    )}
                   </p>
                 </dl>
               )}
@@ -124,7 +131,7 @@ export function NearbyHotspotList({ items }: { items: NearbyHotspot[] }) {
                 href={`/community/alert/${marker.id}`}
                 className="mt-1 block text-right text-[11px] font-semibold text-[var(--community-accent)]"
               >
-                Lihat detail peringatan →
+                {tr("Lihat detail peringatan →", "View alert details →")}
               </Link>
             )}
           </li>
@@ -135,12 +142,13 @@ export function NearbyHotspotList({ items }: { items: NearbyHotspot[] }) {
 }
 
 export function NearbyReportList({ items }: { items: NearbyReportItem[] }) {
+  const { tr, language } = useTranslation();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   if (items.length === 0) {
     return (
       <p className="text-sm text-[var(--community-ink-muted)] rounded-xl border border-dashed border-[var(--community-border)] p-4">
-        Belum ada laporan warga lain di sekitar lokasi Anda.
+        {tr("Belum ada laporan warga lain di sekitar lokasi Anda.", "No other citizen reports near you yet.")}
       </p>
     );
   }
@@ -167,16 +175,16 @@ export function NearbyReportList({ items }: { items: NearbyReportItem[] }) {
                 <span
                   className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase ${REPORT_STATUS_TONE_CLASSES[tone]}`}
                 >
-                  {REPORT_STATUS_LABEL[report.status]}
+                  {reportStatusLabel(report.status, language)}
                 </span>
                 <span className="text-[11px] text-[var(--community-ink-muted)]">
-                  {formatAcquiredAt(report.observedAt)}
+                  {formatAcquiredAt(report.observedAt, language)}
                 </span>
               </div>
 
               {expanded && (
                 <div className="mt-2 pt-2 border-t border-[var(--community-border)] space-y-1 text-[11px]">
-                  <p className="text-[var(--community-ink-muted)]">{REPORT_STATUS_DESCRIPTION[report.status]}</p>
+                  <p className="text-[var(--community-ink-muted)]">{reportStatusDescription(report.status, language)}</p>
                   {formatAdminFull(report.admin) && (
                     <p className="text-[var(--community-ink)]">{formatAdminFull(report.admin)}</p>
                   )}
@@ -191,7 +199,7 @@ export function NearbyReportList({ items }: { items: NearbyReportItem[] }) {
                 href={`/community/reports/${report.id}`}
                 className="mt-1 block text-right text-[11px] font-semibold text-[var(--community-accent)]"
               >
-                Lihat status lengkap →
+                {tr("Lihat status lengkap →", "View full status →")}
               </Link>
             )}
           </li>

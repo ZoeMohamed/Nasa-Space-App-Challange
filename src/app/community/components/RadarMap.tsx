@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { HotspotMarker } from "@/types";
 import type { CommunityReportPin, UserLocationPin } from "@/components/map/FireMap";
+import MapLoadingText from "@/components/map/MapLoadingText";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 const FireMap = dynamic(() => import("@/components/map/FireMap"), {
   ssr: false,
@@ -11,7 +13,7 @@ const FireMap = dynamic(() => import("@/components/map/FireMap"), {
     <div className="h-full w-full min-h-[280px] flex items-center justify-center bg-gray-50 rounded-2xl">
       <span className="text-xs font-medium text-emerald-800 animate-pulse flex items-center gap-2">
         <span className="material-symbols-outlined text-[18px] animate-spin">refresh</span>
-        Memuat peta interaktif…
+        <MapLoadingText />
       </span>
     </div>
   ),
@@ -33,12 +35,13 @@ type MapLayerFilter = "ALL" | "MATCHED" | "VIIRS" | "MODIS";
 
 export default function RadarMap({
   markers,
-  locationLabel = "Lokasimu",
+  locationLabel,
   userCoords = null,
   reports = [],
   radiusKm = 10,
   heightClass = "h-[420px] md:h-[520px]",
 }: RadarMapProps) {
+  const { tr } = useTranslation();
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [activeLayer, setActiveLayer] = useState<MapLayerFilter>("ALL");
 
@@ -89,9 +92,9 @@ export default function RadarMap({
         {/* Header */}
         <div className="p-4 pb-3 flex items-start justify-between gap-2">
           <div>
-            <h2 className="text-[15px] font-bold text-[#123027] tracking-tight">Kebakaran di sekitarmu</h2>
+            <h2 className="text-[15px] font-bold text-[#123027] tracking-tight">{tr("Kebakaran di sekitarmu", "Fires around you")}</h2>
             <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5">
-              Peta nyata · MODIS / VIIRS + laporan warga
+              {tr("Peta nyata · MODIS / VIIRS + laporan warga", "Live map · MODIS / VIIRS + citizen reports")}
             </p>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
@@ -101,7 +104,7 @@ export default function RadarMap({
               onClick={() => setIsFullScreen(true)}
               className="text-xs font-bold text-[var(--community-accent)] hover:text-emerald-950 flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 transition active:scale-95"
             >
-              <span>Buka peta lengkap</span>
+              <span>{tr("Buka peta lengkap", "Open full map")}</span>
               <span className="material-symbols-outlined text-[16px]">open_in_full</span>
             </button>
           </div>
@@ -132,19 +135,19 @@ export default function RadarMap({
         <div className="p-3 border-t border-[var(--community-border)] bg-white flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[11px] text-[var(--community-ink-muted)] font-medium">
           <div className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-blue-600 ring-1 ring-white" />
-            <span>Lokasimu</span>
+            <span>{tr("Lokasimu", "Your location")}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-red-600 ring-1 ring-white" />
-            <span>Tervalidasi</span>
+            <span>{tr("Tervalidasi", "Verified")}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full border border-orange-500 bg-orange-100" />
-            <span>Perlu ditinjau</span>
+            <span>{tr("Perlu ditinjau", "Needs review")}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-slate-400" />
-            <span>Satelit</span>
+            <span>{tr("Satelit", "Satellite")}</span>
           </div>
         </div>
       </div>
@@ -162,14 +165,16 @@ export default function RadarMap({
                 className="flex items-center gap-1.5 text-xs font-bold text-[#123027] hover:text-emerald-800 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-xl transition active:scale-95"
               >
                 <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-                <span>Kembali</span>
+                <span>{tr("Kembali", "Back")}</span>
               </button>
               <div className="min-w-0 hidden sm:block">
                 <h1 className="text-sm font-extrabold text-[#123027] truncate">
-                  Peta Pemantauan Karhutla
+                  {tr("Peta Pemantauan Karhutla", "Forest & Land Fire Monitoring Map")}
                 </h1>
                 <p className="text-[10px] text-gray-500 truncate">
-                  {userCoords ? `${locationLabel} · Radius pantau ${radiusKm} km` : "Seluruh Indonesia"}
+                  {userCoords
+                    ? `${locationLabel ?? tr("Lokasimu", "Your location")} · ${tr("Radius pantau", "Watch radius")} ${radiusKm} km`
+                    : tr("Seluruh Indonesia", "All of Indonesia")}
                 </p>
               </div>
             </div>
@@ -185,7 +190,7 @@ export default function RadarMap({
                     : "text-gray-500 hover:text-gray-900"
                 }`}
               >
-                Semua ({markers.length})
+                {tr("Semua", "All")} ({markers.length})
               </button>
               <button
                 type="button"
@@ -197,7 +202,7 @@ export default function RadarMap({
                 }`}
               >
                 <span>🔥</span>
-                <span>Harmonized</span>
+                <span>{tr("Terharmonisasi", "Harmonized")}</span>
               </button>
               <button
                 type="button"
@@ -227,7 +232,7 @@ export default function RadarMap({
             <button
               type="button"
               onClick={() => setIsFullScreen(false)}
-              aria-label="Tutup peta layar penuh"
+              aria-label={tr("Tutup peta layar penuh", "Close full-screen map")}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition"
             >
               <span className="material-symbols-outlined text-[20px]">close</span>
@@ -248,7 +253,7 @@ export default function RadarMap({
               showDetailPanel={true}
               allowFullScreenToggle={false}
               actionHref={(m) => `/community/alert/${m.id}`}
-              actionLabel="Lihat Detail Peringatan"
+              actionLabel={tr("Lihat Detail Peringatan", "View Alert Details")}
             />
           </main>
         </div>

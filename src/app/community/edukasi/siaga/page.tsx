@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { loadCheckedItems, saveCheckedItems } from "../../lib/checklistProgress";
-import { CHECKLIST_CATEGORIES, TOTAL_CHECKLIST_ITEMS } from "./checklistData";
+import { categoryTitle, CHECKLIST_CATEGORIES, itemText, TOTAL_CHECKLIST_ITEMS } from "./checklistData";
 import {
   BagIllustration,
   DocumentsIllustration,
   FamilyPlanIllustration,
 } from "@/components/community/illustrations";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 const CATEGORY_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   dokumen: DocumentsIllustration,
@@ -17,6 +18,7 @@ const CATEGORY_ICON: Record<string, React.ComponentType<{ className?: string }>>
 };
 
 export default function SiagaChecklistPage() {
+  const { tr, language } = useTranslation();
   // Initialize as "loading" (null) rather than reading localStorage synchronously
   // during render — avoids a setState-in-effect-body mismatch between server
   // and client render passes (same pattern as src/app/priority-areas/page.tsx).
@@ -39,24 +41,28 @@ export default function SiagaChecklistPage() {
   return (
     <div className="space-y-6">
       <Link href="/community/edukasi" className="text-xs font-semibold text-[var(--community-ink-muted)]">
-        ← Kembali ke Edukasi
+        ← {tr("Kembali ke Edukasi", "Back to Learn")}
       </Link>
 
       <section>
-        <h1 className="text-lg font-extrabold text-[#123027]">Siapkan Tas Siaga</h1>
+        <h1 className="text-lg font-extrabold text-[#123027]">{tr("Siapkan Tas Siaga", "Pack a Go-Bag")}</h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-1 leading-relaxed">
-          Checklist ini membantu keluarga Anda siap sebelum kabut asap atau kebakaran terjadi. Tandai
-          item yang sudah disiapkan — progres Anda disimpan otomatis di perangkat ini.
+          {tr(
+            "Checklist ini membantu keluarga Anda siap sebelum kabut asap atau kebakaran terjadi. Tandai item yang sudah disiapkan — progres Anda disimpan otomatis di perangkat ini.",
+            "This checklist helps your family get ready before haze or fire hits. Tick the items you've prepared — your progress is saved automatically on this device."
+          )}
         </p>
       </section>
 
       <div className="rounded-2xl border border-[var(--community-border)] bg-white p-4 flex items-center justify-between">
         <div>
           <p className="text-sm font-bold text-[#123027]">
-            {checked === null ? "Memuat progres…" : `${doneCount} dari ${TOTAL_CHECKLIST_ITEMS} selesai`}
+            {checked === null
+              ? tr("Memuat progres…", "Loading progress…")
+              : tr(`${doneCount} dari ${TOTAL_CHECKLIST_ITEMS} selesai`, `${doneCount} of ${TOTAL_CHECKLIST_ITEMS} done`)}
           </p>
           <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5">
-            Tersimpan secara lokal di perangkat ini saja — tidak dikirim ke server.
+            {tr("Tersimpan secara lokal di perangkat ini saja — tidak dikirim ke server.", "Stored only on this device — never sent to a server.")}
           </p>
         </div>
         <div className="h-2.5 w-24 rounded-full bg-gray-100 overflow-hidden shrink-0">
@@ -79,12 +85,13 @@ export default function SiagaChecklistPage() {
                   <Icon className="h-6 w-6" />
                 </span>
               )}
-              <h2 className="text-sm font-bold text-[#123027]">{category.title}</h2>
+              <h2 className="text-sm font-bold text-[#123027]">{categoryTitle(category, language)}</h2>
             </div>
 
             <ul className="space-y-2">
               {category.items.map((item) => {
                 const isChecked = checked?.[item.id] ?? false;
+                const text = itemText(item, language);
                 return (
                   <li
                     key={item.id}
@@ -103,20 +110,20 @@ export default function SiagaChecklistPage() {
                       />
                       <div className="min-w-0">
                         <p className={`text-sm font-semibold ${isChecked ? "line-through text-[var(--community-ink-muted)]" : "text-[#123027]"}`}>
-                          {item.what}
+                          {text.what}
                         </p>
                         <p className="text-[11px] text-[var(--community-ink-muted)] mt-1 leading-relaxed">
-                          <span className="font-semibold">Kenapa: </span>
-                          {item.why}
+                          <span className="font-semibold">{tr("Kenapa", "Why")}: </span>
+                          {text.why}
                         </p>
                         <p className="text-[11px] text-[var(--community-ink-muted)] mt-1 leading-relaxed">
-                          <span className="font-semibold">Caranya: </span>
-                          {item.how}
+                          <span className="font-semibold">{tr("Caranya", "How")}: </span>
+                          {text.how}
                         </p>
-                        {item.caveat && (
+                        {text.caveat && (
                           <p className="text-[11px] text-amber-700 mt-1 leading-relaxed">
-                            <span className="font-semibold">Catatan: </span>
-                            {item.caveat}
+                            <span className="font-semibold">{tr("Catatan", "Note")}: </span>
+                            {text.caveat}
                           </p>
                         )}
                       </div>

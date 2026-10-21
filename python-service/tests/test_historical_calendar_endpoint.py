@@ -36,7 +36,9 @@ def test_historical_calendar_endpoint_returns_expected_shape(tmp_path, monkeypat
     assert response.status_code == 200
     body = response.json()
 
-    assert set(body.keys()) == {"months", "cells"}
+    assert set(body.keys()) == {"months", "cells", "baseline", "areaCells"}
+    assert body["baseline"]["minSampleDays"] == 10
+    assert body["baseline"]["population"] == "MODIS + VIIRS SNPP"
 
     months_by_key = {(month["year"], month["month"]): month for month in body["months"]}
     assert (2025, 1) in months_by_key
@@ -89,7 +91,9 @@ def test_historical_calendar_endpoint_handles_missing_store(tmp_path, monkeypatc
     client = TestClient(main.app)
     response = client.get("/api/historical/calendar")
     assert response.status_code == 200
-    assert response.json() == {"months": [], "cells": []}
+    body = response.json()
+    assert body["months"] == [] and body["cells"] == []
+    assert body["baseline"]["excludedNrtRows"] == 0
 
 
 def test_historical_map_endpoint_returns_grid_markers_for_window(tmp_path, monkeypatch):
