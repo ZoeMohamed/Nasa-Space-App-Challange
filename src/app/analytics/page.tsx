@@ -13,6 +13,7 @@ import { useLiveHotspots } from "@/lib/useLiveHotspots";
 import type { AreaSummary, HistoricalCalendarResponse } from "@/types";
 import { areaRegionLabel } from "@/lib/adminRegion";
 import { useTranslation } from "@/lib/i18n/LanguageContext";
+import InfoNote from "@/components/ui/InfoNote";
 
 /**
  * Figma source: file wasTTtlmYfsjK1ZkH1Kzim, node 169:7795 ("Desktop - 9"), the loose group of
@@ -480,12 +481,12 @@ function AnalyticsPageContent() {
                   {areas.length} {tr("AREA AKTIF", "ACTIVE AREAS")}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 mt-1 max-w-xl">
+              <InfoNote className="mt-2 max-w-xl">
                 {tr(
-                  "Setiap baris mewakili satu sel grid 0,25° (~27 km) dari agregasi python fire_pipeline, bukan hasil klasterisasi spasial DBSCAN.",
-                  "Each row is one 0.25° (~27 km) grid cell aggregated by the Python fire_pipeline, not a DBSCAN spatial cluster."
+                  "Setiap baris adalah satu kotak grid 0,25° (±27 km), bukan hasil pengelompokan api secara spasial.",
+                  "Each row is one 0.25° (±27 km) grid box, not a spatial grouping of fires."
                 )}
-              </p>
+              </InfoNote>
             </div>
             <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
               <button

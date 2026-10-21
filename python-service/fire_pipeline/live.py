@@ -99,8 +99,15 @@ _chunk_cache: dict[tuple[str, str, int], tuple[float, pd.DataFrame, dict]] = {}
 # Processed 7d/30d results keyed by the identity of the cached chunk frames they were built from:
 # match_modis_viirs() takes ~20-30 s on a 7d window, so every page load re-running it on
 # unchanged chunks would make navigation unusable. A refetched chunk is a new object -> rebuild.
-_processed_cache: dict[tuple[str, bool], tuple[tuple[int, ...], "LiveResult"]] = {}
+# Processed results per (window, include_all_confidence): the last few (frame ids, result) pairs, so
+# a result built in the background for new frames doesn't evict the one still being served.
+_processed_cache: dict[tuple[str, bool], list[tuple[tuple[int, ...], "LiveResult"]]] = {}
 _processed_lock = threading.Lock()
+# One build at a time per key: concurrent requests for the same new frames wait for that build
+# instead of each starting their own (2026-10-21: a pile-up of parallel 24 h rebuilds pushed every
+# request past the 60 s proxy timeout).
+_build_locks: dict[tuple[str, bool], threading.Lock] = {}
+_PROCESSED_KEEP = 2
 
 
 def chunk_plan(window_hours: int, today) -> list[tuple[str, int]]:
@@ -768,14 +775,25 @@ def _cached_result(window: str, include_all_confidence: bool, frames, summaries,
     """Reuse the processed result while the underlying fetched frames are the same objects."""
     frame_ids = tuple(sorted(id(frame) for frame in frames))
     cache_key = (window, include_all_confidence)
+
+    def lookup():
+        with _processed_lock:
+            return next((result for ids, result in _processed_cache.get(cache_key, []) if ids == frame_ids), None)
+
+    hit = lookup()
+    if hit is not None:
+        return hit
     with _processed_lock:
-        cached = _processed_cache.get(cache_key)
-        if cached and cached[0] == frame_ids:
-            return cached[1]
-    result = build_live_result(frames, summaries, include_all_confidence=include_all_confidence, window_hours=window_hours)
-    with _processed_lock:
-        _processed_cache[cache_key] = (frame_ids, result)
-    return result
+        build_lock = _build_locks.setdefault(cache_key, threading.Lock())
+    with build_lock:
+        hit = lookup()  # built by the request we were waiting for
+        if hit is not None:
+            return hit
+        result = build_live_result(frames, summaries, include_all_confidence=include_all_confidence, window_hours=window_hours)
+        with _processed_lock:
+            entries = [entry for entry in _processed_cache.get(cache_key, []) if entry[0] != frame_ids]
+            _processed_cache[cache_key] = (entries + [(frame_ids, result)])[-_PROCESSED_KEEP:]
+        return result
 
 
 def load_live_result(map_key: str | None = None, include_all_confidence: bool = False, window: str = "24h") -> LiveResult:
@@ -880,6 +898,13 @@ def _refresh_24h(key: str) -> None:
         if current is not None and current[0] > time.monotonic():
             return
         frames, summaries = _fetch_all_24h(key)
+        if frames and current is not None:
+            # Process the new snapshot BEFORE swapping it in, so requests keep getting the old,
+            # already-processed result instead of all waiting on (or racing) the rebuild.
+            try:
+                ensure_reference_counts(_cached_result("24h", False, frames, summaries, WINDOW_HOURS))
+            except Exception:  # noqa: BLE001 -- a request will rebuild and report the error
+                pass
         with _cache_lock:
             if frames or _cache is None:
                 _cache = (time.monotonic() + CACHE_SECONDS, (frames, summaries))

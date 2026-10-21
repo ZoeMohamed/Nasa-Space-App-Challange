@@ -155,3 +155,32 @@ def test_render_view_filters_before_cap_and_reports_totals():
     recent = live.render_view(result, order="recent", limit=None)
     times = [m["acquiredAt"] for m in recent["markers"]]
     assert times == sorted(times, reverse=True)
+
+
+def test_concurrent_requests_for_new_frames_build_only_once(monkeypatch):
+    import threading
+    import time
+
+    calls = {"n": 0}
+
+    def slow_build(*args, **kwargs):
+        calls["n"] += 1
+        time.sleep(0.3)
+        return f"result-{calls['n']}"
+
+    monkeypatch.setattr(live, "build_live_result", slow_build)
+    monkeypatch.setattr(live, "_processed_cache", {})
+    monkeypatch.setattr(live, "_build_locks", {})
+    frames = [pd.DataFrame([_detection(1, -2.1, 50)])]
+    results = []
+    threads = [threading.Thread(target=lambda: results.append(live._cached_result("24h", False, frames, SUMMARIES, 24))) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(5)
+    assert calls["n"] == 1
+    assert set(results) == {"result-1"}
+    # The previous result stays available while a new snapshot is built.
+    new_frames = [frames[0].copy()]
+    assert live._cached_result("24h", False, new_frames, SUMMARIES, 24) == "result-2"
+    assert live._cached_result("24h", False, frames, SUMMARIES, 24) == "result-1"

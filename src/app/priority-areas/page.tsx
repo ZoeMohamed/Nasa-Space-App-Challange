@@ -15,6 +15,7 @@ import type { AreaSummary, CommunityReport, HotspotMarker } from "@/types";
 import { areaRegionLabel, formatAdminFull } from "@/lib/adminRegion";
 import MapLoadingText from "@/components/map/MapLoadingText";
 import { useTranslation } from "@/lib/i18n/LanguageContext";
+import InfoNote from "@/components/ui/InfoNote";
 
 const FireMap = dynamic(() => import("@/components/map/FireMap"), {
   ssr: false,
@@ -421,12 +422,12 @@ function AreaDetailPanel({
                 caption={area.frpMax !== null ? `${tr("Puncak", "Peak")} ${area.frpMax.toFixed(1)} MW` : tr("Energi radiasi termal", "Thermal radiative energy")}
               />
             </div>
-            <p className="lg:col-span-2 text-xs text-gray-500 border-t border-gray-100 pt-3">
+            <InfoNote className="lg:col-span-2">
               {tr(
-                "Peta dan statistik di atas hanya mencakup deteksi yang sudah dikaitkan ke grid area ini. Indeks kelembapan, tipe lahan, dan status akses jalur darat belum tersedia — tidak ditampilkan agar tidak mengarang nilai.",
-                "The map and stats above only cover detections linked to this grid area. Moisture indices, land cover, and road access aren't available yet — they're left out rather than made up."
+                "Peta dan angka di atas hanya mencakup deteksi di kotak grid ini. Kelembapan, jenis lahan, dan akses jalan belum tersedia, jadi tidak ditampilkan (tidak dikarang).",
+                "The map and numbers above only cover detections in this grid box. Moisture, land cover and road access aren't available yet, so they aren't shown (not made up)."
               )}
-            </p>
+            </InfoNote>
           </div>
         )}
 
@@ -685,12 +686,12 @@ function PriorityAreasPageContent() {
           </div>
         )}
         {meta?.markers?.truncated && (
-          <p className="text-xs text-gray-500">
+          <InfoNote>
             {tr(
-              `Skor area dihitung dari semua ${meta.markers.total.toLocaleString()} deteksi; peta di detail area menampilkan ${meta.markers.shown.toLocaleString()} deteksi dengan FRP tertinggi.`,
-              `Area scores use all ${meta.markers.total.toLocaleString()} detections; the area-detail map shows the ${meta.markers.shown.toLocaleString()} highest-FRP ones.`
+              `Skor area dihitung dari semua ${meta.markers.total.toLocaleString()} deteksi. Peta di detail area hanya menampilkan ${meta.markers.shown.toLocaleString()} deteksi dengan FRP tertinggi.`,
+              `Area scores use all ${meta.markers.total.toLocaleString()} detections. The area-detail map only shows the ${meta.markers.shown.toLocaleString()} highest-FRP ones.`
             )}
-          </p>
+          </InfoNote>
         )}
 
         {selectedArea && (

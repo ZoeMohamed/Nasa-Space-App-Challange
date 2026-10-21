@@ -28,6 +28,7 @@ import {
   type SeriesKey,
 } from "@/lib/calendarSeries";
 import { useTranslation } from "@/lib/i18n/LanguageContext";
+import InfoNote from "@/components/ui/InfoNote";
 
 /**
  * Figma source: file wasTTtlmYfsjK1ZkH1Kzim, node 169:16396 ("Desktop - 10"). That top frame
@@ -368,7 +369,7 @@ function CalendarPageContent() {
       .then((body) => setLiveMonthsState({ key, data: body }))
       .catch((requestError: unknown) => {
         if (requestError instanceof DOMException && requestError.name === "AbortError") return;
-        console.error("Live calendar months failed", requestError);
+        console.warn("Live calendar months unavailable (calendar ends at the archive)", requestError);
         setLiveMonthsState({ key, data: null });
       });
     return () => controller.abort();
@@ -487,6 +488,7 @@ function CalendarPageContent() {
       current: latest.detections,
       baseline: Math.round(baselineValue),
       deviationPct,
+      years: sameMonthPrevYears.length,
       firstYear: Math.min(...sameMonthPrevYears.map((entry) => entry.year)),
       lastYear: Math.max(...sameMonthPrevYears.map((entry) => entry.year)),
     };
@@ -505,7 +507,7 @@ function CalendarPageContent() {
       .then((body) => setUnusualState({ key, data: body }))
       .catch((requestError: unknown) => {
         if (requestError instanceof DOMException && requestError.name === "AbortError") return;
-        console.error("Live-vs-archive comparison failed", requestError);
+        console.warn("Live-vs-archive comparison unavailable (shown as such in the tile)", requestError);
         setUnusualState({ key, data: null });
       });
     return () => controller.abort();
@@ -876,15 +878,16 @@ function CalendarPageContent() {
             iconTone="red"
             label={tr("Deteksi 24 Jam Terakhir (Live)", "Detections, Last 24 Hours (Live)")}
             value={loading ? "…" : liveDetectionTotal.toLocaleString(numLocale)}
-            caption={
-              error
-                ? error
-                : loading
-                  ? tr("Memuat NASA FIRMS…", "Loading NASA FIRMS…")
-                  : tr(
-                      `${sourcesAvailable}/4 feed NASA FIRMS aktif • snapshot NRT, bukan arsip historis`,
-                      `${sourcesAvailable}/4 NASA FIRMS feeds live • NRT snapshot, not the historical archive`
-                    )
+            caption={error ? error : loading ? tr("Memuat NASA FIRMS…", "Loading NASA FIRMS…") : tr("Data live NASA FIRMS di wilayah ini", "Live NASA FIRMS data for this area")}
+            detailsTitle={tr("Cara membaca angka ini", "How to read this")}
+            details={
+              error || loading
+                ? undefined
+                : [
+                    { label: tr("Sumber aktif", "Feeds live"), value: `${sourcesAvailable} / 4` },
+                    { label: tr("Jenis data", "Data type"), value: tr("NRT (sementara)", "NRT (provisional)") },
+                    { label: tr("Yang dihitung", "Counted"), value: tr("deteksi MODIS + VIIRS", "MODIS + VIIRS detections") },
+                  ]
             }
           />
           <StatTile
@@ -906,11 +909,18 @@ function CalendarPageContent() {
               historicalLoading
                 ? tr("Memuat arsip historis…", "Loading historical archive…")
                 : realBaseline
-                  ? tr(
-                      `Rata-rata ${realBaseline.monthLabel} ${realBaseline.firstYear}–${realBaseline.lastYear} — arsip NASA FIRMS nyata`,
-                      `${realBaseline.monthLabel} average ${realBaseline.firstYear}–${realBaseline.lastYear} — real NASA FIRMS archive`
-                    )
-                  : tr("Rata-rata 2023–2025 — data ilustratif, lihat catatan sumber di kode", "2023–2025 average — illustrative data, see source note in code")
+                  ? tr(`Rata-rata ${realBaseline.monthLabel} di tahun-tahun sebelumnya`, `Average ${realBaseline.monthLabel} in earlier years`)
+                  : tr("Data ilustratif (contoh)", "Illustrative data (example)")
+            }
+            detailsTitle={tr("Cara membaca angka ini", "How to read this")}
+            details={
+              realBaseline
+                ? [
+                    { label: tr("Tahun pembanding", "Years compared"), value: `${realBaseline.firstYear}–${realBaseline.lastYear} (${realBaseline.years})` },
+                    { label: tr("Seri", "Series"), value: series === "comparable" ? tr("MODIS saja", "MODIS only") : "MODIS + VIIRS" },
+                    { label: tr("Sumber", "Source"), value: tr("arsip NASA FIRMS", "NASA FIRMS archive") },
+                  ]
+                : undefined
             }
           />
           <StatTile
@@ -949,14 +959,25 @@ function CalendarPageContent() {
               historicalLoading
                 ? tr("Memuat arsip historis…", "Loading historical archive…")
                 : realBaseline
-                  ? tr(
-                      `${realBaseline.monthLabel} ${realBaseline.year} vs rata-rata ${realBaseline.firstYear}–${realBaseline.lastYear} — data arsip nyata`,
-                      `${realBaseline.monthLabel} ${realBaseline.year} vs the ${realBaseline.firstYear}–${realBaseline.lastYear} average — real archive data`
-                    )
-                  : tr(
-                      `${DEMO_BASELINE_MONTH_LABEL} 2026 (contoh) vs rata-rata 2023–2025 — bukan kondisi real-time aktual`,
-                      `${DEMO_BASELINE_MONTH_LABEL} 2026 (example) vs the 2023–2025 average — not actual real-time conditions`
-                    )
+                  ? tr(`${realBaseline.monthLabel} ${realBaseline.year} dibanding rata-ratanya`, `${realBaseline.monthLabel} ${realBaseline.year} compared with its average`)
+                  : tr("Data ilustratif (contoh), bukan kondisi sebenarnya", "Illustrative data (example), not real conditions")
+            }
+            detailsTitle={tr("Cara membaca angka ini", "How to read this")}
+            details={
+              realBaseline
+                ? [
+                    { label: `${realBaseline.monthLabel} ${realBaseline.year}`, value: realBaseline.current.toLocaleString(numLocale) },
+                    { label: tr("Rata-rata tahun sebelumnya", "Average of earlier years"), value: realBaseline.baseline.toLocaleString(numLocale) },
+                  ]
+                : undefined
+            }
+            note={
+              realBaseline?.provisional
+                ? tr(
+                    "Bulan ini masih data sementara (NRT atau belum selesai), jadi angkanya bisa berubah.",
+                    "This month is still provisional (NRT or not finished), so the number may change."
+                  )
+                : undefined
             }
           />
           <StatTile
@@ -969,23 +990,61 @@ function CalendarPageContent() {
                 ? tr("Membandingkan data live dengan arsip…", "Comparing live data with the archive…")
                 : unusualAreas
                   ? tr(
-                      `dari ${unusualAreas.matchedCells.toLocaleString(numLocale)} sel 0,25° yang bisa dibandingkan • MODIS + VIIRS ${unusualAreas.satellite} saja, sama dengan isi arsip • hari ini > rata-rata + 2×std sel itu${
-                        unusualAreas.seasonMonths
-                          ? ` pada ${unusualAreas.seasonMonths.map((m) => monthLabels[m - 1]).join("–")} tahun-tahun sebelumnya (${unusualAreas.fallbackCells} sel memakai semua bulan karena riwayat musimnya kurang)`
-                          : ""
-                      } • ${unusualAreas.insufficientCells} sel riwayatnya < 10 hari, ${unusualAreas.noHistoryCells} tanpa riwayat, ${unusualAreas.notSeenCells} hanya terlihat satelit lain (tidak dihitung)`,
-                      `of ${unusualAreas.matchedCells.toLocaleString(numLocale)} comparable 0.25° cells • MODIS + VIIRS ${unusualAreas.satellite} only, the same population as the archive • today > the cell's mean + 2× std${
-                        unusualAreas.seasonMonths
-                          ? ` in ${unusualAreas.seasonMonths.map((m) => monthLabels[m - 1]).join("–")} of earlier years (${unusualAreas.fallbackCells} cells use all months because their seasonal history is too short)`
-                          : ""
-                      } • ${unusualAreas.insufficientCells} cells have < 10 days of history, ${unusualAreas.noHistoryCells} have none, ${unusualAreas.notSeenCells} seen only by other satellites (not counted)`
+                      `dari ${unusualAreas.matchedCells.toLocaleString(numLocale)} sel grid 0,25° yang bisa dibandingkan hari ini`,
+                      `of ${unusualAreas.matchedCells.toLocaleString(numLocale)} 0.25° grid cells that can be compared today`
                     )
                   : unusual && !unusual.comparable
-                    ? tr(
-                        `Belum bisa dibandingkan: satelit VIIRS yang ada di arsip sedang tidak tersedia di data live (${unusual.reason ?? ""}). Angka dari satelit lain tidak dibandingkan, karena jumlah hariannya berbeda.`,
-                        `Can't compare right now: the VIIRS satellite in the archive isn't in the live data (${unusual.reason ?? ""}). Counts from other satellites aren't compared, because their daily counts differ.`
-                      )
-                    : tr("Perbandingan live vs arsip sedang tidak tersedia", "Live-vs-archive comparison is unavailable right now")
+                    ? tr("Belum bisa dibandingkan", "Can't compare right now")
+                    : tr("Perbandingan sedang tidak tersedia", "Comparison unavailable right now")
+            }
+            detailsTitle={tr("Cara membaca angka ini", "How to read this")}
+            details={
+              unusualAreas
+                ? [
+                    {
+                      label: tr("Satelit", "Satellites"),
+                      value: tr(`MODIS + VIIRS ${unusualAreas.satellite} (sama dengan arsip)`, `MODIS + VIIRS ${unusualAreas.satellite} (same as archive)`),
+                    },
+                    {
+                      label: tr("Dibanding", "Compared with"),
+                      value: unusualAreas.seasonMonths
+                        ? tr(
+                            `${unusualAreas.seasonMonths.map((m) => monthLabels[m - 1]).join("–")} tahun-tahun sebelumnya`,
+                            `${unusualAreas.seasonMonths.map((m) => monthLabels[m - 1]).join("–")} of earlier years`
+                          )
+                        : tr("semua bulan sebelumnya", "all earlier months"),
+                    },
+                    { label: tr("Disebut tidak biasa jika", "Unusual when"), value: tr("> rata-rata + 2 std", "> average + 2 std") },
+                    {
+                      label: tr("Pakai semua bulan (riwayat musim kurang)", "Using all months (thin seasonal history)"),
+                      value: tr(`${unusualAreas.fallbackCells} sel`, `${unusualAreas.fallbackCells} cells`),
+                      muted: unusualAreas.fallbackCells === 0,
+                    },
+                    {
+                      label: tr("Tidak dinilai: riwayat < 10 hari", "Not judged: < 10 days of history"),
+                      value: tr(`${unusualAreas.insufficientCells} sel`, `${unusualAreas.insufficientCells} cells`),
+                      muted: true,
+                    },
+                    {
+                      label: tr("Tidak dinilai: tanpa riwayat", "Not judged: no history"),
+                      value: tr(`${unusualAreas.noHistoryCells} sel`, `${unusualAreas.noHistoryCells} cells`),
+                      muted: true,
+                    },
+                    {
+                      label: tr("Tidak dinilai: hanya terlihat satelit lain", "Not judged: seen only by other satellites"),
+                      value: tr(`${unusualAreas.notSeenCells} sel`, `${unusualAreas.notSeenCells} cells`),
+                      muted: true,
+                    },
+                  ]
+                : undefined
+            }
+            note={
+              !unusualLoading && unusual && !unusual.comparable
+                ? tr(
+                    `Satelit VIIRS yang ada di arsip sedang tidak tersedia di data live (${unusual.reason ?? ""}). Angka dari satelit lain tidak dibandingkan, karena jumlah hariannya berbeda.`,
+                    `The VIIRS satellite in the archive isn't in the live data right now (${unusual.reason ?? ""}). Counts from other satellites aren't compared, because their daily counts differ.`
+                  )
+                : undefined
             }
           />
         </div>
@@ -1405,12 +1464,12 @@ function CalendarPageContent() {
                   ) : (
                     <p className="mt-2 text-xs text-gray-500">{tr("Tidak ada data arsip untuk sel ini.", "No archive data for this cell.")}</p>
                   )}
-                  <p className="mt-2 text-[11px] text-gray-400">
+                  <InfoNote className="mt-2">
                     {tr(
-                      `Angka ini total untuk wilayah ${areaName} pada bulan tersebut, dari arsip NASA FIRMS yang sama dengan heatmap di atas — bukan dihitung ulang.`,
-                      `These are the totals for ${areaName} that month, from the same NASA FIRMS archive as the heatmap above — not recomputed.`
+                      `Total untuk ${areaName} pada bulan itu, dari data yang sama dengan heatmap di atas.`,
+                      `Totals for ${areaName} that month, from the same data as the heatmap above.`
                     )}
-                  </p>
+                  </InfoNote>
                 </div>
               )}
 
