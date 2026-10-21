@@ -97,8 +97,8 @@ export default function SekitarPage() {
         <h1 className="text-lg font-extrabold text-[#123027]">{tr("Bantuan di Sekitarku", "Help Near Me")}</h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-1 leading-relaxed">
           {tr(
-            "Sumber daya lokal untuk kesiapsiagaan — menggunakan lokasi Anda (opsional) hanya untuk memberi konteks jarak dari deteksi satelit.",
-            "Local preparedness resources — your location (optional) is only used to give distance context from satellite detections."
+            "Sumber daya lokal untuk kesiapsiagaan. Menggunakan lokasi Anda (opsional) hanya untuk memberi konteks jarak dari deteksi satelit.",
+            "Local preparedness resources. Your location (optional) is only used to give distance context from satellite detections."
           )}
         </p>
       </section>
@@ -123,7 +123,7 @@ export default function SekitarPage() {
               {tr("Gunakan lokasi GPS", "Use GPS location")}
             </button>
             <span className="text-[11px] text-[var(--community-ink-muted)] self-center">
-              {tr("atau lewati — halaman ini tetap bisa digunakan tanpa lokasi.", "or skip — this page still works without a location.")}
+              {tr("atau lewati. Halaman ini tetap bisa digunakan tanpa lokasi.", "or skip. This page still works without a location.")}
             </span>
           </div>
         )}
@@ -180,7 +180,7 @@ export default function SekitarPage() {
             <p className="text-xs font-semibold text-[#123027]">{tr(...cat.title)}</p>
             <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5 leading-relaxed">{tr(...cat.description)}</p>
             <p className="text-[11px] font-semibold text-amber-700 mt-2 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 inline-block">
-              {tr("Belum terverifikasi — data resmi belum tersedia", "Not verified — official data not available yet")}
+              {tr("Belum terverifikasi. Data resmi belum tersedia", "Not verified. Official data not available yet")}
             </p>
           </div>
         ))}

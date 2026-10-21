@@ -144,11 +144,11 @@ function AreaCard({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <div className="text-xs text-gray-500 mb-1">{tr("Jumlah Deteksi", "Detections")}</div>
-              <div className="font-bold text-gray-900">{area.detections ?? "—"}</div>
+              <div className="font-bold text-gray-900">{area.detections ?? "-"}</div>
             </div>
             <div>
               <div className="text-xs text-gray-500 mb-1">Total FRP</div>
-              <div className="font-bold text-gray-900">{area.frpSum !== null ? `${area.frpSum.toFixed(0)} MW` : "—"}</div>
+              <div className="font-bold text-gray-900">{area.frpSum !== null ? `${area.frpSum.toFixed(0)} MW` : "-"}</div>
             </div>
             <div>
               <div className="text-xs text-gray-500 mb-1">{tr("Tren", "Trend")}</div>
@@ -170,7 +170,7 @@ function AreaCard({
             <h4 className={`text-xs font-bold ${style.badgeText} mb-1 uppercase`}>{tr("Skor Prioritas", "Priority Score")}</h4>
             <p className="mb-3 flex items-baseline gap-2">
               <span className="text-2xl font-bold text-gray-900">
-                {area.priorityScore !== null ? Math.round(area.priorityScore * 100) : "—"}
+                {area.priorityScore !== null ? Math.round(area.priorityScore * 100) : "-"}
               </span>
               <span className="text-xs text-gray-500">/ 100</span>
               {area.priorityRank !== null && (
@@ -217,15 +217,15 @@ function AreaCard({
           </div>
           <div>
             <dt className="text-gray-500">{tr("Peringkat prioritas", "Priority rank")}</dt>
-            <dd className="font-medium text-gray-900">#{area.priorityRank ?? "—"}</dd>
+            <dd className="font-medium text-gray-900">#{area.priorityRank ?? "-"}</dd>
           </div>
           <div>
             <dt className="text-gray-500">{tr("Skor atensi", "Attention score")}</dt>
-            <dd className="font-medium text-gray-900">{area.attentionScore !== null ? area.attentionScore.toFixed(2) : "—"}</dd>
+            <dd className="font-medium text-gray-900">{area.attentionScore !== null ? area.attentionScore.toFixed(2) : "-"}</dd>
           </div>
           <div>
             <dt className="text-gray-500">{tr("Skor prioritas", "Priority score")}</dt>
-            <dd className="font-medium text-gray-900">{area.priorityScore !== null ? area.priorityScore.toFixed(2) : "—"}</dd>
+            <dd className="font-medium text-gray-900">{area.priorityScore !== null ? area.priorityScore.toFixed(2) : "-"}</dd>
           </div>
           <div>
             <dt className="text-gray-500">{tr("Deteksi pertama", "First detection")}</dt>
@@ -241,7 +241,7 @@ function AreaCard({
           </div>
           <div>
             <dt className="text-gray-500">{tr("Hari aktif (total)", "Active days (total)")}</dt>
-            <dd className="font-medium text-gray-900">{area.activeDays ?? "—"}</dd>
+            <dd className="font-medium text-gray-900">{area.activeDays ?? "-"}</dd>
           </div>
         </dl>
       )}
@@ -377,8 +377,8 @@ function AreaDetailPanel({
               {areaMarkers.length === 0 && areaReports.length === 0 && (
                 <div className="pointer-events-none absolute inset-x-3 bottom-3 z-[1050] rounded-lg bg-white/95 px-3 py-2 text-[11px] text-gray-600 shadow">
                   {tr(
-                    "Tidak ada deteksi satelit atau laporan warga tercatat untuk sel grid ini saat ini — peta menampilkan lokasinya saja, bukan kesalahan.",
-                    "No satellite detections or citizen reports recorded for this grid cell right now — the map shows its location only, not an error."
+                    "Tidak ada deteksi satelit atau laporan warga tercatat untuk sel grid ini saat ini. Peta menampilkan lokasinya saja, bukan kesalahan.",
+                    "No satellite detections or citizen reports recorded for this grid cell right now. The map shows its location only, not an error."
                   )}
                 </div>
               )}
@@ -388,7 +388,7 @@ function AreaDetailPanel({
                 icon="local_fire_department"
                 iconTone="red"
                 label={tr("Total Deteksi", "Total Detections")}
-                value={area.detections ?? "—"}
+                value={area.detections ?? "-"}
                 trend={{ direction: trend.icon === "trending_up" ? "up" : trend.icon === "trending_down" ? "down" : "flat", label: trend.text }}
                 caption={tr("Titik panas satelit, belum dikonfirmasi lapangan", "Satellite hotspots, not field-confirmed")}
               />
@@ -396,7 +396,7 @@ function AreaDetailPanel({
                 icon="timer"
                 iconTone="amber"
                 label={tr("Periode Aktif", "Active Period")}
-                value={area.activeDays !== null ? tr(`${area.activeDays} Hari`, `${area.activeDays} Days`) : "—"}
+                value={area.activeDays !== null ? tr(`${area.activeDays} Hari`, `${area.activeDays} Days`) : "-"}
                 caption={
                   area.consecutiveActiveDays && area.consecutiveActiveDays > 0
                     ? tr(`Aktif ${area.consecutiveActiveDays} hari berturut-turut`, `Active ${area.consecutiveActiveDays} days in a row`)
@@ -407,7 +407,7 @@ function AreaDetailPanel({
                 icon="satellite_alt"
                 iconTone="blue"
                 label={tr("Deteksi Terakhir", "Last Detection")}
-                value={area.lastDate ?? "—"}
+                value={area.lastDate ?? "-"}
                 caption={
                   latestMarker
                     ? `${latestMarker.satellite ?? latestMarker.sensor ?? tr("Sensor tidak tercatat", "Sensor not recorded")}`
@@ -418,7 +418,7 @@ function AreaDetailPanel({
                 icon="device_thermostat"
                 iconTone="gray"
                 label={tr("Rerata FRP", "Mean FRP")}
-                value={area.frpMean !== null ? `${area.frpMean.toFixed(1)} MW` : "—"}
+                value={area.frpMean !== null ? `${area.frpMean.toFixed(1)} MW` : "-"}
                 caption={area.frpMax !== null ? `${tr("Puncak", "Peak")} ${area.frpMax.toFixed(1)} MW` : tr("Energi radiasi termal", "Thermal radiative energy")}
               />
             </div>
@@ -485,7 +485,7 @@ function AreaDetailPanel({
                       </div>
                       <div>
                         <div className="text-[10px] uppercase text-gray-400">{tr("Keyakinan", "Confidence")}</div>
-                        <div className="text-sm font-bold text-gray-900">{marker.confidenceLabel ?? "—"}</div>
+                        <div className="text-sm font-bold text-gray-900">{marker.confidenceLabel ?? "-"}</div>
                       </div>
                     </div>
                   </li>
@@ -529,8 +529,8 @@ function AreaDetailPanel({
                 </div>
                 <p className="text-xs text-gray-600">
                   {tr(
-                    `Titik panas terdeteksi pada ${area.activeDays ?? "—"} hari aktif${area.consecutiveActiveDays && area.consecutiveActiveDays > 0 ? ` (${area.consecutiveActiveDays} hari berturut-turut)` : ""}, dari ${area.firstDate} hingga ${area.lastDate}.`,
-                    `Hotspots detected on ${area.activeDays ?? "—"} active days${area.consecutiveActiveDays && area.consecutiveActiveDays > 0 ? ` (${area.consecutiveActiveDays} in a row)` : ""}, from ${area.firstDate} to ${area.lastDate}.`
+                    `Titik panas terdeteksi pada ${area.activeDays ?? "-"} hari aktif${area.consecutiveActiveDays && area.consecutiveActiveDays > 0 ? ` (${area.consecutiveActiveDays} hari berturut-turut)` : ""}, dari ${area.firstDate} hingga ${area.lastDate}.`,
+                    `Hotspots detected on ${area.activeDays ?? "-"} active days${area.consecutiveActiveDays && area.consecutiveActiveDays > 0 ? ` (${area.consecutiveActiveDays} in a row)` : ""}, from ${area.firstDate} to ${area.lastDate}.`
                   )}
                 </p>
               </div>
@@ -549,7 +549,7 @@ function AreaDetailPanel({
                 </p>
               </div>
               <p className="text-xs text-gray-400">
-                {tr("Indeks bahan bakar kering (FFMC) belum tersedia — tidak ditampilkan.", "The fine-fuel moisture index (FFMC) isn't available yet — not shown.")}
+                {tr("Indeks bahan bakar kering (FFMC) belum tersedia. Tidak ditampilkan.", "The fine-fuel moisture index (FFMC) isn't available yet. Not shown.")}
               </p>
             </div>
 
@@ -673,7 +673,7 @@ function PriorityAreasPageContent() {
         </div>
 
         {/* The offline archive is daily grid totals with no per-detection data, so no priority
-            score can be computed for it — fall back to the live 24h window and say so. */}
+            score can be computed for it. Fall back to the live 24h window and say so. */}
         {archiveRange && (
           <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-900">
             <span className="material-symbols-outlined text-amber-600 text-base shrink-0">info</span>

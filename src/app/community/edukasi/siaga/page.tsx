@@ -48,8 +48,8 @@ export default function SiagaChecklistPage() {
         <h1 className="text-lg font-extrabold text-[#123027]">{tr("Siapkan Tas Siaga", "Pack a Go-Bag")}</h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-1 leading-relaxed">
           {tr(
-            "Checklist ini membantu keluarga Anda siap sebelum kabut asap atau kebakaran terjadi. Tandai item yang sudah disiapkan — progres Anda disimpan otomatis di perangkat ini.",
-            "This checklist helps your family get ready before haze or fire hits. Tick the items you've prepared — your progress is saved automatically on this device."
+            "Checklist ini membantu keluarga Anda siap sebelum kabut asap atau kebakaran terjadi. Tandai item yang sudah disiapkan. Progres Anda disimpan otomatis di perangkat ini.",
+            "This checklist helps your family get ready before haze or fire hits. Tick the items you've prepared. Your progress is saved automatically on this device."
           )}
         </p>
       </section>
@@ -62,7 +62,7 @@ export default function SiagaChecklistPage() {
               : tr(`${doneCount} dari ${TOTAL_CHECKLIST_ITEMS} selesai`, `${doneCount} of ${TOTAL_CHECKLIST_ITEMS} done`)}
           </p>
           <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5">
-            {tr("Tersimpan secara lokal di perangkat ini saja — tidak dikirim ke server.", "Stored only on this device — never sent to a server.")}
+            {tr("Tersimpan secara lokal di perangkat ini saja. Tidak dikirim ke server.", "Stored only on this device. Never sent to a server.")}
           </p>
         </div>
         <div className="h-2.5 w-24 rounded-full bg-gray-100 overflow-hidden shrink-0">

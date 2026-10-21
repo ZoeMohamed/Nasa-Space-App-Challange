@@ -27,8 +27,8 @@ const CARDS: SmokeCard[] = [
     title: ["Kurangi aktivitas di luar ruangan", "Spend less time outdoors"],
     body: [
       [
-        "Saat kabut asap tebal, paparan berulang di luar ruangan meningkatkan risiko gangguan pernapasan — terutama olahraga atau aktivitas fisik berat.",
-        "In thick haze, repeated time outdoors raises the risk of breathing problems — especially exercise or heavy physical work.",
+        "Saat kabut asap tebal, paparan berulang di luar ruangan meningkatkan risiko gangguan pernapasan. Terutama olahraga atau aktivitas fisik berat.",
+        "In thick haze, repeated time outdoors raises the risk of breathing problems. Especially exercise or heavy physical work.",
       ],
       [
         "Tutup pintu dan jendela rumah untuk mengurangi partikel asap yang masuk, terutama saat kualitas udara memburuk.",
@@ -49,8 +49,8 @@ const CARDS: SmokeCard[] = [
         "An N95 (or equivalent) mask filters fine smoke particles far better than a cloth or ordinary surgical mask.",
       ],
       [
-        "Masker hanya efektif jika terpasang rapat menutupi hidung dan mulut tanpa celah — masker yang longgar tidak banyak membantu.",
-        "A mask only works if it seals over the nose and mouth with no gaps — a loose mask doesn't help much.",
+        "Masker hanya efektif jika terpasang rapat menutupi hidung dan mulut tanpa celah. Masker yang longgar tidak banyak membantu.",
+        "A mask only works if it seals over the nose and mouth with no gaps. A loose mask doesn't help much.",
       ],
     ],
     nowAction: [
@@ -67,8 +67,8 @@ const CARDS: SmokeCard[] = [
         "Children, older people, pregnant women and people with chronic illness (asthma, heart, lung disease) are more at risk from fire smoke.",
       ],
       [
-        "Masker N95 sering tidak pas tertutup rapat pada wajah anak kecil — jangan memaksakan masker jika anak terlihat kesulitan bernapas atau menolaknya; prioritaskan menjauhkan mereka dari asap.",
-        "N95 masks often don't seal on small children's faces — don't force a mask if the child seems to struggle to breathe or refuses it; focus on keeping them away from smoke.",
+        "Masker N95 sering tidak pas tertutup rapat pada wajah anak kecil. Jangan memaksakan masker jika anak terlihat kesulitan bernapas atau menolaknya; prioritaskan menjauhkan mereka dari asap.",
+        "N95 masks often don't seal on small children's faces. Don't force a mask if the child seems to struggle to breathe or refuses it; focus on keeping them away from smoke.",
       ],
     ],
     nowAction: [
@@ -85,8 +85,8 @@ const CARDS: SmokeCard[] = [
         "Mild symptoms such as stinging eyes or an itchy throat usually ease after getting away from the smoke.",
       ],
       [
-        "Segera cari bantuan medis jika mengalami sesak napas berat, nyeri dada, bibir/wajah membiru, atau kebingungan — ini tanda darurat yang butuh penanganan segera.",
-        "Get medical help immediately for severe shortness of breath, chest pain, bluish lips/face, or confusion — these are emergency signs that need prompt care.",
+        "Segera cari bantuan medis jika mengalami sesak napas berat, nyeri dada, bibir/wajah membiru, atau kebingungan. Ini tanda darurat yang butuh penanganan segera.",
+        "Get medical help immediately for severe shortness of breath, chest pain, bluish lips/face, or confusion. These are emergency signs that need prompt care.",
       ],
     ],
     nowAction: [
@@ -108,8 +108,8 @@ export default function AsapPage() {
         <h1 className="text-lg font-extrabold text-[#123027]">{tr("Lindungi Keluarga dari Asap", "Protect Your Family from Smoke")}</h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-1 leading-relaxed">
           {tr(
-            "Ringkasan praktis ini merujuk pada panduan kesehatan masyarakat dari WHO tentang asap kebakaran hutan. Ini bukan pengganti instruksi evakuasi resmi — jika otoritas setempat (BNPB/BMKG/aparat desa) memerintahkan evakuasi, segera mengungsi meskipun Anda sudah memakai masker.",
-            "This practical summary follows WHO public-health guidance on wildfire smoke. It doesn't replace official evacuation orders — if local authorities (BNPB/BMKG/village officials) order an evacuation, leave right away even if you're wearing a mask."
+            "Ringkasan dari panduan WHO soal asap kebakaran. Ada perintah evakuasi? Segera mengungsi, walau sudah pakai masker.",
+            "Based on WHO guidance on wildfire smoke. Told to evacuate? Leave now, even with a mask on."
           )}
         </p>
       </section>
@@ -146,8 +146,8 @@ export default function AsapPage() {
         <p className="text-xs font-bold text-amber-900">{tr("Penting", "Important")}</p>
         <p className="text-[11px] text-amber-900/90 leading-relaxed">
           {tr(
-            "Masker tidak membuat suatu area aman untuk dimasuki — masker hanya mengurangi risiko saat berada di lingkungan berasap dalam waktu singkat. Jika suatu area berada dalam jalur kebakaran aktif atau otoritas setempat memerintahkan evakuasi, mengungsilah; jangan tetap di dalam rumah hanya karena memakai masker.",
-            "A mask doesn't make an area safe to enter — it only lowers the risk during short time in smoke. If an area is in the path of an active fire or local authorities order an evacuation, leave; don't stay home just because you're wearing a mask."
+            "Masker tidak membuat area jadi aman. Masker hanya mengurangi risiko sebentar. Ada api mendekat atau perintah evakuasi? Mengungsilah.",
+            "A mask doesn't make an area safe. It only lowers the risk for a short time. Fire coming or told to evacuate? Leave."
           )}
         </p>
       </section>

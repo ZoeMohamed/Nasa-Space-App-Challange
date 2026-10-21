@@ -43,8 +43,8 @@ export default function PengaturanPage() {
         <h1 className="text-lg font-extrabold">{tr("Atur Area Peringatan", "Alert Area Settings")}</h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-0.5">
           {tr(
-            "Preferensi ini tersimpan di perangkat ini saja dan digunakan untuk menyaring halaman Notifikasi — bukan langganan push notification berbasis server.",
-            "These preferences are stored on this device only and filter the Notifications page — not a server-based push notification subscription."
+            "Preferensi ini tersimpan di perangkat ini saja dan digunakan untuk menyaring halaman Notifikasi. Bukan langganan push notification berbasis server.",
+            "These preferences are stored on this device only and filter the Notifications page. Not a server-based push notification subscription."
           )}
         </p>
       </section>

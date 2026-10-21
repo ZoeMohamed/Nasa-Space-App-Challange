@@ -117,8 +117,8 @@ export default function LocationPicker({ location, onDone }: { location: Locatio
                 ? `${tr("Akurasi", "Accuracy")} ±${Math.round(fix.accuracyMeters)} m`
                 : tr("Dari perangkat Anda", "From your device")
               : tr(
-                  "Titik di dalam wilayah yang dipilih — jarak yang ditampilkan adalah perkiraan.",
-                  "A point inside the chosen area — distances shown are approximate."
+                  "Titik di dalam wilayah yang dipilih. Jarak yang ditampilkan adalah perkiraan.",
+                  "A point inside the chosen area. Distances shown are approximate."
                 )}
           </div>
         </div>

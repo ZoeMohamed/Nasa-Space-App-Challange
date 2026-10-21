@@ -207,17 +207,17 @@ export default function CommunityBerandaPage() {
     const text =
       inStatusRadius.length > 0
         ? tr(
-            `Status: ${STATUS_LABEL[status]}. ${inStatusRadius.length} deteksi satelit titik panas dalam radius ${STATUS_RADIUS_KM} km dari ${locationName}. Lihat detailnya di AGNIBHŪMI.`,
-            `Status: ${STATUS_LABEL[status]}. ${inStatusRadius.length} satellite hotspot detections within ${STATUS_RADIUS_KM} km of ${locationName}. See the details on AGNIBHŪMI.`
+            `Status: ${STATUS_LABEL[status]}. ${inStatusRadius.length} titik panas dalam ${STATUS_RADIUS_KM} km dari ${locationName}. Cek di AGNIBHŪMI.`,
+            `Status: ${STATUS_LABEL[status]}. ${inStatusRadius.length} hotspots within ${STATUS_RADIUS_KM} km of ${locationName}. Check AGNIBHŪMI.`
           )
         : tr(
-            `Status: ${STATUS_LABEL[status]}. Tidak ada deteksi satelit titik panas dalam radius ${STATUS_RADIUS_KM} km dari ${locationName} saat ini.`,
-            `Status: ${STATUS_LABEL[status]}. No satellite hotspot detections within ${STATUS_RADIUS_KM} km of ${locationName} right now.`
+            `Status: ${STATUS_LABEL[status]}. Tidak ada titik panas dalam ${STATUS_RADIUS_KM} km dari ${locationName}.`,
+            `Status: ${STATUS_LABEL[status]}. No hotspots within ${STATUS_RADIUS_KM} km of ${locationName}.`
           );
     const url = typeof window !== "undefined" ? window.location.href : "";
     if (navigator.share) {
       try {
-        await navigator.share({ title: tr("AGNIBHŪMI — Pemantauan Karhutla", "AGNIBHŪMI — Forest & Land Fire Monitoring"), text, url });
+        await navigator.share({ title: tr("AGNIBHŪMI · Pemantauan Karhutla", "AGNIBHŪMI · Forest & Land Fire Monitoring"), text, url });
       } catch {
         /* user cancelled */
       }
@@ -306,12 +306,12 @@ export default function CommunityBerandaPage() {
               ? tr("Memuat data satelit & kualitas udara di sekitar lokasimu…", "Loading satellite & air-quality data around you…")
               : inStatusRadius.length === 0
                 ? tr(
-                    `Tidak ada deteksi satelit dalam radius ${STATUS_RADIUS_KM} km dari ${locationName}. ${nearest ? `Terdekat ${formatDistanceKm(nearest.distanceKm)} ke arah ${compassLabel(nearest.bearing)}.` : ""}${status === "aman" ? " Ini bukan kepastian bebas kebakaran." : ""}`,
-                    `No satellite detections within ${STATUS_RADIUS_KM} km of ${locationName}. ${nearest ? `Nearest is ${formatDistanceKm(nearest.distanceKm)} to the ${compassLabel(nearest.bearing, "en")}.` : ""}${status === "aman" ? " This is not a guarantee there is no fire." : ""}`
+                    `Tidak ada titik panas dalam ${STATUS_RADIUS_KM} km. ${nearest ? `Terdekat ${formatDistanceKm(nearest.distanceKm)} di ${compassLabel(nearest.bearing)}.` : ""}${status === "aman" ? " Tetap waspada." : ""}`,
+                    `No hotspots within ${STATUS_RADIUS_KM} km. ${nearest ? `Nearest is ${formatDistanceKm(nearest.distanceKm)} to the ${compassLabel(nearest.bearing, "en")}.` : ""}${status === "aman" ? " Stay alert." : ""}`
                   )
                 : tr(
-                    `${inStatusRadius.length} deteksi satelit dalam radius ${STATUS_RADIUS_KM} km. Terdekat ${formatDistanceKm(inStatusRadius[0].distanceKm)} ke arah ${compassLabel(inStatusRadius[0].bearing)}${formatRelativeTime(inStatusRadius[0].marker.acquiredAt, "id") ? `, terdeteksi ${formatRelativeTime(inStatusRadius[0].marker.acquiredAt, "id")}` : ""}.`,
-                    `${inStatusRadius.length} satellite detections within ${STATUS_RADIUS_KM} km. Nearest is ${formatDistanceKm(inStatusRadius[0].distanceKm)} to the ${compassLabel(inStatusRadius[0].bearing, "en")}${formatRelativeTime(inStatusRadius[0].marker.acquiredAt, "en") ? `, detected ${formatRelativeTime(inStatusRadius[0].marker.acquiredAt, "en")}` : ""}.`
+                    `${inStatusRadius.length} titik panas dalam ${STATUS_RADIUS_KM} km. Terdekat ${formatDistanceKm(inStatusRadius[0].distanceKm)} di ${compassLabel(inStatusRadius[0].bearing)}${formatRelativeTime(inStatusRadius[0].marker.acquiredAt, "id") ? `, terdeteksi ${formatRelativeTime(inStatusRadius[0].marker.acquiredAt, "id")}` : ""}.`,
+                    `${inStatusRadius.length} hotspots within ${STATUS_RADIUS_KM} km. Nearest is ${formatDistanceKm(inStatusRadius[0].distanceKm)} to the ${compassLabel(inStatusRadius[0].bearing, "en")}${formatRelativeTime(inStatusRadius[0].marker.acquiredAt, "en") ? `, detected ${formatRelativeTime(inStatusRadius[0].marker.acquiredAt, "en")}` : ""}.`
                   )}
           </p>
 
@@ -358,8 +358,8 @@ export default function CommunityBerandaPage() {
             </ul>
             <p className="mt-2">
               {tr(
-                "Bukan status resmi BNPB/BMKG. Titik panas satelit adalah anomali suhu, bukan konfirmasi kebakaran. Kualitas udara adalah perkiraan model Open-Meteo di titik lokasimu, bukan pengukuran stasiun ISPU.",
-                "Not an official BNPB/BMKG status. A satellite hotspot is a temperature anomaly, not a confirmed fire. Air quality is an Open-Meteo model estimate at your location, not an ISPU station measurement."
+                "Bukan status resmi BNPB/BMKG. Titik panas belum tentu api. Kualitas udara adalah perkiraan model, bukan alat ukur.",
+                "Not an official BNPB/BMKG status. A hotspot is not always a fire. Air quality is a model estimate, not a sensor reading."
               )}
             </p>
           </details>
@@ -500,12 +500,12 @@ export default function CommunityBerandaPage() {
                     ? tr("Data angin belum tersedia, jadi filter arah angin tidak bisa dipakai.", "Wind data isn't available yet, so the wind filter can't be used.")
                     : windSpeed < CALM_WIND_KMH
                       ? tr(
-                          `Angin hampir tenang (${windSpeed.toFixed(1)} km/jam) — arah asap tidak bisa diperkirakan.`,
-                          `Wind is almost calm (${windSpeed.toFixed(1)} km/h) — smoke direction can't be estimated.`
+                          `Angin hampir tenang (${windSpeed.toFixed(1)} km/jam). Arah asap tidak bisa diperkirakan.`,
+                          `Wind is almost calm (${windSpeed.toFixed(1)} km/h). Smoke direction can't be estimated.`
                         )
                       : tr(
-                          `Angin saat ini dari ${compassLabel(windFrom)} (${Math.round(windFrom)}°), ${windSpeed.toFixed(0)} km/jam. Titik api di sisi itu bisa membawa asap ke lokasimu. Perkiraan kasar dari angin di satu titik (Open-Meteo), bukan model sebaran asap.`,
-                          `Wind is currently from the ${compassLabel(windFrom, "en")} (${Math.round(windFrom)}°), ${windSpeed.toFixed(0)} km/h. Hotspots on that side may carry smoke to you. A rough estimate from the wind at one point (Open-Meteo), not a smoke-dispersion model.`
+                          `Angin saat ini dari ${compassLabel(windFrom)} (${Math.round(windFrom)}°), ${windSpeed.toFixed(0)} km/jam. Api di sisi itu bisa membawa asap ke sini. Perkiraan kasar.`,
+                          `Wind is currently from the ${compassLabel(windFrom, "en")} (${Math.round(windFrom)}°), ${windSpeed.toFixed(0)} km/h. Fires on that side may send smoke here. Rough estimate.`
                         )}
               </p>
 
@@ -563,8 +563,8 @@ export default function CommunityBerandaPage() {
                   {listed.length > MAX_NEARBY_SHOWN && (
                     <p className="text-[11px] text-[var(--community-ink-muted)]">
                       {tr(
-                        `+${listed.length - MAX_NEARBY_SHOWN} titik lainnya — lihat semuanya di peta.`,
-                        `+${listed.length - MAX_NEARBY_SHOWN} more — see them all on the map.`
+                        `+${listed.length - MAX_NEARBY_SHOWN} titik lainnya. Lihat semuanya di peta.`,
+                        `+${listed.length - MAX_NEARBY_SHOWN} more. See them all on the map.`
                       )}
                     </p>
                   )}

@@ -41,8 +41,8 @@ export function areaRegionLabel(
     return {
       title: grid,
       caption: en
-        ? "Outside recorded administrative boundaries — 0.25° grid coordinates shown as-is."
-        : "Di luar batas wilayah tercatat — koordinat grid 0,25° ditampilkan apa adanya.",
+        ? "Outside recorded administrative boundaries. 0.25° grid coordinates shown as-is."
+        : "Di luar batas wilayah tercatat. Koordinat grid 0,25° ditampilkan apa adanya.",
     };
   }
   const pct = admin.dominantShare != null ? Math.round(admin.dominantShare * 100) : null;

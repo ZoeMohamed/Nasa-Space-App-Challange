@@ -56,8 +56,8 @@ export default function FaktaPage() {
         </h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-1 leading-relaxed">
           {tr(
-            "Angka penting soal kebakaran hutan dan lahan di Indonesia beserta dampaknya. Setiap angka punya nomor rujukan — klik untuk melihat sumbernya di daftar pustaka di bawah.",
-            "Key numbers on Indonesia's forest and land fires and their impact. Every number has a reference number — click it to see the source in the reference list below."
+            "Angka penting soal kebakaran hutan dan lahan di Indonesia beserta dampaknya. Setiap angka punya nomor rujukan. Klik untuk melihat sumbernya di daftar pustaka di bawah.",
+            "Key numbers on Indonesia's forest and land fires and their impact. Every number has a reference number. Click it to see the source in the reference list below."
           )}
         </p>
       </div>
@@ -79,8 +79,8 @@ export default function FaktaPage() {
           </h2>
           <p className="text-xs text-[var(--community-ink-muted)] mt-1 leading-relaxed">
             {tr(
-              "ISPU adalah skala resmi Indonesia. Catatan: halaman Kualitas Udara di aplikasi ini memakai skala US AQI dari Open-Meteo — angkanya tidak sama dengan ISPU, jadi jangan dibandingkan langsung.",
-              "ISPU is Indonesia's official scale. Note: this app's Air Quality page uses the US AQI scale from Open-Meteo — its numbers differ from ISPU, so don't compare them directly."
+              "ISPU adalah skala resmi Indonesia. Catatan: halaman Kualitas Udara di aplikasi ini memakai skala US AQI dari Open-Meteo. Angkanya tidak sama dengan ISPU, jadi jangan dibandingkan langsung.",
+              "ISPU is Indonesia's official scale. Note: this app's Air Quality page uses the US AQI scale from Open-Meteo. Its numbers differ from ISPU, so don't compare them directly."
             )}
           </p>
         </div>

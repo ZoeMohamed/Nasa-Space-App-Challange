@@ -78,8 +78,8 @@ export function computeAreaStatus(input: AreaStatusInput, language: "id" | "en" 
     reasons.push({
       level: "waspada",
       text: en
-        ? `Hotspot ${km} upwind — its smoke may drift to you`
-        : `Titik panas ${km} searah angin — asapnya bisa terbawa ke lokasimu`,
+        ? `Hotspot ${km} upwind. Its smoke may drift to you`
+        : `Titik panas ${km} searah angin. Asapnya bisa terbawa ke lokasimu`,
     });
   }
 

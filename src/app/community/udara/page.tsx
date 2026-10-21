@@ -25,7 +25,7 @@ const AQI_CATEGORY_STYLE: Record<string, { bg: string; text: string }> = {
 };
 
 function windDirectionLabel(deg: number | null, language: "id" | "en"): string {
-  return deg === null ? "—" : compassLabel(deg, language);
+  return deg === null ? "-" : compassLabel(deg, language);
 }
 
 export default function UdaraPage() {
@@ -115,10 +115,10 @@ export default function UdaraPage() {
                 </div>
                 <p className="text-[11px] text-[var(--community-ink-muted)] mt-1">
                   {tr(
-                    "US AQI (skala kualitas udara AS) — bukan ISPU Indonesia, karena ambang batasnya berbeda.",
-                    "US AQI (the US air-quality scale) — not Indonesia's ISPU, because the thresholds differ."
+                    "US AQI (skala kualitas udara AS). Bukan ISPU Indonesia, karena ambang batasnya berbeda.",
+                    "US AQI (the US air-quality scale). Not Indonesia's ISPU, because the thresholds differ."
                   )}{" "}
-                  PM2.5: {weather.airQuality.pm2_5 ?? "—"} µg/m³ · PM10: {weather.airQuality.pm10 ?? "—"} µg/m³
+                  PM2.5: {weather.airQuality.pm2_5 ?? "-"} µg/m³ · PM10: {weather.airQuality.pm10 ?? "-"} µg/m³
                 </p>
               </>
             ) : (
@@ -161,8 +161,8 @@ export default function UdaraPage() {
           <p className="text-[11px] text-[var(--community-ink-muted)] leading-relaxed">
             {tr("Sumber", "Source")}: {weather.source}
             {tr(
-              ", bukan data resmi BMKG — untuk informasi cuaca & kualitas udara resmi Indonesia, kunjungi",
-              ", not official BMKG data — for Indonesia's official weather & air-quality information, visit"
+              ", bukan data resmi BMKG. Untuk informasi cuaca & kualitas udara resmi Indonesia, kunjungi",
+              ", not official BMKG data. For Indonesia's official weather & air-quality information, visit"
             )}{" "}
             <a href={BMKG_URL} target="_blank" rel="noopener noreferrer" className="underline">
               bmkg.go.id
@@ -177,7 +177,7 @@ export default function UdaraPage() {
         className="block rounded-2xl border border-[var(--community-border)] bg-white p-4 hover:border-emerald-300 transition"
       >
         <span className="text-xs font-bold text-[var(--community-accent)]">
-          {tr("Lindungi keluarga dari asap — baca panduan →", "Protect your family from smoke — read the guide →")}
+          {tr("Lindungi keluarga dari asap. Baca panduan →", "Protect your family from smoke. Read the guide →")}
         </span>
       </Link>
     </div>

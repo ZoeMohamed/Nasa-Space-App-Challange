@@ -40,7 +40,7 @@ export const CHECKLIST_CATEGORIES: ChecklistCategory[] = [
         what: "Dokumen rumah/lahan dan polis asuransi (jika ada)",
         why: "Berguna untuk klaim atau pendataan kerugian pascakebakaran.",
         how: "Simpan fotokopi, bukan dokumen asli yang sulit diganti.",
-        caveat: "Jika tidak memiliki dokumen ini, lewati — bukan syarat wajib untuk evakuasi aman.",
+        caveat: "Jika tidak memiliki dokumen ini, lewati. Bukan syarat wajib untuk evakuasi aman.",
       },
       {
         id: "dok-kontak",
@@ -65,7 +65,7 @@ export const CHECKLIST_CATEGORIES: ChecklistCategory[] = [
         what: "Masker respirator (N95 atau setara)",
         why: "Melindungi saluran napas dari partikel asap kebakaran, lebih efektif dibanding masker kain/bedah.",
         how: "Siapkan beberapa buah per anggota keluarga, cek ukuran yang pas untuk dewasa dan anak.",
-        caveat: "Masker untuk anak kecil sering tidak pas tertutup rapat — perhatikan reaksi anak dan jangan paksakan jika terlihat sesak.",
+        caveat: "Masker untuk anak kecil sering tidak pas tertutup rapat. Perhatikan reaksi anak dan jangan paksakan jika terlihat sesak.",
       },
       {
         id: "tas-p3k",
@@ -114,7 +114,7 @@ export const CHECKLIST_CATEGORIES: ChecklistCategory[] = [
         what: "Rencana khusus untuk anggota keluarga rentan (lansia, anak, penyandang disabilitas, ibu hamil)",
         why: "Anggota ini mungkin butuh waktu lebih lama atau bantuan tambahan saat evakuasi.",
         how: "Tentukan siapa yang bertanggung jawab mendampingi mereka, dan siapkan alat bantu (kursi roda, obat) di dekat pintu keluar.",
-        caveat: "Rencana ini membantu kesiapan, tapi tetap ikuti instruksi evakuasi resmi di lapangan — petugas setempat lebih tahu kondisi terkini.",
+        caveat: "Rencana ini membantu kesiapan, tapi tetap ikuti instruksi evakuasi resmi di lapangan. Petugas setempat lebih tahu kondisi terkini.",
       },
     ],
   },
@@ -149,7 +149,7 @@ const ITEM_EN: Record<string, ItemText> = {
     what: "House/land documents and insurance policies (if any)",
     why: "Useful for claims or recording losses after a fire.",
     how: "Keep photocopies, not originals that are hard to replace.",
-    caveat: "If you don't have these documents, skip this — they're not required for a safe evacuation.",
+    caveat: "If you don't have these documents, skip this. They're not required for a safe evacuation.",
   },
   "dok-kontak": {
     what: "Emergency contact list (family, neighbours, nearest health centre)",
@@ -165,7 +165,7 @@ const ITEM_EN: Record<string, ItemText> = {
     what: "Respirator masks (N95 or equivalent)",
     why: "Protects your airways from fire-smoke particles, far better than cloth/surgical masks.",
     how: "Keep several per family member, and check the right fit for adults and children.",
-    caveat: "Masks for small children often don't seal well — watch how the child reacts and don't force it if they seem short of breath.",
+    caveat: "Masks for small children often don't seal well. Watch how the child reacts and don't force it if they seem short of breath.",
   },
   "tas-p3k": {
     what: "A simple first-aid kit",
@@ -201,7 +201,7 @@ const ITEM_EN: Record<string, ItemText> = {
     what: "A special plan for vulnerable family members (elderly, children, people with disabilities, pregnant women)",
     why: "They may need more time or extra help during evacuation.",
     how: "Decide who is responsible for accompanying them, and keep aids (wheelchair, medicines) near the exit.",
-    caveat: "This plan helps you prepare, but always follow official evacuation instructions on the ground — local officers know the current conditions best.",
+    caveat: "This plan helps you prepare, but always follow official evacuation instructions on the ground. Local officers know the current conditions best.",
   },
 };
 

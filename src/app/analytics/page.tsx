@@ -109,13 +109,13 @@ function ClusterRow({ area, rank }: { area: AreaSummary; rank: number }) {
           </div>
         </td>
         <td className="py-3 pr-3 whitespace-nowrap">
-          <span className="text-lg font-bold text-gray-900">{area.detections ?? "—"}</span>
+          <span className="text-lg font-bold text-gray-900">{area.detections ?? "-"}</span>
           <span className="text-[10px] text-gray-400 ml-1">{tr("titik", "pts")}</span>
         </td>
         <td className="py-3 pr-3 whitespace-nowrap">
           <div className="text-[12px] font-bold text-gray-900">
-            {area.frpMean !== null ? `${area.frpMean.toFixed(1)} MW` : "—"}
-            <span className="text-gray-400 font-normal"> / {area.frpMax !== null ? `${area.frpMax.toFixed(1)} MW` : "—"}</span>
+            {area.frpMean !== null ? `${area.frpMean.toFixed(1)} MW` : "-"}
+            <span className="text-gray-400 font-normal"> / {area.frpMax !== null ? `${area.frpMax.toFixed(1)} MW` : "-"}</span>
           </div>
         </td>
         <td className="py-3 pr-3">
@@ -164,7 +164,7 @@ function ClusterRow({ area, rank }: { area: AreaSummary; rank: number }) {
               </div>
               <div>
                 <dt className="text-gray-400">{tr("Hari aktif berturut-turut", "Consecutive active days")}</dt>
-                <dd className="font-medium text-gray-800 mt-0.5">{area.consecutiveActiveDays ?? "—"}</dd>
+                <dd className="font-medium text-gray-800 mt-0.5">{area.consecutiveActiveDays ?? "-"}</dd>
               </div>
             </dl>
           </td>
@@ -267,7 +267,7 @@ function AnalyticsPageContent() {
       .map(([year, { total, months }]) => ({
         key: String(year),
         label: `'${String(year).slice(2)}`,
-        title: `${year}: ${total.toLocaleString()} ${tr("deteksi", "detections")}${months < 12 ? tr(` (data parsial, ${months} bulan)`, ` (partial data, ${months} months)`) : ""}${year < 2012 ? tr(" — hanya MODIS", " — MODIS only") : ""}`,
+        title: `${year}: ${total.toLocaleString()} ${tr("deteksi", "detections")}${months < 12 ? tr(` (data parsial, ${months} bulan)`, ` (partial data, ${months} months)`) : ""}${year < 2012 ? tr(". Hanya MODIS", ". MODIS only") : ""}`,
         value: total,
         partial: months < 12,
         modisOnly: year < 2012,
@@ -288,8 +288,8 @@ function AnalyticsPageContent() {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">{tr("Analitik", "Analytics")}</h1>
             <p className="text-sm text-gray-500 max-w-2xl">
               {tr(
-                "Statistik dan klaster spasial dari data live NASA FIRMS untuk periode terpilih, dibandingkan dengan arsip historis nyata (2000–2026) untuk wilayah terpilih. Deteksi satelit adalah indikasi anomali termal, bukan konfirmasi kebakaran — perlu verifikasi lapangan sebelum tindak lanjut.",
-                "Statistics and spatial clusters from live NASA FIRMS data for the selected period, compared with the real historical archive (2000–2026) for the selected area. Satellite detections indicate thermal anomalies, not confirmed fires — field verification is needed before acting."
+                "Statistik dan klaster spasial dari data live NASA FIRMS untuk periode terpilih, dibandingkan dengan arsip historis nyata (2000–2026) untuk wilayah terpilih. Deteksi satelit adalah indikasi anomali termal, bukan konfirmasi kebakaran. Perlu verifikasi lapangan sebelum tindak lanjut.",
+                "Statistics and spatial clusters from live NASA FIRMS data for the selected period, compared with the real historical archive (2000–2026) for the selected area. Satellite detections indicate thermal anomalies, not confirmed fires. Field verification is needed before acting."
               )}
             </p>
           </div>
@@ -350,7 +350,7 @@ function AnalyticsPageContent() {
             icon="priority_high"
             iconTone="red"
             label={tr("Area Prioritas Tertinggi", "Top Priority Area")}
-            value={topArea ? areaRegionLabel(topArea, language).title : "—"}
+            value={topArea ? areaRegionLabel(topArea, language).title : "-"}
             caption={
               topArea
                 ? `${topArea.detections ?? 0} ${tr("deteksi", "detections")} · ${tr(...TIER_STYLE[topArea.priorityTier].label)}`
@@ -368,7 +368,7 @@ function AnalyticsPageContent() {
             icon="grid_view"
             iconTone="blue"
             label={tr("Rata-rata Deteksi / Sel Grid", "Avg Detections / Grid Cell")}
-            value={avgPerGrid !== null ? avgPerGrid.toFixed(1) : "—"}
+            value={avgPerGrid !== null ? avgPerGrid.toFixed(1) : "-"}
             caption={tr(`dari ${areas.length} grid 0,25° (~27 km) terdeteksi`, `across ${areas.length} detected 0.25° (~27 km) cells`)}
           />
         </div>

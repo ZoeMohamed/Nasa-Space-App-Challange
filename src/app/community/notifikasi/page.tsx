@@ -87,10 +87,10 @@ export default function NotifikasiPage() {
         id: m.id,
         title: pick(
           language,
-          `Titik api ${SEVERITY_WORD[m.severity][0]} — ${formatAdminShort(m.admin) ?? m.label}`,
-          `${SEVERITY_WORD[m.severity][1][0].toUpperCase()}${SEVERITY_WORD[m.severity][1].slice(1)} hotspot — ${formatAdminShort(m.admin) ?? m.label}`
+          `Titik api ${SEVERITY_WORD[m.severity][0]}. ${formatAdminShort(m.admin) ?? m.label}`,
+          `${SEVERITY_WORD[m.severity][1][0].toUpperCase()}${SEVERITY_WORD[m.severity][1].slice(1)} hotspot. ${formatAdminShort(m.admin) ?? m.label}`
         ),
-        subtitle: `${m.sensor ?? m.satellite ?? "Sensor"} · FRP ${typeof m.frp === "number" ? m.frp.toFixed(1) : "—"} MW`,
+        subtitle: `${m.sensor ?? m.satellite ?? "Sensor"} · FRP ${typeof m.frp === "number" ? m.frp.toFixed(1) : "-"} MW`,
         time: formatRelative(m.acquiredAt!, language),
         href: `/community/alert/${m.id}`,
       }));

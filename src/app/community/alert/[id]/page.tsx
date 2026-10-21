@@ -128,7 +128,7 @@ export default function AlertDetailPage() {
     );
     if (navigator.share) {
       try {
-        await navigator.share({ title: tr("Titik panas — AGNIBHŪMĪ", "Hotspot — AGNIBHŪMĪ"), text: shareText, url: window.location.href });
+        await navigator.share({ title: tr("Titik panas · AGNIBHŪMĪ", "Hotspot · AGNIBHŪMĪ"), text: shareText, url: window.location.href });
       } catch {
         /* user cancelled */
       }
@@ -235,13 +235,13 @@ export default function AlertDetailPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
             {[
-              [tr("Jarak", "Distance"), distanceKm !== null ? formatDistanceKm(distanceKm) : "—"],
-              [tr("Arah dari lokasimu", "Direction from you"), bearing !== null ? compass(bearing) : "—"],
+              [tr("Jarak", "Distance"), distanceKm !== null ? formatDistanceKm(distanceKm) : "-"],
+              [tr("Arah dari lokasimu", "Direction from you"), bearing !== null ? compass(bearing) : "-"],
               [
                 tr("Keyakinan", "Confidence"),
                 marker.confidenceTier && TIER_LABEL[marker.confidenceTier]
-                  ? `${tr(...TIER_LABEL[marker.confidenceTier])} (${marker.confidenceLabel ?? "—"})`
-                  : (marker.confidenceLabel ?? "—"),
+                  ? `${tr(...TIER_LABEL[marker.confidenceTier])} (${marker.confidenceLabel ?? "-"})`
+                  : (marker.confidenceLabel ?? "-"),
               ],
               [tr("Intensitas panas (FRP)", "Heat intensity (FRP)"), `${marker.frp.toFixed(1)} MW`],
             ].map(([label, value]) => (
@@ -269,8 +269,8 @@ export default function AlertDetailPage() {
                       )} ${
                         upwind
                           ? tr(
-                              "Titik ini ada di arah datangnya angin — asapnya bisa terbawa ke lokasimu.",
-                              "This point is on the side the wind comes from — its smoke may drift to you."
+                              "Titik ini ada di arah datangnya angin. Asapnya bisa terbawa ke lokasimu.",
+                              "This point is on the side the wind comes from. Its smoke may drift to you."
                             )
                           : tr("Titik ini tidak berada di arah datangnya angin saat ini.", "This point is not on the side the wind is coming from right now.")
                       }`}
@@ -325,7 +325,7 @@ export default function AlertDetailPage() {
               className="flex items-center justify-center gap-2 rounded-xl bg-[#0c2e22] hover:bg-[#071f16] py-3.5 text-xs md:text-sm font-bold text-white transition"
             >
               <span className="material-symbols-outlined text-[18px]">photo_camera</span>
-              {tr("Saya melihat api / asap — Lapor", "I see fire / smoke — Report")}
+              {tr("Saya melihat api / asap. Lapor", "I see fire / smoke. Report")}
             </Link>
             <button
               type="button"
@@ -338,7 +338,7 @@ export default function AlertDetailPage() {
           </div>
 
           <p className="text-[11px] text-[var(--community-ink-muted)] text-center leading-relaxed pt-1">
-            {tr("Sumber", "Source")}: NASA FIRMS — {marker.sensor ?? tr("satelit", "satellite")}
+            {tr("Sumber", "Source")}: NASA FIRMS. {marker.sensor ?? tr("satelit", "satellite")}
             {marker.satellite && marker.satellite !== "nan" ? ` (${marker.satellite})` : ""}
             {acquired ? `, ${acquired.absolute}` : ""}.{" "}
             {tr(

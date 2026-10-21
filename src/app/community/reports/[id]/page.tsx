@@ -147,7 +147,7 @@ export default function ReportStatusPage() {
             <h1 className="text-sm font-bold text-[#123027]">{report.description}</h1>
             <p className="text-[11px] text-[var(--community-ink-muted)]">{place}</p>
             <p className="text-[11px] text-[var(--community-ink-muted)]">
-              {tr("Dilihat", "Observed")}: {formatClock(report.observedAt, language) ?? "—"}
+              {tr("Dilihat", "Observed")}: {formatClock(report.observedAt, language) ?? "-"}
             </p>
             {report.photoFilename && (
               // eslint-disable-next-line @next/next/no-img-element

@@ -21,7 +21,7 @@ export const translations = {
     "hero.eyebrow": "NASA Space Apps 2026 · Harmonisasi MODIS & VIIRS",
     "hero.headline": "Satu kalender kebakaran dari dua generasi satelit.",
     "hero.body":
-      "AGNIBHŪMI menyatukan deteksi titik panas MODIS (sejak 2000) dan VIIRS (sejak 2012) dari NASA FIRMS menjadi satu catatan yang bisa dibandingkan — supaya petugas, peneliti, dan warga di Indonesia bisa melihat kapan dan di mana kebakaran terjadi, kapan kondisinya tidak biasa, dan kapan periode kritisnya datang.",
+      "AGNIBHŪMI menyatukan deteksi titik panas MODIS (sejak 2000) dan VIIRS (sejak 2012) dari NASA FIRMS menjadi satu catatan yang bisa dibandingkan, supaya petugas, peneliti, dan warga di Indonesia bisa melihat kapan dan di mana kebakaran terjadi, kapan kondisinya tidak biasa, dan kapan periode kritisnya datang.",
     "challenge.title": "Menjawab tantangan NASA",
     "challenge.harmonize.title": "Harmonisasi MODIS + VIIRS",
     "challenge.harmonize.body": "Deteksi yang sama dari dua sensor dicocokkan (≤ 10 km, ≤ 12 jam) dan dihitung sekali, dengan filter confidence yang sama untuk keduanya.",
@@ -45,12 +45,12 @@ export const translations = {
     "stats.analyzedAreas": "Area teranalisis",
     "stats.analyzedAreasCaption": "Grid sel 0,25° yang dianalisis pipeline",
     "stats.unavailableNote":
-      "Sumber data NASA FIRMS sedang tidak tersedia (kemungkinan kunci API belum dikonfigurasi) — angka di atas tidak ditampilkan sebagai gantinya, karena ini bukan data sungguhan.",
+      "Sumber data NASA FIRMS sedang tidak tersedia (kemungkinan kunci API belum dikonfigurasi). Angka di atas tidak ditampilkan sebagai gantinya, karena ini bukan data sungguhan.",
 
     "recentHotspots.title": "Titik panas terbaru",
     "recentHotspots.viewMap": "Lihat peta lengkap",
     "recentHotspots.loading": "Memuat titik panas…",
-    "recentHotspots.unavailable": "Data belum tersedia — sumber NASA FIRMS sedang tidak dapat diakses.",
+    "recentHotspots.unavailable": "Data belum tersedia. Sumber NASA FIRMS sedang tidak dapat diakses.",
     "recentHotspots.empty": "Tidak ada deteksi titik panas aktif saat ini.",
     "recentHotspots.source": "Sumber",
     "recentHotspots.acquired": "Diambil",
@@ -75,9 +75,9 @@ export const translations = {
 
     "disclaimer.strong": "Titik panas satelit adalah indikator anomali termal, bukan konfirmasi kebakaran.",
     "disclaimer.body":
-      "Setiap deteksi — baik dari satelit maupun laporan komunitas — tetap memerlukan verifikasi lapangan sebelum dijadikan dasar tindakan. Ini bukan konfirmasi kebakaran.",
+      "Setiap deteksi, dari satelit maupun laporan warga, perlu dicek di lapangan sebelum ditindaklanjuti. Ini bukan konfirmasi kebakaran.",
 
-    "footer.tagline": "AGNIBHŪMI — Intelijen satelit & komunitas untuk pemantauan kebakaran lahan dan hutan di Indonesia.",
+    "footer.tagline": "AGNIBHŪMI · Intelijen satelit & komunitas untuk pemantauan kebakaran lahan dan hutan di Indonesia.",
 
     "community.subtitle": "Community View · Untuk Masyarakat",
     "community.nav.home": "Beranda",
@@ -98,7 +98,7 @@ export const translations = {
     "hero.eyebrow": "NASA Space Apps 2026 · MODIS & VIIRS harmonization",
     "hero.headline": "One fire calendar from two generations of satellites.",
     "hero.body":
-      "AGNIBHŪMI merges NASA FIRMS hotspot detections from MODIS (since 2000) and VIIRS (since 2012) into one comparable record — so officers, researchers, and communities in Indonesia can see when and where fires happen, when conditions are unusual, and when critical periods arrive.",
+      "AGNIBHŪMI merges NASA FIRMS hotspot detections from MODIS (since 2000) and VIIRS (since 2012) into one comparable record, so officers, researchers, and communities in Indonesia can see when and where fires happen, when conditions are unusual, and when critical periods arrive.",
     "challenge.title": "Answering the NASA challenge",
     "challenge.harmonize.title": "MODIS + VIIRS harmonization",
     "challenge.harmonize.body": "The same fire seen by both sensors is matched (≤ 10 km, ≤ 12 h) and counted once, with one confidence filter for both.",
@@ -122,12 +122,12 @@ export const translations = {
     "stats.analyzedAreas": "Analyzed areas",
     "stats.analyzedAreasCaption": "0.25° grid cells analyzed by the pipeline",
     "stats.unavailableNote":
-      "The NASA FIRMS data source is currently unavailable (an API key may not be configured) — the numbers above are hidden instead of being shown, because this isn't real data.",
+      "The NASA FIRMS data source is currently unavailable (an API key may not be configured). The numbers above are hidden instead of being shown, because this isn't real data.",
 
     "recentHotspots.title": "Latest hotspots",
     "recentHotspots.viewMap": "View full map",
     "recentHotspots.loading": "Loading hotspots…",
-    "recentHotspots.unavailable": "Data not available — the NASA FIRMS source is currently unreachable.",
+    "recentHotspots.unavailable": "Data not available. The NASA FIRMS source is currently unreachable.",
     "recentHotspots.empty": "No active hotspot detections right now.",
     "recentHotspots.source": "Source",
     "recentHotspots.acquired": "Acquired",
@@ -152,9 +152,9 @@ export const translations = {
 
     "disclaimer.strong": "Satellite hotspots are thermal anomaly indicators, not fire confirmations.",
     "disclaimer.body":
-      "Every detection — whether from satellite or community report — still needs field verification before being acted on. This is not a fire confirmation.",
+      "Every detection, from satellite or citizen report, needs a field check before action. It is not a fire confirmation.",
 
-    "footer.tagline": "AGNIBHŪMI — Satellite & community intelligence for forest and land fire monitoring in Indonesia.",
+    "footer.tagline": "AGNIBHŪMI · Satellite & community intelligence for forest and land fire monitoring in Indonesia.",
 
     "community.subtitle": "Community View · For the Public",
     "community.nav.home": "Home",

@@ -565,7 +565,6 @@ function CalendarPageContent() {
     if (!hasRealMonths || seriesMonths.length === 0) return [];
     const insights: { icon: string; text: string; target?: InsightTarget }[] = [];
     const sorted = [...seriesMonths].sort((a, b) => a.year * 12 + a.month - (b.year * 12 + b.month));
-    const seriesName = series === "comparable" ? tr("MODIS saja", "MODIS only") : tr("MODIS + VIIRS", "MODIS + VIIRS");
     const latest = sorted[sorted.length - 1];
     const latestMonthLabel = monthLabels[latest.month - 1];
     // Year-against-year comparisons below only use settled months (not NRT / live / unfinished).
@@ -584,8 +583,8 @@ function CalendarPageContent() {
       insights.push({
         icon: "insights",
         text: tr(
-          `${realPeakMonthLabel} secara historis adalah bulan paling aktif, dihitung dari total deteksi ${Math.max(activeYears[0], comparisonStartYear)}–${activeYears[activeYears.length - 1]} (${seriesName}).`,
-          `${realPeakMonthLabel} is historically the most active month, based on total detections ${Math.max(activeYears[0], comparisonStartYear)}–${activeYears[activeYears.length - 1]} (${seriesName}).`
+          `${realPeakMonthLabel} adalah bulan paling aktif (${Math.max(activeYears[0], comparisonStartYear)}–${activeYears[activeYears.length - 1]}).`,
+          `${realPeakMonthLabel} is the most active month (${Math.max(activeYears[0], comparisonStartYear)}–${activeYears[activeYears.length - 1]}).`
         ),
         target: peakMonthBestEntry ? { kind: "cell", year: peakMonthBestEntry.year, month: peakMonthBestEntry.month } : undefined,
       });
@@ -607,18 +606,18 @@ function CalendarPageContent() {
       const ahead = monthsUntil(nowMonth, nextStart);
       const timing = inside
         ? tr(
-            `Saat ini (${monthLabels[nowMonth - 1]}) termasuk periode kritis, yang biasanya berlangsung sampai ${monthLabels[currentRange![currentRange!.length - 1] - 1]}.`,
-            `Right now (${monthLabels[nowMonth - 1]}) is inside the critical period, which usually lasts until ${monthLabels[currentRange![currentRange!.length - 1] - 1]}.`
+            `Sekarang masuk periode kritis, biasanya sampai ${monthLabels[currentRange![currentRange!.length - 1] - 1]}.`,
+            `We are in the critical period now, usually until ${monthLabels[currentRange![currentRange!.length - 1] - 1]}.`
           )
         : tr(
-            `Periode kritis berikutnya biasanya mulai ${monthLabels[nextStart - 1]}, ${ahead} bulan lagi.`,
-            `The next critical period usually starts in ${monthLabels[nextStart - 1]}, ${ahead} month${ahead === 1 ? "" : "s"} from now.`
+            `Periode kritis berikutnya mulai ${monthLabels[nextStart - 1]}, ${ahead} bulan lagi.`,
+            `The next critical period starts in ${monthLabels[nextStart - 1]}, ${ahead} month${ahead === 1 ? "" : "s"} from now.`
           );
       insights.push({
         icon: "event_upcoming",
         text: tr(
-          `Periode kritis di wilayah ini: ${ranges}. Bulan-bulan ini rata-rata memuat ${share}% kejadian setahun (${critical.firstYear}–${critical.lastYear}, ${seriesName}). ${timing}`,
-          `Critical period in this area: ${ranges}. These months hold ${share}% of an average year's events (${critical.firstYear}–${critical.lastYear}, ${seriesName}). ${timing}`
+          `Periode kritis: ${ranges} (${share}% kejadian setahun). ${timing}`,
+          `Critical period: ${ranges} (${share}% of a year's events). ${timing}`
         ),
       });
     }
@@ -633,8 +632,8 @@ function CalendarPageContent() {
       insights.push({
         icon: "error",
         text: tr(
-          `${unusualMonths.size} bulan dalam catatan ini jauh di atas bulan yang sama di tahun-tahun lain (lebih dari rata-rata + 2 standar deviasi). Yang paling menonjol: ${named}. Bulan-bulan ini ditandai titik merah di kalender.`,
-          `${unusualMonths.size} months in this record are far above the same month in other years (more than the average + 2 standard deviations). The most striking: ${named}. They are marked with a red dot in the calendar.`
+          `${unusualMonths.size} bulan jauh di atas normal (titik merah). Paling tinggi: ${named}.`,
+          `${unusualMonths.size} months far above normal (red dot). Highest: ${named}.`
         ),
         target: { kind: "cell", year: ranked[0].year, month: ranked[0].month },
       });
@@ -646,8 +645,8 @@ function CalendarPageContent() {
       insights.push({
         icon: realBaseline.deviationPct > 0 ? "trending_up" : "trending_down",
         text: tr(
-          `${realBaseline.monthLabel} ${realBaseline.year}: ${realBaseline.current.toLocaleString(numLocale)} deteksi, ${Math.abs(realBaseline.deviationPct)}% ${direction} dari rata-rata ${realBaseline.monthLabel} ${realBaseline.firstYear}–${realBaseline.lastYear} (${realBaseline.baseline.toLocaleString(numLocale)} deteksi).${realBaseline.provisional ? " Bulan ini masih data NRT sementara: belum disaring ke api vegetasi, jadi sumber panas industri ikut terhitung." : ""}`,
-          `${realBaseline.monthLabel} ${realBaseline.year}: ${realBaseline.current.toLocaleString(numLocale)} detections, ${Math.abs(realBaseline.deviationPct)}% ${direction} than the ${realBaseline.monthLabel} ${realBaseline.firstYear}–${realBaseline.lastYear} average (${realBaseline.baseline.toLocaleString(numLocale)} detections).${realBaseline.provisional ? " This month is still provisional NRT data: not yet filtered to vegetation fires, so industrial heat sources are included." : ""}`
+          `${realBaseline.monthLabel} ${realBaseline.year}: ${realBaseline.current.toLocaleString(numLocale)} deteksi, ${Math.abs(realBaseline.deviationPct)}% ${direction} dari biasanya (${realBaseline.baseline.toLocaleString(numLocale)}).${realBaseline.provisional ? " Data sementara (NRT)." : ""}`,
+          `${realBaseline.monthLabel} ${realBaseline.year}: ${realBaseline.current.toLocaleString(numLocale)} detections, ${Math.abs(realBaseline.deviationPct)}% ${direction} than usual (${realBaseline.baseline.toLocaleString(numLocale)}).${realBaseline.provisional ? " Provisional data (NRT)." : ""}`
         ),
         target: { kind: "cell", year: realBaseline.year, month: realBaseline.month },
       });
@@ -660,7 +659,7 @@ function CalendarPageContent() {
       insights.push({
         icon: "history",
         text: tr(
-          `Fase tertinggi untuk bulan ${latestMonthLabel} dalam arsip terjadi di tahun ${peakEntry.year}, dengan ${peakEntry.detections.toLocaleString(numLocale)} deteksi.`,
+          `${latestMonthLabel} tertinggi: tahun ${peakEntry.year}, ${peakEntry.detections.toLocaleString(numLocale)} deteksi.`,
           `The highest ${latestMonthLabel} on record was in ${peakEntry.year}, with ${peakEntry.detections.toLocaleString(numLocale)} detections.`
         ),
         target: { kind: "cell", year: peakEntry.year, month: peakEntry.month },
@@ -684,17 +683,17 @@ function CalendarPageContent() {
         text:
           pct >= 10
             ? tr(
-                `Secara historis, ${nextMonthLabel} rata-rata ${Math.round(pct)}% lebih tinggi dari ${latestMonthLabel} (dari ${nextMonthEntries.length} tahun data) — waspadai kelanjutan tren musim kebakaran ke bulan berikutnya.`,
-                `Historically, ${nextMonthLabel} averages ${Math.round(pct)}% higher than ${latestMonthLabel} (from ${nextMonthEntries.length} years of data) — watch for the fire season continuing into next month.`
+                `${nextMonthLabel} biasanya ${Math.round(pct)}% lebih tinggi dari ${latestMonthLabel}. Waspada.`,
+                `${nextMonthLabel} is usually ${Math.round(pct)}% higher than ${latestMonthLabel}. Stay alert.`
               )
             : pct <= -10
               ? tr(
-                  `Secara historis, aktivitas cenderung turun ${Math.abs(Math.round(pct))}% memasuki ${nextMonthLabel} dibanding ${latestMonthLabel} (dari ${nextMonthEntries.length} tahun data).`,
-                  `Historically, activity tends to drop ${Math.abs(Math.round(pct))}% going into ${nextMonthLabel} compared with ${latestMonthLabel} (from ${nextMonthEntries.length} years of data).`
+                  `${nextMonthLabel} biasanya ${Math.abs(Math.round(pct))}% lebih rendah dari ${latestMonthLabel}.`,
+                  `${nextMonthLabel} is usually ${Math.abs(Math.round(pct))}% lower than ${latestMonthLabel}.`
                 )
               : tr(
-                  `Secara historis, ${nextMonthLabel} berada pada tingkat yang mirip dengan ${latestMonthLabel} (selisih rata-rata ${Math.abs(Math.round(pct))}%, dari ${nextMonthEntries.length} tahun data) — belum ada tanda penurunan signifikan.`,
-                  `Historically, ${nextMonthLabel} is at a similar level to ${latestMonthLabel} (average difference ${Math.abs(Math.round(pct))}%, from ${nextMonthEntries.length} years of data) — no sign of a significant drop yet.`
+                  `${nextMonthLabel} biasanya mirip ${latestMonthLabel}. Belum ada tanda turun.`,
+                  `${nextMonthLabel} is usually similar to ${latestMonthLabel}. No sign of a drop yet.`
                 ),
         target: { kind: "cell", year: mostRecentNextMonthEntry.year, month: mostRecentNextMonthEntry.month },
       });
@@ -708,12 +707,12 @@ function CalendarPageContent() {
         text:
           unusualAreas.unusualCells > 0
             ? tr(
-                `${unusualAreas.unusualCells} dari ${unusualAreas.matchedCells} sel grid dengan deteksi live hari ini sudah berada di atas baseline historisnya (>2×std harian) — prioritaskan verifikasi di sel tersebut.`,
-                `${unusualAreas.unusualCells} of ${unusualAreas.matchedCells} grid cells with live detections today are already above their historical baseline (>2× daily std) — prioritize verification there.`
+                `${unusualAreas.unusualCells} dari ${unusualAreas.matchedCells} area aktif hari ini di atas normal. Cek area itu dulu.`,
+                `${unusualAreas.unusualCells} of ${unusualAreas.matchedCells} active areas today are above normal. Check them first.`
               )
             : tr(
-                `Tidak ada sel grid dengan deteksi live hari ini yang melebihi baseline historisnya saat ini (dari ${unusualAreas.matchedCells} sel yang punya riwayat arsip).`,
-                `No grid cell with live detections today is above its historical baseline right now (of ${unusualAreas.matchedCells} cells with archive history).`
+                `Tidak ada area aktif hari ini yang di atas normal (${unusualAreas.matchedCells} area dicek).`,
+                `No active area today is above normal (${unusualAreas.matchedCells} areas checked).`
               ),
         target: { kind: "map" },
       });
@@ -778,8 +777,8 @@ function CalendarPageContent() {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">{tr("Aktivitas Kebakaran Historis", "Historical Burning Activity")}</h1>
             <p className="text-sm text-gray-500 max-w-2xl">
               {tr(
-                "Jelajahi pola aktivitas kebakaran historis antar bulan dan tahun, lalu bandingkan dengan data live hari ini di bawah — ini menunjukkan pola, bukan prediksi kebakaran di masa depan.",
-                "Explore historical fire activity patterns across months and years, and compare them with today's live snapshot below — this shows patterns, not predictions of future fires."
+                "Pola kebakaran per bulan dan tahun, dibandingkan dengan data hari ini. Ini pola, bukan ramalan.",
+                "Fire patterns by month and year, compared with today's data. Patterns, not forecasts."
               )}
             </p>
           </div>
@@ -818,7 +817,7 @@ function CalendarPageContent() {
                       `${areaName}: ${aoiPoints.length} points${historical?.areaCells !== undefined ? `, ${historical.areaCells} 0.25° grid cells with history` : ""}. Every cell the outline touches is counted.`
                     )
                   : aoiCode
-                    ? tr(`${aoiLabel ?? aoiCode} — sel grid 0,25° yang beririsan dengan batas wilayahnya.`, `${aoiLabel ?? aoiCode} — 0.25° grid cells intersecting its boundary.`)
+                    ? tr(`${aoiLabel ?? aoiCode}. Sel grid 0,25° yang beririsan dengan batas wilayahnya.`, `${aoiLabel ?? aoiCode}. 0.25° grid cells intersecting its boundary.`)
                     : tr(
                         `${labelOf(activeRegion, language)}. Persempit ke kabupaten/kota atau kecamatan, atau gambar area sendiri (konsesi, taman nasional, lahan gambut):`,
                         `${labelOf(activeRegion, language)}. Narrow to a regency/city or district, or draw your own area (concession, national park, peatland):`
@@ -863,8 +862,8 @@ function CalendarPageContent() {
             <span className="material-symbols-outlined text-blue-600 text-base shrink-0">info</span>
             <p>
               {tr(
-                `Kalender ini menampilkan arsip bulanan, jadi rentang "${labelOf(activeRange, language)}" tidak mengubahnya. Statistik live tetap 24 jam karena dibandingkan dengan baseline harian per sel. Rentang ini berlaku di Dasbor, Peta, Analitik, dan Area Prioritas.`,
-                `This calendar shows the monthly archive, so the "${labelOf(activeRange, language)}" range doesn't change it. Live stats stay at 24 hours because they're compared with each cell's daily baseline. The range applies on the Dashboard, Map, Analytics, and Priority Areas.`
+                `Rentang "${labelOf(activeRange, language)}" tidak berlaku di kalender. Statistik live tetap 24 jam.`,
+                `The "${labelOf(activeRange, language)}" range doesn't apply to the calendar. Live stats stay at 24 hours.`
               )}
             </p>
           </div>
@@ -937,7 +936,7 @@ function CalendarPageContent() {
                 : realBaseline && realBaseline.deviationPct !== null
                   ? `${realBaseline.deviationPct > 0 ? "+" : ""}${realBaseline.deviationPct}%`
                   : realBaseline
-                    ? "—"
+                    ? "-"
                     : `${DEMO_BASELINE_DEVIATION_PCT > 0 ? "+" : ""}${DEMO_BASELINE_DEVIATION_PCT}%`
             }
             trend={
@@ -984,7 +983,7 @@ function CalendarPageContent() {
             icon="travel_explore"
             iconTone="amber"
             label={tr("Area dengan Aktivitas Tidak Biasa", "Areas with Unusual Activity")}
-            value={unusualLoading ? "…" : unusualAreas ? unusualAreas.unusualCells.toLocaleString(numLocale) : "—"}
+            value={unusualLoading ? "…" : unusualAreas ? unusualAreas.unusualCells.toLocaleString(numLocale) : "-"}
             caption={
               unusualLoading
                 ? tr("Membandingkan data live dengan arsip…", "Comparing live data with the archive…")
@@ -1041,8 +1040,8 @@ function CalendarPageContent() {
             note={
               !unusualLoading && unusual && !unusual.comparable
                 ? tr(
-                    `Satelit VIIRS yang ada di arsip sedang tidak tersedia di data live (${unusual.reason ?? ""}). Angka dari satelit lain tidak dibandingkan, karena jumlah hariannya berbeda.`,
-                    `The VIIRS satellite in the archive isn't in the live data right now (${unusual.reason ?? ""}). Counts from other satellites aren't compared, because their daily counts differ.`
+                    `Satelit pembanding sedang tidak ada di data live, jadi belum bisa dibandingkan.`,
+                    `The reference satellite is missing from live data, so no comparison yet.`
                   )
                 : undefined
             }
@@ -1071,8 +1070,8 @@ function CalendarPageContent() {
                     <p className="text-xs text-gray-400 mt-1">
                       {hasRealMonths
                         ? tr(
-                            `Perbandingan total titik panas dan periode puncak — ${overviewYears.length} tahun terakhir dari arsip nyata.`,
-                            `Total hotspots and peak period comparison — last ${overviewYears.length} years of the real archive.`
+                            `Perbandingan total titik panas dan periode puncak. ${overviewYears.length} tahun terakhir dari arsip nyata.`,
+                            `Total hotspots and peak period comparison. Last ${overviewYears.length} years of the real archive.`
                           )
                         : tr("Perbandingan total titik panas dan periode puncak.", "Total hotspots and peak period comparison.")}
                     </p>
@@ -1198,8 +1197,8 @@ function CalendarPageContent() {
                       <li className="flex items-start gap-2.5 text-[13px] text-red-900/80">
                         <span className="material-symbols-outlined text-red-600 text-base shrink-0 leading-5">priority_high</span>
                         {tr(
-                          `Saat ini: ${unusualAreas.unusualCells} sel grid sudah di atas baseline historisnya hari ini — prioritaskan verifikasi di sel tersebut lebih dulu.`,
-                          `Right now: ${unusualAreas.unusualCells} grid cells are above their historical baseline today — verify those cells first.`
+                          `Saat ini: ${unusualAreas.unusualCells} sel grid sudah di atas baseline historisnya hari ini. Prioritaskan verifikasi di sel tersebut lebih dulu.`,
+                          `Right now: ${unusualAreas.unusualCells} grid cells are above their historical baseline today. Verify those cells first.`
                         )}
                       </li>
                     )}
@@ -1326,8 +1325,8 @@ function CalendarPageContent() {
               ) : (
                 <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50/60 px-3 py-2 mb-5 text-xs text-amber-800">
                   {tr(
-                    "Data ilustratif untuk mendemonstrasikan tampilan kalender multi-tahun — gagal memuat arsip historis nyata dari backend, menampilkan data contoh sebagai fallback.",
-                    "Illustrative data to demonstrate the multi-year calendar — the real historical archive failed to load from the backend, so example data is shown as a fallback."
+                    "Data ilustratif untuk mendemonstrasikan tampilan kalender multi-tahun. Gagal memuat arsip historis nyata dari backend, menampilkan data contoh sebagai fallback.",
+                    "Illustrative data to demonstrate the multi-year calendar. The real historical archive failed to load from the backend, so example data is shown as a fallback."
                   )}
                 </div>
               )}
@@ -1391,7 +1390,7 @@ function CalendarPageContent() {
                                       )}`
                                     : `${monthLabels[monthIndex]} ${year}: ${tr("belum ada data", "no data")}`
                                   : hasRealMonths
-                                    ? `${monthLabels[monthIndex]} ${year}: ${value.toLocaleString(numLocale)} ${tr("deteksi — klik untuk detail", "detections — click for details")}${
+                                    ? `${monthLabels[monthIndex]} ${year}: ${value.toLocaleString(numLocale)} ${tr("deteksi. Klik untuk detail", "detections. Click for details")}${
                                         provisional
                                           ? provisional.partialThroughDay !== undefined
                                             ? ` • ${tr(`data sementara, baru sampai tanggal ${provisional.partialThroughDay}`, `provisional, only up to day ${provisional.partialThroughDay}`)}`
@@ -1431,7 +1430,7 @@ function CalendarPageContent() {
                 <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/60 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <h4 className="text-sm font-bold text-gray-900">
-                      {monthLabels[selectedCell.month - 1]} {selectedCell.year} — {tr("data mentah", "raw data")}
+                      {monthLabels[selectedCell.month - 1]} {selectedCell.year}. {tr("data mentah", "raw data")}
                     </h4>
                     <button
                       type="button"

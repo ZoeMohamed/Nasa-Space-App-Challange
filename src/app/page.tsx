@@ -353,11 +353,11 @@ export default function LandingPage() {
             value={
               highestPriorityArea
                 ? areaRegionLabel(highestPriorityArea).title
-                : "—"
+                : "-"
             }
             caption={
               highestPriorityArea
-                ? `Grid 0.25° · ${language === "en" ? "priority score" : "skor prioritas"} ${highestPriorityArea.priorityScore?.toFixed(1) ?? "—"}`
+                ? `Grid 0.25° · ${language === "en" ? "priority score" : "skor prioritas"} ${highestPriorityArea.priorityScore?.toFixed(1) ?? "-"}`
                 : t("stats.priorityAreaNone")
             }
             loading={hotspotsLoading}

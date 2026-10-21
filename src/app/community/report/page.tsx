@@ -73,17 +73,17 @@ function SubmittedView({ report }: { report: ReportCreateResponse }) {
       time: null,
       body: report.correlationWarning
         ? tr(
-            "Pencocokan otomatis belum bisa dijalankan (data satelit live sedang tidak tersedia). Laporan tetap tersimpan.",
-            "Automatic matching couldn't run (live satellite data is unavailable right now). Your report is still saved."
+            "Data satelit sedang tidak tersedia. Laporan tetap tersimpan.",
+            "Satellite data is unavailable. Your report is still saved."
           )
         : links.length > 0
           ? tr(
-              `${links.length} deteksi satelit dalam 5 km & 24 jam dari laporanmu${nearestLink?.distanceKm != null ? ` (terdekat ${nearestLink.distanceKm.toFixed(1)} km)` : ""}. Ini belum berarti kebakaran terkonfirmasi.`,
-              `${links.length} satellite detections within 5 km & 24 hours of your report${nearestLink?.distanceKm != null ? ` (nearest ${nearestLink.distanceKm.toFixed(1)} km)` : ""}. This doesn't yet mean a fire is confirmed.`
+              `${links.length} deteksi satelit dalam 5 km & 24 jam${nearestLink?.distanceKm != null ? ` (terdekat ${nearestLink.distanceKm.toFixed(1)} km)` : ""}. Belum tentu kebakaran.`,
+              `${links.length} satellite detections within 5 km & 24 h${nearestLink?.distanceKm != null ? ` (nearest ${nearestLink.distanceKm.toFixed(1)} km)` : ""}. Not yet a confirmed fire.`
             )
           : tr(
-              "Belum ada deteksi satelit dalam 5 km & 24 jam dari laporanmu. Laporan tetap diteruskan ke petugas.",
-              "No satellite detections within 5 km & 24 hours of your report yet. It is still passed on to officers."
+              "Belum ada deteksi satelit di dekatmu. Laporan tetap dikirim ke petugas.",
+              "No satellite detection nearby yet. Your report still goes to officers."
             ),
     },
     {
@@ -261,7 +261,7 @@ function ReportPageContent() {
         <div>
           <h1 className="text-base md:text-xl font-black text-[#123027]">{tr("Lapor kebakaran", "Report a fire")}</h1>
           <p className="text-[11px] md:text-xs text-[var(--community-ink-muted)]">
-            {tr("Isi yang kamu tahu saja — lokasi wajib, sisanya opsional.", "Fill in only what you know — location is required, the rest is optional.")}
+            {tr("Isi yang kamu tahu saja. Lokasi wajib, sisanya opsional.", "Fill in only what you know. Location is required, the rest is optional.")}
           </p>
         </div>
       </div>
@@ -317,7 +317,7 @@ function ReportPageContent() {
                 <input type="file" accept="image/jpeg,image/png,image/gif" onChange={handlePhotoAdd} className="sr-only" />
               </label>
             )}
-            <p className="text-[11px] text-[var(--community-ink-muted)]">{tr("Ambil foto dari jarak aman — jangan mendekati api.", "Take the photo from a safe distance — don't approach the fire.")}</p>
+            <p className="text-[11px] text-[var(--community-ink-muted)]">{tr("Ambil foto dari jarak aman. Jangan mendekati api.", "Take the photo from a safe distance. Don't approach the fire.")}</p>
             {photoError && <p className="text-xs text-rose-600 font-medium">{photoError}</p>}
           </div>
 
@@ -360,7 +360,7 @@ function ReportPageContent() {
                     {fix
                       ? fix.source === "gps"
                         ? `GPS · ${tr("akurasi", "accuracy")} ±${Math.round(fix.accuracyMeters ?? 0)} m`
-                        : tr("Dipilih manual — titik perkiraan", "Picked manually — approximate point")
+                        : tr("Dipilih manual. Titik perkiraan", "Picked manually. Approximate point")
                       : tr("Wajib diisi sebelum mengirim", "Required before sending")}
                   </div>
                 </div>
@@ -408,8 +408,8 @@ function ReportPageContent() {
             <span className="material-symbols-outlined text-[20px] text-[var(--community-accent)] shrink-0 mt-0.5">verified_user</span>
             <p className="text-[11px] text-emerald-950 leading-relaxed">
               {tr(
-                "Laporan dikirim tanpa nama atau nomor HP — hanya ditandai per perangkat agar kamu bisa memantau statusnya. Lokasi & waktunya otomatis dicocokkan dengan deteksi satelit MODIS / VIIRS terdekat, lalu ditinjau petugas.",
-                "Reports are sent without your name or phone number — only tagged per device so you can follow their status. The location & time are automatically matched with the nearest MODIS / VIIRS satellite detections, then reviewed by an officer."
+                "Tanpa nama atau nomor HP. Laporan dicocokkan dengan data satelit, lalu dicek petugas.",
+                "No name or phone number. Your report is matched with satellite data, then checked by an officer."
               )}
             </p>
           </div>

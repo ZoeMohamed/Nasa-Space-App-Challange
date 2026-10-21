@@ -19,7 +19,7 @@ export const REPORT_STATUS_DESCRIPTION: Record<ReportStatus, string> = {
   submitted: "Laporan Anda sudah masuk dan menunggu diproses.",
   under_review: "Petugas sedang memeriksa laporan ini.",
   satellite_matched:
-    "Lokasi dan waktu laporan Anda berdekatan dengan deteksi satelit — ini belum berarti kebakaran sudah dikonfirmasi di lapangan.",
+    "Lokasi dan waktu laporan Anda berdekatan dengan deteksi satelit. Ini belum berarti kebakaran sudah dikonfirmasi di lapangan.",
   verified: "Petugas telah memverifikasi laporan ini.",
   rejected: "Laporan ini ditandai tidak valid oleh petugas setelah ditinjau.",
 };
@@ -36,7 +36,7 @@ const REPORT_STATUS_DESCRIPTION_EN: Record<ReportStatus, string> = {
   submitted: "Your report has arrived and is waiting to be processed.",
   under_review: "An officer is checking this report.",
   satellite_matched:
-    "Your report's place and time are close to a satellite detection — this does not yet mean a fire has been confirmed on the ground.",
+    "Your report's place and time are close to a satellite detection. This does not yet mean a fire has been confirmed on the ground.",
   verified: "An officer has verified this report.",
   rejected: "An officer marked this report as invalid after review.",
 };

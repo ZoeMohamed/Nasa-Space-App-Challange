@@ -77,7 +77,7 @@ function areaReason(area: AreaSummary, tr: (id: string, en: string) => string) {
   if ((area.modisDetections ?? 0) > 0 && (area.viirsDetections ?? 0) > 0) {
     return tr("Deteksi dari kedua sensor (MODIS + VIIRS)", "Detected by both sensors (MODIS + VIIRS)");
   }
-  return `${tr("Skor atensi tertinggi — kriteria", "Highest attention score — criteria")}: ${area.attentionCriteria}`;
+  return `${tr("Skor atensi tertinggi. Kriteria", "Highest attention score. Criteria")}: ${area.attentionCriteria}`;
 }
 
 function AttentionAreaRow({ area }: { area: AreaSummary }) {
@@ -97,9 +97,9 @@ function AttentionAreaRow({ area }: { area: AreaSummary }) {
       </div>
       <p className="text-xs text-[var(--color-text-muted)] mb-2">{areaReason(area, tr)}</p>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold text-[var(--color-text-muted)]">
-        <span>{area.detections ?? "—"} {tr("deteksi", "detections")}</span>
+        <span>{area.detections ?? "-"} {tr("deteksi", "detections")}</span>
         <span>•</span>
-        <span>{activeDays !== null ? tr(`${activeDays} hari aktif`, `${activeDays} active days`) : "—"}</span>
+        <span>{activeDays !== null ? tr(`${activeDays} hari aktif`, `${activeDays} active days`) : "-"}</span>
         <span>•</span>
         <span>{tr("Terakhir", "Last")}: {area.lastDate}</span>
       </div>
@@ -453,7 +453,7 @@ function MapExplorerPageContent() {
                       </div>
                     )}
                     {!loading && archiveRange && (
-                      <div className="py-2 text-xs text-gray-500">{tr("Arsip historis tidak punya skor prioritas — pilih rentang live (24 jam / 7 / 30 hari).", "The historical archive has no priority scores — pick a live range (24 h / 7 / 30 days).")}</div>
+                      <div className="py-2 text-xs text-gray-500">{tr("Arsip historis tidak punya skor prioritas. Pilih rentang live (24 jam / 7 / 30 hari).", "The historical archive has no priority scores. Pick a live range (24 h / 7 / 30 days).")}</div>
                     )}
                     {!loading && !archiveRange && topAttentionAreas.length === 0 && (
                       <div className="py-2 text-xs text-gray-500">{tr("Tidak ada area dengan deteksi pada periode ini.", "No areas with detections in this period.")}</div>

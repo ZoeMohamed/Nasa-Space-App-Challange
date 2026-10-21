@@ -129,8 +129,8 @@ function NoAccessControlBanner() {
         </p>
         <p className="mt-1 text-xs leading-relaxed text-[#8a4b0f]/90">
           {tr(
-            "Laporan di halaman ini sudah data sungguhan dari backend, dan tombol di bawah benar-benar mengubah status laporan tersebut. Namun endpoint pembaruan status belum punya autentikasi atau kontrol akses apa pun — siapa pun yang memiliki tautan halaman ini bisa memanggil API yang sama dan mengubah status laporan warga. Ini keputusan sadar untuk tahap proyek saat ini, bukan kelalaian — tambahkan proteksi akses sebelum dipakai di luar lingkungan tepercaya.",
-            "The reports on this page are real backend data, and the buttons below really change a report's status. But the status-update endpoint has no authentication or access control yet — anyone with this page's link could call the same API and change a citizen report's status. This is a deliberate choice for the current project stage, not an oversight — add access protection before using it outside a trusted environment."
+            "Laporan di halaman ini sudah data sungguhan dari backend, dan tombol di bawah benar-benar mengubah status laporan tersebut. Namun endpoint pembaruan status belum punya autentikasi atau kontrol akses apa pun. Siapa pun yang memiliki tautan halaman ini bisa memanggil API yang sama dan mengubah status laporan warga. Ini keputusan sadar untuk tahap proyek saat ini, bukan kelalaian. Tambahkan proteksi akses sebelum dipakai di luar lingkungan tepercaya.",
+            "The reports on this page are real backend data, and the buttons below really change a report's status. But the status-update endpoint has no authentication or access control yet. Anyone with this page's link could call the same API and change a citizen report's status. This is a deliberate choice for the current project stage, not an oversight. Add access protection before using it outside a trusted environment."
           )}
         </p>
       </div>
@@ -470,7 +470,7 @@ export default function CitizenReportsPage() {
                       className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-[#075640] underline"
                     >
                       <span className="material-symbols-outlined text-[14px]">image</span>
-                      {tr("Ada foto terlampir — lihat foto", "Photo attached — view photo")}
+                      {tr("Ada foto terlampir. Lihat foto", "Photo attached. View photo")}
                     </a>
                   ) : (
                     <p className="mt-2 text-xs text-gray-400">{tr("Tidak ada foto terlampir.", "No photo attached.")}</p>

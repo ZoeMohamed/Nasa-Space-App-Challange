@@ -49,11 +49,11 @@ export async function fetchHotspots(query: HotspotQuery & { signal?: AbortSignal
 export function windowLoadingNote(window: LiveWindow, language: "id" | "en" = "id"): string | null {
   if (window === "7d")
     return language === "en"
-      ? "Fetching 7 days of NASA FIRMS data — the first load can take ~1 minute."
-      : "Mengambil 7 hari data NASA FIRMS — pemuatan pertama bisa ±1 menit.";
+      ? "Fetching 7 days of NASA FIRMS data. The first load can take ~1 minute."
+      : "Mengambil 7 hari data NASA FIRMS. Pemuatan pertama bisa ±1 menit.";
   if (window === "30d")
     return language === "en"
-      ? "Fetching 30 days of NASA FIRMS data — the first load can take 2–3 minutes, later loads are faster."
-      : "Mengambil 30 hari data NASA FIRMS — pemuatan pertama bisa 2–3 menit, berikutnya lebih cepat.";
+      ? "Fetching 30 days of NASA FIRMS data. The first load can take 2–3 minutes, later loads are faster."
+      : "Mengambil 30 hari data NASA FIRMS. Pemuatan pertama bisa 2–3 menit, berikutnya lebih cepat.";
   return null;
 }

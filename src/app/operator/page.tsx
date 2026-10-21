@@ -165,10 +165,10 @@ function DashboardPageContent() {
     const { total, MATCHED, MODIS_ONLY, VIIRS_ONLY, UNMATCHED } = matchCounts;
     if (total === 0) return null;
     return tr(
-      `Dari ${total.toLocaleString()} deteksi dalam ${periodLabel.toLowerCase()}, ${MATCHED.toLocaleString()} cocok di dua sensor (MODIS + VIIRS), ${MODIS_ONLY.toLocaleString()} hanya terdeteksi MODIS, ${VIIRS_ONLY.toLocaleString()} hanya terdeteksi VIIRS, dan ${UNMATCHED.toLocaleString()} belum tertandai. Harmonisasi mengurangi penghitungan ganda, bukan mengonfirmasi kejadian kebakaran.`,
-      `Of ${total.toLocaleString()} detections in the ${periodLabel.toLowerCase()}, ${MATCHED.toLocaleString()} matched across both sensors (MODIS + VIIRS), ${MODIS_ONLY.toLocaleString()} were seen by MODIS only, ${VIIRS_ONLY.toLocaleString()} by VIIRS only, and ${UNMATCHED.toLocaleString()} are unflagged. Harmonization reduces double counting; it does not confirm a fire.`
+      `${total.toLocaleString()} deteksi: ${MATCHED.toLocaleString()} terlihat dua sensor, ${MODIS_ONLY.toLocaleString()} hanya MODIS, ${VIIRS_ONLY.toLocaleString()} hanya VIIRS, ${UNMATCHED.toLocaleString()} belum tertandai. Ini mencegah hitung ganda, bukan konfirmasi api.`,
+      `${total.toLocaleString()} detections: ${MATCHED.toLocaleString()} seen by both sensors, ${MODIS_ONLY.toLocaleString()} MODIS only, ${VIIRS_ONLY.toLocaleString()} VIIRS only, ${UNMATCHED.toLocaleString()} unflagged. This avoids double counting; it doesn't confirm a fire.`
     );
-  }, [matchCounts, periodLabel, tr]);
+  }, [matchCounts, tr]);
 
   const timeSeriesData = useMemo(() => {
     if (archiveRange) {
@@ -321,8 +321,8 @@ function DashboardPageContent() {
             <span
               className={meta.degraded ? "text-amber-600" : "text-gray-400"}
               title={tr(
-                "Jumlah ini berasal langsung dari NASA FIRMS dan bisa naik-turun antar pemuatan karena jadwal lintasan satelit yang sesungguhnya — bukan bug.",
-                "These counts come straight from NASA FIRMS and can change between loads because of real satellite overpass schedules — not a bug."
+                "Jumlah ini berasal langsung dari NASA FIRMS dan bisa naik-turun antar pemuatan karena jadwal lintasan satelit yang sesungguhnya. Bukan bug.",
+                "These counts come straight from NASA FIRMS and can change between loads because of real satellite overpass schedules. Not a bug."
               )}
             >
               •{" "}
@@ -684,7 +684,7 @@ function DashboardPageContent() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-bold text-[var(--color-text-main)]">
-                      {areaRegionLabel(topArea, language).title} — {tr("Prioritas Verifikasi", "Verification Priority")}
+                      {areaRegionLabel(topArea, language).title}. {tr("Prioritas Verifikasi", "Verification Priority")}
                     </h3>
                     <Badge tone="high">#{topArea.priorityRank}</Badge>
                   </div>
@@ -693,7 +693,7 @@ function DashboardPageContent() {
                       ? tr(`${topArea.consecutiveActiveDays} hari berturut-turut aktif`, `Active ${topArea.consecutiveActiveDays} days in a row`)
                       : tr("Baru terdeteksi pada jendela ini", "First detected in this window")}
                     {topArea.frpSum !== null ? ` • FRP ${topArea.frpSum.toFixed(1)} MW` : ""}
-                    {tr(" — rekomendasi: prioritaskan verifikasi lapangan.", " — recommendation: prioritize field verification.")}
+                    {tr(". Rekomendasi: prioritaskan verifikasi lapangan.", ". Recommendation: prioritize field verification.")}
                   </p>
                 </div>
               </div>
@@ -710,8 +710,8 @@ function DashboardPageContent() {
             {loading
               ? tr("Memuat area prioritas…", "Loading priority areas…")
               : tr(
-                  "Tidak ada area prioritas pada jendela ini — belum ada deteksi yang memenuhi kriteria penilaian, atau sumber data belum dikonfigurasi.",
-                  "No priority areas in this window — no detections meet the scoring criteria yet, or the data source isn't configured."
+                  "Tidak ada area prioritas pada jendela ini. Belum ada deteksi yang memenuhi kriteria penilaian, atau sumber data belum dikonfigurasi.",
+                  "No priority areas in this window. No detections meet the scoring criteria yet, or the data source isn't configured."
                 )}
           </Card>
         )}

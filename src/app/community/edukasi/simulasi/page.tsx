@@ -50,8 +50,8 @@ export default function SimulasiPage() {
         <h1 className="text-lg font-extrabold text-[#123027]">{tr("Simulasi Keadaan Darurat", "Emergency Drill")}</h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-1 leading-relaxed">
           {tr(
-            "Pilih tindakan untuk setiap skenario, lalu lihat penjelasannya. Anda bisa mencoba ulang kapan saja — tujuannya belajar, bukan menguji.",
-            "Pick an action for each scenario, then read the explanation. You can try again any time — the goal is to learn, not to test."
+            "Pilih tindakan untuk setiap skenario, lalu lihat penjelasannya. Anda bisa mencoba ulang kapan saja. Tujuannya belajar, bukan menguji.",
+            "Pick an action for each scenario, then read the explanation. You can try again any time. The goal is to learn, not to test."
           )}
         </p>
       </section>

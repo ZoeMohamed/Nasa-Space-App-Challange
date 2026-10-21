@@ -47,8 +47,8 @@ export function NearbyHotspotList({ items }: { items: NearbyHotspot[] }) {
     return (
       <p className="text-sm text-[var(--community-ink-muted)] rounded-xl border border-dashed border-[var(--community-border)] p-4">
         {tr(
-          "Tidak ada deteksi satelit di sekitar lokasi Anda saat ini. Ini bisa berarti memang belum ada titik panas terdeteksi dalam 24 jam terakhir — bukan berarti data gagal dimuat.",
-          "No satellite detections around you right now. That can simply mean no hotspot was detected in the last 24 hours — not that the data failed to load."
+          "Tidak ada titik panas di sekitarmu dalam 24 jam terakhir.",
+          "No hotspots near you in the last 24 hours."
         )}
       </p>
     );
@@ -84,7 +84,7 @@ export function NearbyHotspotList({ items }: { items: NearbyHotspot[] }) {
               </div>
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[var(--community-ink-muted)]">
                 <span>{marker.sensor ?? marker.satellite ?? tr("Sensor tidak tercatat", "Sensor not recorded")}</span>
-                <span>FRP {typeof marker.frp === "number" ? `${marker.frp.toFixed(1)} MW` : "—"}</span>
+                <span>FRP {typeof marker.frp === "number" ? `${marker.frp.toFixed(1)} MW` : "-"}</span>
                 {marker.matchStatus && (
                   <span>{MATCH_STATUS_LABEL[marker.matchStatus] ? tr(...MATCH_STATUS_LABEL[marker.matchStatus]) : marker.matchStatus}</span>
                 )}
@@ -100,7 +100,7 @@ export function NearbyHotspotList({ items }: { items: NearbyHotspot[] }) {
                     <dt className="text-[var(--community-ink-muted)]">{tr("Keyakinan", "Confidence")}</dt>
                     <dd className="font-medium">
                       {marker.confidenceLabel ??
-                        (typeof marker.confidence === "number" ? `${marker.confidence}%` : "—")}
+                        (typeof marker.confidence === "number" ? `${marker.confidence}%` : "-")}
                     </dd>
                   </div>
                   <div className="col-span-2">

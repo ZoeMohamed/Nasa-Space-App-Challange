@@ -71,9 +71,9 @@ export const REFERENCES: Reference[] = [
   {
     id: 5,
     citation:
-      "Bisnis.com (21 Agustus 2019). 99 Persen Kebakaran Hutan dan Lahan Akibat Ulah Manusia — pernyataan Kepala BNPB dalam rapat koordinasi karhutla di Kemenko Polhukam.",
+      "Bisnis.com (21 Agustus 2019). 99 Persen Kebakaran Hutan dan Lahan Akibat Ulah Manusia. Pernyataan Kepala BNPB dalam rapat koordinasi karhutla di Kemenko Polhukam.",
     citationEn:
-      "Bisnis.com (21 August 2019). 99 Persen Kebakaran Hutan dan Lahan Akibat Ulah Manusia [99 percent of forest and land fires are caused by humans] — statement by the head of BNPB at a fire-coordination meeting at the Coordinating Ministry for Political, Legal and Security Affairs.",
+      "Bisnis.com (21 August 2019). 99 Persen Kebakaran Hutan dan Lahan Akibat Ulah Manusia [99 percent of forest and land fires are caused by humans]. Statement by the head of BNPB at a fire-coordination meeting at the Coordinating Ministry for Political, Legal and Security Affairs.",
     url: "https://ekonomi.bisnis.com/read/20190821/99/1139491/99-persen-kebakaran-hutan-dan-lahan-akibat-ulah-manusia",
     note: "Angka 99% adalah pernyataan pejabat, bukan hasil studi yang dipublikasikan.",
     noteEn: "The 99% figure is an official's statement, not a published study result.",
@@ -107,11 +107,11 @@ export const HIGHLIGHT_FACTS: Fact[] = [
   {
     value: "2,6 juta ha",
     title: "Lahan terbakar tahun 2015",
-    body: "Lebih dari 4 kali luas Pulau Bali, dengan kerugian ekonomi ±US$16,1 miliar (sekitar 2% PDB Indonesia) — lebih dari dua kali biaya rekonstruksi pascatsunami Aceh 2004.",
+    body: "Lebih dari 4 kali luas Pulau Bali, dengan kerugian ekonomi ±US$16,1 miliar (sekitar 2% PDB Indonesia). Lebih dari dua kali biaya rekonstruksi pascatsunami Aceh 2004.",
     en: {
       value: "2.6 million ha",
       title: "Land burned in 2015",
-      body: "More than 4 times the area of Bali, with economic losses of ±US$16.1 billion (about 2% of Indonesia's GDP) — more than twice the cost of rebuilding Aceh after the 2004 tsunami.",
+      body: "More than 4 times the area of Bali, with economic losses of ±US$16.1 billion (about 2% of Indonesia's GDP). More than twice the cost of rebuilding Aceh after the 2004 tsunami.",
     },
     refs: [1],
     icon: "local_fire_department",
@@ -133,11 +133,11 @@ export const HIGHLIGHT_FACTS: Fact[] = [
   {
     value: "99%",
     title: "Karhutla disebabkan aktivitas manusia",
-    body: "Menurut BNPB (2019) — baik disengaja (membuka lahan) maupun tidak (puntung rokok, api unggun).",
+    body: "Menurut BNPB (2019). Baik disengaja (membuka lahan) maupun tidak (puntung rokok, api unggun).",
     en: {
       value: "99%",
       title: "of forest & land fires are caused by people",
-      body: "According to BNPB (2019) — whether deliberate (land clearing) or not (cigarette butts, campfires).",
+      body: "According to BNPB (2019). Whether deliberate (land clearing) or not (cigarette butts, campfires).",
     },
     refs: [5],
     icon: "person_alert",
@@ -162,11 +162,11 @@ export const MORE_FACTS: Fact[] = [
   {
     value: "11,3 juta ton CO₂/hari",
     title: "Emisi saat puncak kebakaran 2015",
-    body: "Rata-rata September–Oktober 2015 di Asia Tenggara maritim — melebihi emisi bahan bakar fosil harian seluruh Uni Eropa (8,9 juta ton CO₂/hari). Terbesar sejak El Niño 1997.",
+    body: "Rata-rata September–Oktober 2015 di Asia Tenggara maritim. Melebihi emisi bahan bakar fosil harian seluruh Uni Eropa (8,9 juta ton CO₂/hari). Terbesar sejak El Niño 1997.",
     en: {
       value: "11.3 million t CO₂/day",
       title: "Emissions at the 2015 fire peak",
-      body: "The September–October 2015 average over maritime Southeast Asia — more than the whole EU's daily fossil-fuel emissions (8.9 million t CO₂/day). The largest since the 1997 El Niño.",
+      body: "The September–October 2015 average over maritime Southeast Asia. More than the whole EU's daily fossil-fuel emissions (8.9 million t CO₂/day). The largest since the 1997 El Niño.",
     },
     refs: [3],
     icon: "factory",
@@ -188,11 +188,11 @@ export const MORE_FACTS: Fact[] = [
   {
     value: "15 µg/m³",
     title: "Batas aman PM2.5 harian (WHO)",
-    body: "Pedoman WHO 2021: rata-rata 24 jam sebaiknya tidak melebihi 15 µg/m³, dan rata-rata tahunan 5 µg/m³ — separuh dari pedoman 2005 (10 µg/m³).",
+    body: "Pedoman WHO 2021: rata-rata 24 jam sebaiknya tidak melebihi 15 µg/m³, dan rata-rata tahunan 5 µg/m³. Separuh dari pedoman 2005 (10 µg/m³).",
     en: {
       value: "15 µg/m³",
       title: "Safe daily PM2.5 limit (WHO)",
-      body: "WHO 2021 guideline: the 24-hour average should not exceed 15 µg/m³, and the annual average 5 µg/m³ — half the 2005 guideline (10 µg/m³).",
+      body: "WHO 2021 guideline: the 24-hour average should not exceed 15 µg/m³, and the annual average 5 µg/m³. Half the 2005 guideline (10 µg/m³).",
     },
     refs: [6],
     icon: "air",

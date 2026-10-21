@@ -3,7 +3,7 @@ import "./globals.css";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
 export const metadata: Metadata = {
-  title: "AGNIBHŪMI — Harmonized Satellite & Community Fire Intelligence",
+  title: "AGNIBHŪMI · Harmonized Satellite & Community Fire Intelligence",
   description:
     "Harmonized MODIS & VIIRS hotspot intelligence combined with community reports, for monitoring Indonesian forest and land fires (karhutla).",
 };

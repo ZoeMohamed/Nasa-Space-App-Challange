@@ -75,8 +75,8 @@ export default function EdukasiPage() {
         <h1 className="text-lg font-extrabold text-[#123027]">{tr("Siap Sebelum Asap Datang", "Ready Before the Smoke Arrives")}</h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-1 leading-relaxed">
           {tr(
-            "Kesiapan kecil hari ini membuat keluarga Anda lebih tenang saat musim kabut asap tiba. Pilih salah satu di bawah untuk mulai — semua progres tersimpan otomatis di perangkat ini.",
-            "A little preparation today keeps your family calmer when haze season comes. Pick one below to start — all progress is saved automatically on this device."
+            "Kesiapan kecil hari ini membuat keluarga Anda lebih tenang saat musim kabut asap tiba. Pilih salah satu di bawah untuk mulai. Semua progres tersimpan otomatis di perangkat ini.",
+            "A little preparation today keeps your family calmer when haze season comes. Pick one below to start. All progress is saved automatically on this device."
           )}
         </p>
       </section>
@@ -88,8 +88,8 @@ export default function EdukasiPage() {
         </span>
         <p className="text-[11px] text-rose-900 leading-relaxed">
           {tr(
-            "Jika Anda dalam bahaya langsung, segera hubungi layanan darurat setempat atau ikuti instruksi evakuasi resmi (BNPB/BMKG/aparat desa) — aplikasi ini adalah alat bantu edukasi dan bukan pengganti layanan darurat.",
-            "If you are in immediate danger, call local emergency services right away or follow official evacuation instructions (BNPB/BMKG/village officials) — this app is an education aid, not a replacement for emergency services."
+            "Jika Anda dalam bahaya langsung, segera hubungi layanan darurat setempat atau ikuti instruksi evakuasi resmi (BNPB/BMKG/aparat desa). Aplikasi ini adalah alat bantu edukasi dan bukan pengganti layanan darurat.",
+            "If you are in immediate danger, call local emergency services right away or follow official evacuation instructions (BNPB/BMKG/village officials). This app is an education aid, not a replacement for emergency services."
           )}
         </p>
       </div>
