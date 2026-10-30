@@ -266,6 +266,39 @@ function ReportPageContent() {
         </div>
       </div>
 
+      {/* This app is not an emergency channel: officers review reports later. Our interviews
+          showed residents already call damkar / village officials first, so we point there. */}
+      <div
+        className={`mb-5 flex items-center justify-between gap-3 rounded-2xl border p-3.5 ${
+          selectedCategory === "api" ? "border-red-300 bg-red-50" : "border-[var(--community-border)] bg-white"
+        }`}
+        role={selectedCategory === "api" ? "alert" : undefined}
+      >
+        <div className="flex items-start gap-3 min-w-0">
+          <span className="material-symbols-outlined text-[22px] text-red-600 shrink-0" aria-hidden="true">emergency</span>
+          <div className="min-w-0">
+            <p className="text-xs md:text-sm font-bold text-[#123027]">
+              {selectedCategory === "api"
+                ? tr("Api terlihat dekat permukiman? Telepon 112 dulu.", "Fire visible near homes? Call 112 first.")
+                : tr("Darurat? Telepon 112 atau damkar setempat.", "Emergency? Call 112 or your local fire brigade.")}
+            </p>
+            <p className="text-[11px] text-[var(--community-ink-muted)] leading-relaxed mt-0.5">
+              {tr(
+                "Laporan di aplikasi ini ditinjau petugas dan tidak langsung memanggil pemadam. Setelah menelepon, kirim laporan di sini agar lokasinya tercatat.",
+                "Reports in this app are reviewed by officers and do not dispatch firefighters. After calling, send the report here so the location is recorded."
+              )}
+            </p>
+          </div>
+        </div>
+        <a
+          href="tel:112"
+          className="shrink-0 inline-flex items-center gap-1 rounded-xl bg-red-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-red-700"
+        >
+          <span className="material-symbols-outlined text-[16px]" aria-hidden="true">call</span>
+          112
+        </a>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-[1.15fr_1fr] gap-5 md:gap-8 items-start">
         {/* Left: what happened */}
         <div className="space-y-5">

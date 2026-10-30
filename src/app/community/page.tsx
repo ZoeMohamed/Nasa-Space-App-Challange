@@ -116,7 +116,7 @@ export default function CommunityBerandaPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/reports", { cache: "no-store" })
+    fetch("/api/reports/public", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((body) => {
         if (!cancelled && body?.reports) setReports(body.reports);
@@ -313,6 +313,13 @@ export default function CommunityBerandaPage() {
                     `${inStatusRadius.length} titik panas dalam ${STATUS_RADIUS_KM} km. Terdekat ${formatDistanceKm(inStatusRadius[0].distanceKm)} di ${compassLabel(inStatusRadius[0].bearing)}${formatRelativeTime(inStatusRadius[0].marker.acquiredAt, "id") ? `, terdeteksi ${formatRelativeTime(inStatusRadius[0].marker.acquiredAt, "id")}` : ""}.`,
                     `${inStatusRadius.length} hotspots within ${STATUS_RADIUS_KM} km. Nearest is ${formatDistanceKm(inStatusRadius[0].distanceKm)} to the ${compassLabel(inStatusRadius[0].bearing, "en")}${formatRelativeTime(inStatusRadius[0].marker.acquiredAt, "en") ? `, detected ${formatRelativeTime(inStatusRadius[0].marker.acquiredAt, "en")}` : ""}.`
                   )}
+          </p>
+          <p className="mt-2 inline-flex items-start gap-1.5 text-[11px] text-emerald-200/80 leading-relaxed">
+            <span className="material-symbols-outlined text-[14px] mt-px" aria-hidden="true">info</span>
+            {tr(
+              "Ringkasan otomatis dari data satelit & kualitas udara, bukan status siaga resmi pemerintah. Selalu ikuti arahan BPBD atau aparat setempat.",
+              "An automatic summary of satellite & air-quality data, not an official government alert level. Always follow your local disaster agency's instructions."
+            )}
           </p>
 
           <div className="mt-5 space-y-2.5">
