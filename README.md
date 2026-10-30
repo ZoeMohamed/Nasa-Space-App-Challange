@@ -80,7 +80,15 @@ Ada juga kotak "area dengan aktivitas tidak biasa". Kotak ini menandai sel yang 
 
 Warga bisa melapor lewat `/community/report`: lokasi (cari nama kecamatan atau pakai GPS), jenis kejadian, dan satu foto. Laporan tersimpan di `reports.sqlite`. Sistem otomatis mencari deteksi satelit dalam radius 5 km dan 24 jam dari laporan itu.
 
-Hasil pencocokan ini tidak mengubah status laporan. Yang memutuskan tetap petugas, di `/citizen-reports`.
+Hasil pencocokan ini tidak mengubah status laporan. Yang memutuskan tetap petugas, di `/citizen-reports`, setelah masuk lewat `/officer-login`.
+
+Form laporan menampilkan tombol telepon 112 di bagian atas. Dari wawancara, warga biasa menghubungi damkar atau perangkat desa lebih dulu, dan laporan di aplikasi ini ditinjau belakangan, jadi aplikasi ini bukan saluran darurat.
+
+Aturan privasi laporan:
+- Warga lain hanya melihat laporan yang sudah **diverifikasi petugas**, dengan koordinat dibulatkan ke ±1 km, tanpa foto, tanpa catatan petugas, dan tanpa token pelapor (`GET /api/reports/public`).
+- Pelapor sendiri melihat laporannya secara lengkap lewat token di browsernya.
+- Foto hanya bisa dibuka pelapor dan petugas. Setiap foto dibuat ulang menjadi JPEG baru di backend, sehingga metadata EXIF (termasuk lokasi GPS kamera) terbuang.
+- Satu browser atau satu IP maksimal 5 laporan per 10 menit (`REPORT_RATE_LIMIT`, `REPORT_RATE_WINDOW_S`).
 
 ### 5. Status wilayah untuk warga
 
@@ -158,7 +166,7 @@ Batas wilayah BPS via OCHA (offline) ──┘     fire_pipeline/
 - **Frontend:** Next.js App Router, React, TypeScript, Tailwind, Leaflet.
 - **Backend:** Python 3.12, FastAPI, pandas, numpy, shapely.
 - **Penyimpanan:** SQLite saja. Kami sengaja tidak menambah layanan berbayar.
-- **Belum ada login** di sisi Operator maupun Community. Siapa pun yang punya link bisa mengubah status laporan, dan ini juga ditulis di halaman `/citizen-reports`.
+- **Login petugas:** satu kode akses bersama (`OFFICER_ACCESS_KEY`), disetel sama di Vercel dan Render. Setelah masuk di `/officer-login`, browser menyimpan cookie HttpOnly; route `/api/*` lalu meneruskan kode itu ke backend sebagai header `X-Officer-Key`. Halaman `/citizen-reports` dan endpoint yang membuka data pelapor (`GET /api/reports` lengkap, `PATCH`, foto) hanya untuk petugas. Kalau `OFFICER_ACCESS_KEY` kosong, tidak ada yang bisa masuk. Halaman data satelit (`/operator`, `/calendar`, `/map`, dan lain-lain) tetap terbuka karena datanya publik.
 - **Identitas pelapor:** token acak yang disimpan di browser, bukan akun.
 
 ## API backend
@@ -173,7 +181,12 @@ Batas wilayah BPS via OCHA (offline) ──┘     fire_pipeline/
 | `GET /api/historical/map` | Agregat grid arsip untuk peta |
 | `GET /api/region`, `GET /api/region/search` | Titik → kecamatan/kab-kota/provinsi, dan pencarian nama wilayah |
 | `GET /api/weather` | Angin dan kualitas udara untuk satu titik |
-| `POST/GET /api/reports`, `GET/PATCH /api/reports/{id}`, `GET /api/reports/{id}/photo` | Laporan warga |
+| `POST /api/reports` | Kirim laporan warga (dibatasi per token dan per IP) |
+| `GET /api/reports/public` | Laporan terverifikasi saja, bentuk publik (tanpa token/foto/catatan, koordinat ±1 km) |
+| `GET /api/reports` | Semua laporan untuk petugas (`X-Officer-Key`), atau laporan milik sendiri dengan `submitterToken` |
+| `GET /api/reports/{id}` | Lengkap untuk pelapor/petugas; bentuk publik untuk laporan terverifikasi; 404 untuk yang lain |
+| `PATCH /api/reports/{id}` | Ubah status, petugas saja |
+| `GET /api/reports/{id}/photo` | Foto, pelapor dan petugas saja |
 
 Dokumentasi Swagger tersedia di `http://127.0.0.1:8000/docs` saat backend berjalan.
 
@@ -185,14 +198,14 @@ Yang dibutuhkan: Node.js 20+, Python 3.12+, dan Map Key NASA FIRMS (gratis, daft
 npm install
 python3.12 -m venv python-service/.venv
 python-service/.venv/bin/pip install -r python-service/requirements.txt
-cp .env.example .env.local     # isi NASA_FIRMS_MAP_KEY
+cp .env.example .env.local     # isi NASA_FIRMS_MAP_KEY dan OFFICER_ACCESS_KEY
 ```
 
 Lalu jalankan dua terminal:
 
 ```bash
 # backend
-python-service/.venv/bin/python -m uvicorn main:app --app-dir python-service --host 127.0.0.1 --port 8000
+OFFICER_ACCESS_KEY=<sama dengan di .env.local> python-service/.venv/bin/python -m uvicorn main:app --app-dir python-service --host 127.0.0.1 --port 8000
 
 # frontend
 npm run dev -- --hostname 127.0.0.1 --port 3000
@@ -230,7 +243,7 @@ Kalau file ini tidak ada, aplikasi tetap jalan dan lokasi ditampilkan sebagai ko
 ### Test
 
 ```bash
-cd python-service && .venv/bin/python -m pytest          # 122 test produksi
+cd python-service && .venv/bin/python -m pytest          # 130 test produksi
 .venv/bin/python -m pytest ml_experiments                # 22 test riset (terpisah dari produksi)
 cd .. && npm run lint && npm run build
 ```
@@ -269,7 +282,9 @@ python-service/
 - **Tanggal di arsip memakai UTC,** bukan WIB.
 - **Skor prioritas belum divalidasi** bersama Manggala Agni atau BPBD.
 - **Kualitas udara memakai US AQI, bukan ISPU Indonesia.** Ambang batas kedua skala berbeda.
-- **Belum ada login,** dan `reports.sqlite` akan hilang kalau dijalankan di server tanpa disk tetap.
+- **Login petugas masih satu kode bersama,** belum akun per orang, jadi belum tercatat siapa yang mengubah status. `reports.sqlite` akan hilang kalau dijalankan di server tanpa disk tetap (`render.yaml` sudah memasang Render Disk).
+- **Token pelapor ada di URL foto** (`?submitterToken=`), karena tag `<img>` tidak bisa mengirim header. Token itu hanya membuka laporan milik pelapor sendiri.
+- **Peringatan dini belum dikirim sebagai push notification.** Halaman Notifikasi baru menyaring data saat aplikasi dibuka.
 
 ## Sumber data
 

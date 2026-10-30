@@ -6,6 +6,7 @@ Kunci NASA FIRMS hanya disimpan di server, tidak pernah dikirim ke browser.
 ## 0. Yang perlu disiapkan pemilik repo
 - Akun Vercel dan Render (keduanya bisa login dengan GitHub).
 - `NASA_FIRMS_MAP_KEY` — kunci yang sama dengan di `.env.local`.
+- `OFFICER_ACCESS_KEY` — kode akses petugas, string acak panjang (`python3 -c "import secrets; print(secrets.token_urlsafe(24))"`). Nilainya **harus sama** di Render dan Vercel.
 - **Keputusan soal file data** (lihat langkah 1). Repo ini sengaja belum di-push; semua langkah di bawah menunggu izin pemilik.
 
 ## 1. File data (wajib ada di image backend)
@@ -31,7 +32,8 @@ Render membangun image dari Git, jadi kedua file harus ikut ter-commit. Pilihan:
 
 ## 2. Backend di Render
 1. Dashboard Render → **New → Blueprint** → pilih repo ini. `render.yaml` di root membuat service `agnibhumi-api`.
-2. Isi `NASA_FIRMS_MAP_KEY` di tab Environment.
+2. Isi `NASA_FIRMS_MAP_KEY` dan `OFFICER_ACCESS_KEY` di tab Environment.
+   - `render.yaml` juga memasang persistent disk 1 GB di `/var/data` untuk `reports.sqlite` dan foto laporan, supaya laporan warga tidak hilang saat redeploy. Disk butuh plan berbayar (Standard sudah termasuk).
 3. Plan: **Standard (2 GB RAM)** kalau rentang 30 hari mau dipakai. Kalau memakai instance lebih kecil, set `LIVE_WINDOWS=24h,7d`.
    - Terukur 20 Okt 2026: dengan 24 jam + 7 hari + 30 hari ter-cache, proses memakai ±1,5 GB RAM, ditambah ±0,2 GB untuk cache arsip historis.
 4. `WARM_CACHE=1` sudah diset: setelah start, backend memproses 24 jam → 7 hari → 30 hari di latar belakang (±2 menit) dan memperbaruinya tiap 4 menit, jadi pengunjung tidak menunggu pemuatan dingin.
@@ -42,6 +44,7 @@ Render membangun image dari Git, jadi kedua file harus ikut ter-commit. Pilihan:
 2. Environment variables:
    - `PYTHON_PROCESSING_API_URL` = URL Render dari langkah 2 (tanpa `/` di akhir)
    - `NASA_FIRMS_MAP_KEY` = kunci FIRMS
+   - `OFFICER_ACCESS_KEY` = nilai yang sama dengan di Render
 3. Deploy. Route `/api/hotspots` memakai `maxDuration = 60`; berkat cache warmer, permintaan biasanya selesai < 1 detik.
 
 ## 4. Cek setelah deploy
@@ -49,11 +52,12 @@ Render membangun image dari Git, jadi kedua file harus ikut ter-commit. Pilihan:
 - `/operator` → pilih Region = Kalimantan Tengah, Time Range = 7 Hari → pindah ke `/map`, filter tetap.
 - `/calendar` → persempit area ke satu kabupaten lewat kotak "Area analisis".
 - `/community` → atur lokasi dengan mencari nama kecamatan → status, titik terdekat, filter searah angin.
-- `/community/report` → kirim laporan uji → muncul di `/citizen-reports`.
+- `/community/report` → kirim laporan uji → buka `/citizen-reports` → diarahkan ke `/officer-login` → masuk dengan `OFFICER_ACCESS_KEY` → laporan muncul.
+- Ubah status laporan uji ke **Terverifikasi** → laporan muncul di "Laporan warga terdekat" di `/community` dengan lokasi dibulatkan, tanpa foto.
 
 ## Keterbatasan yang harus disebut ke juri
-- **Laporan warga tidak permanen di Render** tanpa persistent disk (filesystem container di-reset saat redeploy). Untuk produksi: Postgres hosted atau Render Disk.
-- **Endpoint ubah status laporan belum ber-autentikasi** (prototipe).
+- **Laporan warga disimpan di SQLite pada Render Disk.** Cukup untuk demo; untuk produksi sebaiknya Postgres hosted dan object storage untuk foto.
+- **Login petugas memakai satu kode akses bersama**, bukan akun per orang, jadi belum ada jejak siapa yang mengubah status.
 - **Suomi-NPP berhenti mengirim data VIIRS baru per 2 Nov 2026**; pipeline live tetap jalan dengan NOAA-20/21.
 
 ## Uji image Docker secara lokal

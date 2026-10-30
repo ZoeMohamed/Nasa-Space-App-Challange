@@ -16,3 +16,15 @@ services:
         value: "1"             # pre-process windows at startup so visitors never wait for a cold fetch
       - key: LIVE_WINDOWS
         value: "24h,7d,30d"    # use "24h,7d" on instances with < 2 GB RAM
+      - key: OFFICER_ACCESS_KEY
+        sync: false            # same value as on Vercel; empty = nobody can review citizen reports
+      # Citizen reports and their photos are written at runtime. Keep them on the
+      # persistent disk below so a redeploy or restart does not wipe them.
+      - key: FIRE_REPORTS_DB_PATH
+        value: /var/data/reports.sqlite
+      - key: FIRE_REPORT_PHOTOS_DIR
+        value: /var/data/report_photos
+    disk:
+      name: agnibhumi-reports
+      mountPath: /var/data
+      sizeGB: 1
