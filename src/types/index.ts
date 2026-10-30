@@ -317,12 +317,16 @@ export interface CommunityReport {
   lon: number;
   description: string;
   status: ReportStatus;
-  submitterToken: string;
+  /** Only present for the reporter themself and for officers. The public
+   * shape (/api/reports/public, or someone else's report) omits it. */
+  submitterToken?: string;
   photoFilename: string | null;
   reviewNote: string | null;
   reviewedAt: string | null;
   admin?: AdminRegion | null;
   satelliteLinks?: SatelliteLink[];
+  /** "approximate" on the public shape: coordinates rounded to ~1 km. */
+  locationPrecision?: "approximate";
 }
 
 export interface ReportsListResponse {

@@ -309,3 +309,51 @@ def save_links(report_id: str, links: list[dict], sqlite_path: str | None = None
         connection.commit()
     finally:
         connection.close()
+
+
+# --- Public (citizen-facing) view -------------------------------------------
+#
+# Everything above returns the FULL row, including the reporter's exact
+# coordinates, their submitter token (their only identity) and the officer's
+# review note. That is fine for the reporter themself and for officers, but
+# must never be sent to other citizens. The helpers below build the reduced
+# shape the Community View is allowed to see about *other people's* reports.
+
+PUBLIC_STATUSES = ("verified",)
+PUBLIC_COORD_DECIMALS = 2  # ~1.1 km at the equator: enough for "near me", not a house
+
+
+def public_view(report: dict) -> dict:
+    """Strip a full report down to what any citizen may see.
+
+    Drops the submitter token, photo and review note, and rounds the
+    coordinates so the reporter's exact position (often their home or
+    field) is not published. Satellite links are kept: they describe NASA
+    detections, not the reporter.
+    """
+    public = {
+        "id": report["id"],
+        "createdAt": report["createdAt"],
+        "observedAt": report["observedAt"],
+        "lat": round(float(report["lat"]), PUBLIC_COORD_DECIMALS),
+        "lon": round(float(report["lon"]), PUBLIC_COORD_DECIMALS),
+        "description": report["description"],
+        "status": report["status"],
+        "photoFilename": None,
+        "reviewNote": None,
+        "reviewedAt": report.get("reviewedAt"),
+        "admin": report.get("admin"),
+        "locationPrecision": "approximate",
+    }
+    if "satelliteLinks" in report:
+        public["satelliteLinks"] = report["satelliteLinks"]
+    return public
+
+
+def list_public_reports(sqlite_path: str | None = None) -> list[dict]:
+    """Officer-verified reports only, in the reduced public shape."""
+    reports: list[dict] = []
+    for status in PUBLIC_STATUSES:
+        reports.extend(list_reports(status=status, sqlite_path=sqlite_path))
+    reports.sort(key=lambda r: r["createdAt"], reverse=True)
+    return [public_view(report) for report in reports]

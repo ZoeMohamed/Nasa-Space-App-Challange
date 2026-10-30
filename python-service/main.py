@@ -1,14 +1,17 @@
 import base64
 import binascii
+import io
 import os
 
 import pandas as pd
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse
+from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel
 
 from fire_pipeline import reports as reports_store
+from fire_pipeline.access import is_officer, report_limiter
 from fire_pipeline.admin_lookup import get_admin_index, parse_polygon
 from fire_pipeline.correlation import correlate_report
 from fire_pipeline.historical import available_references, compare_live_to_baseline, load_calendar_summary, load_map_summary
@@ -70,10 +73,42 @@ def _sniff_image_media_type(header: bytes) -> str | None:
     return None
 
 
+PHOTO_MAX_EDGE_PX = 1600
+PHOTO_MAX_PIXELS = 40_000_000  # refuse decompression bombs well before Pillow's own limit
+
+
+def _reencode_photo(photo_bytes: bytes) -> bytes:
+    """Decode the upload and write a brand-new JPEG from its pixels only.
+
+    Phone photos carry EXIF metadata, often including the GPS position where
+    the picture was taken and the device model. Saving the client's bytes
+    as-is would publish that to anyone who can load the photo. Re-encoding
+    drops every metadata block, applies the EXIF rotation first so the image
+    still looks right, caps the size, and guarantees the stored file really
+    is the JPEG its name says.
+    """
+    try:
+        with Image.open(io.BytesIO(photo_bytes)) as probe:
+            width, height = probe.size
+            if width * height > PHOTO_MAX_PIXELS:
+                raise ValueError("photo resolution is too large")
+            probe.verify()
+        with Image.open(io.BytesIO(photo_bytes)) as image:
+            image.seek(0)  # first frame of an animated GIF
+            image = ImageOps.exif_transpose(image)
+            image = image.convert("RGB")
+            image.thumbnail((PHOTO_MAX_EDGE_PX, PHOTO_MAX_EDGE_PX))
+            out = io.BytesIO()
+            image.save(out, format="JPEG", quality=85, optimize=True)
+            return out.getvalue()
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
+        raise ValueError("photo could not be read as an image") from exc
+
+
 def _decode_and_validate_photo(photo_base64: str) -> bytes:
-    """Decode a client-supplied base64 photo and reject anything that
-    isn't plausibly a small image -- never trust the client blindly.
-    Raises ValueError (caller maps to HTTP 422) on any problem.
+    """Decode a client-supplied base64 photo, reject anything that isn't
+    plausibly a small image -- never trust the client blindly -- and return
+    a clean, metadata-free JPEG. Raises ValueError (caller maps to HTTP 422).
     """
     try:
         photo_bytes = base64.b64decode(photo_base64, validate=True)
@@ -85,7 +120,23 @@ def _decode_and_validate_photo(photo_base64: str) -> bytes:
         raise ValueError("photo exceeds the maximum allowed size of 5MB")
     if _sniff_image_media_type(photo_bytes[:8]) is None:
         raise ValueError("photoBase64 does not look like a supported image (jpeg/png/gif)")
-    return photo_bytes
+    return _reencode_photo(photo_bytes)
+
+
+def _client_ip(request: Request) -> str | None:
+    """Best-effort client IP. Behind the Next.js proxy every request comes
+    from the frontend server, so prefer the first X-Forwarded-For hop it
+    passes along."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip() or None
+    return request.client.host if request.client else None
+
+
+def _can_see_full_report(report: dict, submitter_token: str | None, officer_key: str | None) -> bool:
+    if is_officer(officer_key):
+        return True
+    return bool(submitter_token) and submitter_token == report.get("submitterToken")
 
 
 class ReportCreateRequest(BaseModel):
@@ -326,7 +377,7 @@ def region(lat: float, lon: float) -> dict:
 
 
 @app.post("/api/reports", status_code=201)
-def submit_report(payload: ReportCreateRequest) -> dict:
+def submit_report(payload: ReportCreateRequest, request: Request) -> dict:
     """Submit a community fire report.
 
     Validates the photo (if any) before persisting anything, so an invalid
@@ -338,6 +389,13 @@ def submit_report(payload: ReportCreateRequest) -> dict:
     and the response includes a `correlationWarning` note instead of
     erroring.
     """
+    ip = _client_ip(request)
+    if not report_limiter.allow(f"ip:{ip}" if ip else None, f"token:{payload.submitterToken}"):
+        raise HTTPException(
+            status_code=429,
+            detail="Terlalu banyak laporan dalam waktu singkat. Coba lagi beberapa menit lagi.",
+        )
+
     photo_bytes = None
     if payload.photoBase64:
         try:
@@ -382,32 +440,62 @@ def submit_report(payload: ReportCreateRequest) -> dict:
     return detail
 
 
+@app.get("/api/reports/public")
+def list_public_reports() -> dict:
+    """Officer-verified reports only, without reporter token, photo or
+    review note, and with coordinates rounded to ~1 km. This is the only
+    list the Community View may load about other people's reports."""
+    return {"reports": reports_store.list_public_reports()}
+
+
 @app.get("/api/reports")
-def list_reports(submitterToken: str | None = None, status: str | None = None) -> dict:
-    return {"reports": reports_store.list_reports(submitter_token=submitterToken, status=status)}
+def list_reports(
+    submitterToken: str | None = None,
+    status: str | None = None,
+    x_officer_key: str | None = Header(default=None),
+) -> dict:
+    """Officers get every report. A citizen gets only the reports filed with
+    their own submitter token. Anyone else gets 401: use /api/reports/public."""
+    if is_officer(x_officer_key):
+        return {"reports": reports_store.list_reports(submitter_token=submitterToken, status=status)}
+    if submitterToken:
+        return {"reports": reports_store.list_reports(submitter_token=submitterToken, status=status)}
+    raise HTTPException(status_code=401, detail="Officer access required to list all reports")
 
 
 @app.get("/api/reports/{report_id}")
-def get_report(report_id: str) -> dict:
+def get_report(
+    report_id: str,
+    submitterToken: str | None = None,
+    x_officer_key: str | None = Header(default=None),
+) -> dict:
+    """Full detail for the reporter (matching submitterToken) and officers.
+    Anyone else sees a verified report in its public shape, and gets 404
+    for reports that are not verified (so unreviewed reports never leak)."""
     report = reports_store.get_report(report_id)
     if report is None:
         raise HTTPException(status_code=404, detail="Report not found")
-    return report
+    if _can_see_full_report(report, submitterToken, x_officer_key):
+        return report
+    if report["status"] in reports_store.PUBLIC_STATUSES:
+        return reports_store.public_view(report)
+    raise HTTPException(status_code=404, detail="Report not found")
 
 
 @app.patch("/api/reports/{report_id}")
-def update_report(report_id: str, payload: ReportStatusUpdateRequest) -> dict:
+def update_report(
+    report_id: str,
+    payload: ReportStatusUpdateRequest,
+    x_officer_key: str | None = Header(default=None),
+) -> dict:
     """Update a report's review status (e.g. moving it to under_review,
     verified, or rejected) and optionally attach a reviewer note.
 
-    *** NO AUTHENTICATION OR AUTHORIZATION CHECK ***
-    This endpoint is deliberately left open in the current prototype: any
-    caller who can reach this API can change any report's status. This is
-    an explicit, approved decision for this phase of the project -- NOT an
-    oversight -- and is called out here precisely so it is visible to
-    reviewers and must be revisited (e.g. gating this behind an
-    operator/reviewer auth check) before any production exposure.
+    Officers only. A verified report raises the area status of nearby
+    citizens to "Awas", so this must not be open to anyone with the URL.
     """
+    if not is_officer(x_officer_key):
+        raise HTTPException(status_code=401, detail="Officer access required")
     try:
         updated = reports_store.update_report_status(report_id, payload.status, review_note=payload.reviewNote)
     except ValueError as exc:
@@ -418,9 +506,17 @@ def update_report(report_id: str, payload: ReportStatusUpdateRequest) -> dict:
 
 
 @app.get("/api/reports/{report_id}/photo")
-def get_report_photo(report_id: str):
+def get_report_photo(
+    report_id: str,
+    submitterToken: str | None = None,
+    x_officer_key: str | None = Header(default=None),
+):
+    """Photos may show faces, houses or number plates, so only the reporter
+    and officers can load them -- never the public, even once verified."""
     report = reports_store.get_report(report_id)
-    if report is None or not report.get("photoFilename"):
+    if report is None or not report.get("photoFilename") or not _can_see_full_report(
+        report, submitterToken, x_officer_key
+    ):
         raise HTTPException(status_code=404, detail="No photo for this report")
     path = os.path.join(_report_photos_dir(), report["photoFilename"])
     if not os.path.exists(path):

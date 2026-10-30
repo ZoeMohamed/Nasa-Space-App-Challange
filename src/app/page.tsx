@@ -151,7 +151,7 @@ async function fetchHotspots(signal?: AbortSignal): Promise<HotspotApiResponse> 
 }
 
 async function fetchReports(signal?: AbortSignal): Promise<CommunityReport[]> {
-  const response = await fetch("/api/reports", { signal, cache: "no-store" });
+  const response = await fetch("/api/reports/public", { signal, cache: "no-store" });
   const body = (await response.json()) as ReportsListResponse & { error?: string };
   if (!response.ok) throw new Error(body.error ?? "Gagal memuat laporan warga.");
   return body.reports;
@@ -234,7 +234,7 @@ export default function LandingPage() {
           <Link href="/data-model" className="hover:text-[var(--color-text-main)] transition-colors">
             {t("nav.aboutData")}
           </Link>
-          <Link href="/operator" className="hover:text-[var(--color-text-main)] transition-colors">
+          <Link href="/officer-login?next=%2Fcitizen-reports" className="hover:text-[var(--color-text-main)] transition-colors">
             {t("nav.loginOfficer")}
           </Link>
           <LanguageToggle />

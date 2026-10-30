@@ -1,3 +1,5 @@
+import { backendHeaders } from "@/lib/officerAuth";
+
 export const dynamic = "force-dynamic";
 
 const PYTHON_API = process.env.PYTHON_PROCESSING_API_URL ?? "http://127.0.0.1:8000";
@@ -8,15 +10,22 @@ const PYTHON_API = process.env.PYTHON_PROCESSING_API_URL ?? "http://127.0.0.1:80
  * works directly from the Community View without exposing the Python
  * service's own URL to the browser. 404s (no photo / missing file) pass
  * through as-is.
+ *
+ * Only the reporter (`?submitterToken=`) and signed-in officers can load a
+ * photo; the backend returns 404 to everyone else, verified or not.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const upstreamUrl = new URL(`${PYTHON_API}/api/reports/${encodeURIComponent(id)}/photo`);
+  const submitterToken = new URL(request.url).searchParams.get("submitterToken");
+  if (submitterToken) upstreamUrl.searchParams.set("submitterToken", submitterToken);
 
   try {
-    const upstream = await fetch(`${PYTHON_API}/api/reports/${encodeURIComponent(id)}/photo`, {
+    const upstream = await fetch(upstreamUrl, {
+      headers: backendHeaders(request),
       cache: "no-store",
       signal: AbortSignal.timeout(30_000),
     });
@@ -32,7 +41,7 @@ export async function GET(
     return new Response(upstream.body, {
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-store",
       },
     });
   } catch (error) {

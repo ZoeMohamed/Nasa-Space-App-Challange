@@ -1,3 +1,5 @@
+import { backendHeaders } from "@/lib/officerAuth";
+
 export const dynamic = "force-dynamic";
 
 const PYTHON_API = process.env.PYTHON_PROCESSING_API_URL ?? "http://127.0.0.1:8000";
@@ -7,6 +9,11 @@ const PYTHON_API = process.env.PYTHON_PROCESSING_API_URL ?? "http://127.0.0.1:80
  * store (python-service/fire_pipeline/reports.py). List items intentionally omit
  * `satelliteLinks` — that field is only populated on the single-report detail
  * fetch, see src/app/api/reports/[id]/route.ts.
+ *
+ * Access: signed-in officers get every report; a citizen passing their own
+ * `submitterToken` gets only their own reports; anyone else gets the
+ * backend's 401. Other people's reports are only available, reduced, from
+ * /api/reports/public.
  */
 export async function GET(request: Request) {
   const incomingUrl = new URL(request.url);
@@ -19,6 +26,7 @@ export async function GET(request: Request) {
 
   try {
     const upstream = await fetch(upstreamUrl, {
+      headers: backendHeaders(request),
       cache: "no-store",
       signal: AbortSignal.timeout(30_000),
     });
@@ -63,7 +71,7 @@ export async function POST(request: Request) {
   try {
     const upstream = await fetch(`${PYTHON_API}/api/reports`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: backendHeaders(request, { "Content-Type": "application/json" }),
       body: JSON.stringify(payload),
       cache: "no-store",
       signal: AbortSignal.timeout(30_000),

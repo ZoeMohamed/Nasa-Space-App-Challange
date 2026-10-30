@@ -13,6 +13,7 @@ import { useLiveHotspots } from "@/lib/useLiveHotspots";
 import type { AreaSummary, CommunityReport, HotspotMarker } from "@/types";
 import { areaRegionLabel, formatAdminFull } from "@/lib/adminRegion";
 import { useTranslation } from "@/lib/i18n/LanguageContext";
+import { fetchReportsForViewer } from "@/lib/reportsClient";
 
 const FireMap = dynamic(() => import("@/components/map/FireMap"), {
   ssr: false,
@@ -274,8 +275,7 @@ function MapExplorerPageContent() {
   // detections — same shared backend as Community View / /citizen-reports.
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/reports", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
+    fetchReportsForViewer()
       .then((body) => {
         if (cancelled || !body?.reports) return;
         setReports(body.reports);

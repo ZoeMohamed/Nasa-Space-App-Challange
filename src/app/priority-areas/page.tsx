@@ -16,6 +16,7 @@ import { areaRegionLabel, formatAdminFull } from "@/lib/adminRegion";
 import MapLoadingText from "@/components/map/MapLoadingText";
 import { useTranslation } from "@/lib/i18n/LanguageContext";
 import InfoNote from "@/components/ui/InfoNote";
+import { fetchReportsForViewer } from "@/lib/reportsClient";
 
 const FireMap = dynamic(() => import("@/components/map/FireMap"), {
   ssr: false,
@@ -596,8 +597,7 @@ function PriorityAreasPageContent() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/reports", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
+    fetchReportsForViewer()
       .then((body) => {
         if (cancelled || !body?.reports) return;
         setReports(body.reports);

@@ -62,7 +62,7 @@ export default function CommunityMapPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/reports", { cache: "no-store" })
+    fetch("/api/reports/public", { cache: "no-store" })
       .then(async (res) => {
         if (!res.ok) throw new Error("Gagal memuat laporan");
         return await res.json();

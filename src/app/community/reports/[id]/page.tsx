@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import type { CommunityReport } from "@/types";
 import { formatAdminFull } from "@/lib/adminRegion";
 import { useTranslation, type Language } from "@/lib/i18n/LanguageContext";
+import { getOrCreateSubmitterToken } from "../../lib/submitterToken";
 import {
   reportStatusDescription,
   reportStatusLabel,
@@ -36,7 +37,11 @@ export default function ReportStatusPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/reports/${encodeURIComponent(params.id)}`, { cache: "no-store" })
+    // Our own token unlocks the full report if we filed it; for anyone else's
+    // report the backend returns the reduced public version (verified only).
+    const token = getOrCreateSubmitterToken();
+    const query = token ? `?submitterToken=${encodeURIComponent(token)}` : "";
+    fetch(`/api/reports/${encodeURIComponent(params.id)}${query}`, { cache: "no-store" })
       .then(async (res) => {
         if (res.status === 404) return null;
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -57,7 +62,11 @@ export default function ReportStatusPage() {
 
   const links = report?.satelliteLinks ?? [];
   const nearestLink = [...links].sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))[0];
-  const place = report ? (formatAdminFull(report.admin) ?? `${report.lat.toFixed(4)}, ${report.lon.toFixed(4)}`) : "";
+  const approximate = report?.locationPrecision === "approximate";
+  const place = report
+    ? (formatAdminFull(report.admin) ??
+      (approximate ? `±${report.lat.toFixed(2)}, ${report.lon.toFixed(2)}` : `${report.lat.toFixed(4)}, ${report.lon.toFixed(4)}`))
+    : "";
   const reviewed = report ? report.status === "verified" || report.status === "rejected" : false;
 
   const steps = report
@@ -152,7 +161,7 @@ export default function ReportStatusPage() {
             {report.photoFilename && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={`/api/reports/${report.id}/photo`}
+                src={`/api/reports/${report.id}/photo?submitterToken=${encodeURIComponent(report.submitterToken ?? "")}`}
                 alt={tr("Foto lampiran laporan", "Photo attached to the report")}
                 className="mt-1 h-48 w-full rounded-xl object-cover bg-gray-100"
               />

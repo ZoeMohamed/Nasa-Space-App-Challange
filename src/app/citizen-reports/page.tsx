@@ -35,10 +35,10 @@ const FireMap = dynamic(() => import("@/components/map/FireMap"), { ssr: false }
  *     `satelliteLinks` (only the single-report detail fetch includes it), so that correlation is
  *     now shown in the detail panel once a report is selected, not guessed at in the table.
  *
- * IMPORTANT — the backend's PATCH /api/reports/{id} endpoint (status updates) has NO
- * authentication or access control at all. That's a deliberate, approved decision for this
- * project stage, not a bug — but it means anyone with this page's URL can change a report's
- * status. See <NoAccessControlBanner /> below, which says so plainly to the operator.
+ * Access: this page is officer-only. src/proxy.ts redirects visitors without the officer
+ * cookie to /officer-login, and the report API routes plus the Python backend check it again
+ * (OFFICER_ACCESS_KEY). If the session expires mid-use, any 401 sends the officer back to the
+ * login page instead of showing an empty list.
  */
 
 const STATUS_ORDER: ReportStatus[] = ["submitted", "under_review", "satellite_matched", "verified", "rejected"];
@@ -69,8 +69,17 @@ function formatDateTime(value: string | null | undefined, language: Language): s
   return `${date.toLocaleString(language === "en" ? "en-GB" : "id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" })} WIB`;
 }
 
+function redirectToOfficerLogin(): never {
+  // Full page load on purpose: the session cookie is HttpOnly, and a hard navigation drops any
+  // report data already held in memory.
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+  window.location.href = `/officer-login?next=${encodeURIComponent("/citizen-reports")}`;
+  throw new Error("");
+}
+
 async function fetchReports(signal?: AbortSignal): Promise<CommunityReport[]> {
   const response = await fetch("/api/reports", { cache: "no-store", signal });
+  if (response.status === 401) redirectToOfficerLogin();
   const body = (await response.json()) as ReportsListResponse & { error?: string };
   if (!response.ok) {
     throw new Error(body.error ?? "");
@@ -80,6 +89,7 @@ async function fetchReports(signal?: AbortSignal): Promise<CommunityReport[]> {
 
 async function fetchReportDetail(id: string, signal?: AbortSignal): Promise<CommunityReport> {
   const response = await fetch(`/api/reports/${id}`, { cache: "no-store", signal });
+  if (response.status === 401) redirectToOfficerLogin();
   const body = (await response.json()) as CommunityReport & { error?: string };
   if (!response.ok) {
     throw new Error(body.error ?? "");
@@ -111,6 +121,7 @@ async function patchReportStatus(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status, reviewNote: reviewNote.trim() || undefined }),
   });
+  if (response.status === 401) redirectToOfficerLogin();
   const body = (await response.json()) as CommunityReport & { error?: string };
   if (!response.ok) {
     throw new Error(body.error ?? "");
@@ -118,22 +129,33 @@ async function patchReportStatus(
   return body;
 }
 
-function NoAccessControlBanner() {
+function OfficerSessionBar() {
   const { tr } = useTranslation();
+  async function signOut() {
+    await fetch("/api/officer/logout", { method: "POST" }).catch(() => undefined);
+    // Full page load on purpose, so no officer-only data stays in memory after signing out.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.href = "/";
+  }
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-[#f5d9b0] bg-[#fff7ec] p-4">
-      <span className="material-symbols-outlined mt-0.5 shrink-0 text-[20px] text-[#b96016]">lock_open</span>
-      <div>
-        <p className="text-sm font-bold text-[#8a4b0f]">
-          {tr("Belum ada proteksi akses pada aksi ubah status", "Status changes are not access-protected yet")}
-        </p>
-        <p className="mt-1 text-xs leading-relaxed text-[#8a4b0f]/90">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#cfe3d8] bg-[#f3f9f5] px-4 py-3">
+      <div className="flex items-start gap-3">
+        <span className="material-symbols-outlined mt-0.5 shrink-0 text-[20px] text-[#075640]">verified_user</span>
+        <p className="text-xs leading-relaxed text-[#0c3b2c]">
           {tr(
-            "Laporan di halaman ini sudah data sungguhan dari backend, dan tombol di bawah benar-benar mengubah status laporan tersebut. Namun endpoint pembaruan status belum punya autentikasi atau kontrol akses apa pun. Siapa pun yang memiliki tautan halaman ini bisa memanggil API yang sama dan mengubah status laporan warga. Ini keputusan sadar untuk tahap proyek saat ini, bukan kelalaian. Tambahkan proteksi akses sebelum dipakai di luar lingkungan tepercaya.",
-            "The reports on this page are real backend data, and the buttons below really change a report's status. But the status-update endpoint has no authentication or access control yet. Anyone with this page's link could call the same API and change a citizen report's status. This is a deliberate choice for the current project stage, not an oversight. Add access protection before using it outside a trusted environment."
+            "Masuk sebagai petugas. Halaman ini memuat lokasi persis, foto, dan token pelapor: jangan dibagikan ke publik. Status \"Terverifikasi\" akan menaikkan status wilayah warga di sekitarnya menjadi Awas.",
+            "Signed in as officer. This page shows reporters' exact locations, photos and tokens: do not share it publicly. A \"Verified\" status raises nearby citizens' area status to Danger."
           )}
         </p>
       </div>
+      <button
+        type="button"
+        onClick={signOut}
+        className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-[#cfe3d8] bg-white px-3 py-1.5 text-xs font-semibold text-[#075640] hover:bg-[#eef5f1]"
+      >
+        <span className="material-symbols-outlined text-[16px]">logout</span>
+        {tr("Keluar", "Sign out")}
+      </button>
     </div>
   );
 }
@@ -262,7 +284,7 @@ export default function CitizenReportsPage() {
         !query ||
         report.id.toLowerCase().includes(query) ||
         report.description.toLowerCase().includes(query) ||
-        report.submitterToken.toLowerCase().includes(query);
+        (report.submitterToken ?? "").toLowerCase().includes(query);
       const matchesStatus = statusFilter === "all" || report.status === statusFilter;
       return matchesQuery && matchesStatus;
     });
@@ -311,7 +333,7 @@ export default function CitizenReportsPage() {
   return (
     <WorkstationLayout activeTab="Citizen Reports">
       <div className="max-w-[1400px] mx-auto space-y-6">
-        <NoAccessControlBanner />
+        <OfficerSessionBar />
 
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-3">

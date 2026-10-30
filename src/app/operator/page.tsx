@@ -15,6 +15,7 @@ import { useLiveHotspots } from "@/lib/useLiveHotspots";
 import type { CommunityReport, DailyActivity, HistoricalCalendarResponse, HistoricalMonth } from "@/types";
 import { areaRegionLabel } from "@/lib/adminRegion";
 import MapLoadingText from "@/components/map/MapLoadingText";
+import { fetchReportsForViewer } from "@/lib/reportsClient";
 
 
 /**
@@ -89,8 +90,7 @@ function DashboardPageContent() {
   // satellite detections — same shared backend as /map and /citizen-reports.
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/reports", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
+    fetchReportsForViewer()
       .then((body) => {
         if (cancelled || !body?.reports) return;
         setReports(body.reports);
