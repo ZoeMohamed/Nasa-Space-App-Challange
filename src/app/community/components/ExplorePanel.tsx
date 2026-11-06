@@ -134,7 +134,7 @@ export default function ExplorePanel(props: ExplorePanelProps) {
     }`;
 
   return (
-    <div className="flex max-h-full flex-col rounded-2xl bg-white shadow-2xl shadow-black/30">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/30">
       <div className="px-5 pt-5">
         <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
@@ -162,7 +162,7 @@ export default function ExplorePanel(props: ExplorePanelProps) {
         </div>
       </div>
 
-      <div className="custom-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4">
+      <div className="custom-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-4">
         {tab === "hotspot" ? (
           props.selected ? (
             <HotspotDetail marker={props.selected} onBack={props.onClearSelected} />
