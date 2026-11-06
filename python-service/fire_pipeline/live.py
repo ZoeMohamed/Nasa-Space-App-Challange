@@ -409,6 +409,12 @@ def _marker_frame(detections: pd.DataFrame, matches: pd.DataFrame, areas: pd.Dat
     match_status = positions.map(status_by_id).fillna("UNMATCHED").astype(str)
     matched_raw = positions.map(matched_by_id)
     matched_id = [None if pd.isna(v) or v == -1 else int(v) for v in matched_raw]
+    # Brightness temperature (K) and day/night flag straight from the FIRMS row, for the citizen
+    # detail panel. None (JSON null) when FIRMS didn't provide them; never estimated.
+    brightness = pd.to_numeric(det["brightness"], errors="coerce") if "brightness" in det else pd.Series(np.nan, index=det.index)
+    brightness_k = [None if pd.isna(v) else round(float(v), 1) for v in brightness]
+    raw_daynight = det["daynight"].astype(str).str.strip().str.upper() if "daynight" in det else pd.Series("", index=det.index)
+    day_night = [v if v in ("D", "N") else None for v in raw_daynight]
 
     frame = pd.DataFrame(
         {
@@ -426,6 +432,8 @@ def _marker_frame(detections: pd.DataFrame, matches: pd.DataFrame, areas: pd.Dat
             "confidenceTier": tier.to_numpy(),
             "highConfidence": det["high_confidence"].astype(bool) if "high_confidence" in det else True,
             "acquiredAt": acquired.dt.strftime("%Y-%m-%dT%H:%M:00Z"),
+            "brightnessK": pd.Series(brightness_k, dtype=object),
+            "dayNight": pd.Series(day_night, dtype=object),
             "areaId": grid_lat.astype(str) + "_" + grid_lon.astype(str),
             "matchStatus": match_status,
             "matchedDetectionId": pd.Series(matched_id, dtype=object),

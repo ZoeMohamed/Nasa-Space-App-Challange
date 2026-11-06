@@ -53,6 +53,12 @@ def test_live_frames_run_python_pipeline(monkeypatch, tmp_path):
     assert markers_by_sensor["VIIRS"]["confidenceLabel"] == "Tinggi (VIIRS)"
     assert "%" not in markers_by_sensor["VIIRS"]["confidenceLabel"]
 
+    # Brightness temperature comes from MODIS `brightness` / VIIRS `bright_ti4`;
+    # no `daynight` column in this fixture, so it must be null rather than guessed.
+    assert markers_by_sensor["MODIS"]["brightnessK"] == 330
+    assert markers_by_sensor["VIIRS"]["brightnessK"] == 340
+    assert markers_by_sensor["MODIS"]["dayNight"] is None
+
     assert len(result["areas"]) == 1
     area = result["areas"][0]
     assert area["priorityRank"] == 1
