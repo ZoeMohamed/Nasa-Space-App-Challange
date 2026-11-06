@@ -3,6 +3,7 @@
 import Link from "next/link";
 import MyReports from "../components/MyReports";
 import { useTranslation } from "@/lib/i18n/LanguageContext";
+import Icon from "@/components/community/Icon";
 
 /**
  * "Saya" tab (bottom nav). Hosts the "Status Laporan" area (Figma node
@@ -17,9 +18,9 @@ export default function SayaPage() {
   return (
     <div className="space-y-6">
       <section>
-        <h1 className="text-lg font-extrabold">{tr("Saya", "Me")}</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">{tr("Laporan Saya", "My Reports")}</h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-0.5">
-          {tr("Riwayat laporan dan pengaturan dari perangkat ini.", "Report history and settings from this device.")}
+          {tr("Riwayat laporan yang dikirim dari perangkat ini, beserta status tinjauan petugas.", "Reports sent from this device, with their officer review status.")}
         </p>
       </section>
 
@@ -28,14 +29,14 @@ export default function SayaPage() {
           href="/community/pengaturan"
           className="rounded-xl border border-[var(--community-border)] bg-white p-3 flex items-center gap-2"
         >
-          <span className="material-symbols-outlined text-[var(--community-accent)]">tune</span>
+          <Icon name="tune" className="h-5 w-5 text-[var(--community-accent)] shrink-0" />
           <span className="text-sm font-semibold">{tr("Atur Area Peringatan", "Alert Area Settings")}</span>
         </Link>
         <Link
           href="/community/edukasi"
           className="rounded-xl border border-[var(--community-border)] bg-white p-3 flex items-center gap-2"
         >
-          <span className="material-symbols-outlined text-[var(--community-accent)]">menu_book</span>
+          <Icon name="menu_book" className="h-5 w-5 text-[var(--community-accent)] shrink-0" />
           <span className="text-sm font-semibold">{tr("Edukasi & Kontribusi", "Learn & Contribute")}</span>
         </Link>
       </div>

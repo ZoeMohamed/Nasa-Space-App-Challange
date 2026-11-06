@@ -2,100 +2,64 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { getOrCreateSubmitterToken } from "../lib/submitterToken";
-import type { ReportsListResponse } from "@/types";
+import { BookOpen, ClipboardList, Flame, Map as MapIcon, UserRound } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 /**
- * Shared 5-item bottom nav for the Community View (Figma node 186:3013):
- * Beranda · Edukasi · Lapor (raised center FAB) · Notifikasi (+ unread badge)
- * · Saya. The badge count is a REAL count derived from this device's own
- * reports whose status changed to something other than "submitted" (i.e. an
- * update happened since the citizen last looked) — not a fabricated number.
- * We don't have a true "read/unread" flag in the backend, so this is a
- * reasonable, honestly-derived proxy rather than an invented figure.
+ * Phone navigation for the Community View: Peta · Edukasi · Lapor (raised) · Laporan Saya · Profil.
+ * The badge on "Laporan Saya" is the real count of this device's reports whose status changed
+ * from "submitted" (computed once in the layout), not an invented number.
  */
-export default function BottomNav() {
-  const { t, tr } = useTranslation();
+export default function BottomNav({ unread }: { unread: number }) {
+  const { tr } = useTranslation();
   const pathname = usePathname();
-  const [unread, setUnread] = useState(0);
-
-  useEffect(() => {
-    const token = getOrCreateSubmitterToken();
-    if (!token) return;
-    let cancelled = false;
-
-    fetch(`/api/reports?submitterToken=${encodeURIComponent(token)}`, { cache: "no-store" })
-      .then((res) => (res.ok ? (res.json() as Promise<ReportsListResponse>) : null))
-      .then((body) => {
-        if (cancelled || !body) return;
-        const changed = body.reports.filter((r) => r.status !== "submitted").length;
-        setUnread(changed);
-      })
-      .catch(() => {
-        /* best-effort badge only — silently ignore */
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const items = [
-    { href: "/community", label: t("community.nav.home"), icon: "home" },
-    { href: "/community/edukasi", label: t("community.nav.education"), icon: "menu_book" },
-    { href: "/community/report", label: tr("Lapor", "Report"), icon: "photo_camera", fab: true },
-    { href: "/community/notifikasi", label: t("community.nav.notifications"), icon: "notifications", badge: unread },
-    { href: "/community/saya", label: t("community.nav.me"), icon: "person" },
+    { href: "/community", label: tr("Peta", "Map"), Icon: MapIcon, active: pathname === "/community" || pathname.startsWith("/community/alert") },
+    { href: "/community/edukasi", label: tr("Edukasi", "Learn"), Icon: BookOpen, active: pathname.startsWith("/community/edukasi") },
+    { href: "/community/report", label: tr("Lapor", "Report"), Icon: Flame, fab: true, active: pathname === "/community/report" },
+    {
+      href: "/community/saya",
+      label: tr("Laporan", "Reports"),
+      Icon: ClipboardList,
+      badge: unread,
+      active: pathname === "/community/saya" || pathname.startsWith("/community/reports"),
+    },
+    { href: "/community/pengaturan", label: tr("Profil", "Profile"), Icon: UserRound, active: pathname === "/community/pengaturan" },
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-[var(--community-border)] bg-white/95 backdrop-blur-md px-3 pt-2 pb-[max(0.6rem,env(safe-area-inset-bottom))] flex justify-center shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-      <div className="flex w-full max-w-md items-end justify-around">
-        {items.map((item) => {
-          const active = pathname === item.href;
-          if (item.fab) {
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex flex-col items-center -mt-6 group focus:outline-none"
-              >
-                <span className="flex h-13 w-13 items-center justify-center rounded-full bg-[#ba1a1a] text-white shadow-lg shadow-red-900/30 group-hover:scale-105 active:scale-95 transition-all duration-200 ring-4 ring-white">
-                  <span className="material-symbols-outlined text-[24px]">{item.icon}</span>
-                </span>
-                <span className="mt-1 text-[11px] font-semibold text-[var(--community-ink)]">
-                  {item.label}
-                </span>
-              </Link>
-            );
-          }
-          return (
+    <nav className="md:hidden fixed inset-x-0 bottom-0 z-[1000] border-t border-white/10 bg-[#0d2f3a]/95 px-3 pt-2 pb-[max(0.6rem,env(safe-area-inset-bottom))] backdrop-blur-md">
+      <div className="mx-auto flex w-full max-w-md items-end justify-around">
+        {items.map(({ href, label, Icon, fab, badge, active }) =>
+          fab ? (
+            <Link key={href} href={href} className="-mt-6 flex flex-col items-center">
+              <span className="flex h-13 w-13 items-center justify-center rounded-full bg-[#c81e1e] text-white shadow-lg shadow-red-950/40 ring-4 ring-[#0d2f3a] transition active:scale-95">
+                <Icon className="h-6 w-6" />
+              </span>
+              <span className="mt-1 text-[11px] font-semibold text-white">{label}</span>
+            </Link>
+          ) : (
             <Link
-              key={item.href}
-              href={item.href}
-              className={`relative flex flex-col items-center gap-1 rounded-xl px-2 py-1 text-[11px] font-semibold transition-colors focus:outline-none ${
-                active ? "text-[var(--community-accent)] font-bold" : "text-[var(--community-ink-muted)] hover:text-[var(--community-ink)]"
+              key={href}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={`relative flex flex-col items-center gap-1 px-2 py-1 text-[11px] font-semibold transition ${
+                active ? "text-white" : "text-white/60 hover:text-white"
               }`}
             >
               <span className="relative">
-                <span
-                  className="material-symbols-outlined text-[22px]"
-                  style={{ fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}
-                >
-                  {item.icon}
-                </span>
-                {!!item.badge && item.badge > 0 && (
-                  <span className="absolute -top-1 -right-2 min-w-[16px] h-[16px] rounded-full bg-rose-600 text-white text-[10px] font-bold leading-[16px] text-center px-1 shadow-sm">
-                    {item.badge > 9 ? "9+" : item.badge}
+                <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.25 : 1.75} />
+                {!!badge && badge > 0 && (
+                  <span className="absolute -right-2 -top-1 min-w-[16px] h-[16px] rounded-full bg-red-600 px-1 text-center text-[10px] font-bold leading-[16px] text-white">
+                    {badge > 9 ? "9+" : badge}
                   </span>
                 )}
               </span>
-              <span>{item.label}</span>
+              {label}
             </Link>
-          );
-        })}
+          )
+        )}
       </div>
     </nav>
   );

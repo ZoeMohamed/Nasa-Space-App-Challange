@@ -7,6 +7,7 @@ import { haversineKm, formatDistanceKm } from "../../lib/geo";
 import { articleText, EDU_ARTICLES } from "../articles";
 import type { HotspotApiResponse, HotspotMarker } from "@/types";
 import { useTranslation } from "@/lib/i18n/LanguageContext";
+import Icon from "@/components/community/Icon";
 
 const WHO_URL = "https://www.who.int/news-room/fact-sheets/detail/wildfires-and-health";
 const BMKG_URL = "https://www.bmkg.go.id/";
@@ -94,7 +95,7 @@ export default function SekitarPage() {
       </Link>
 
       <section>
-        <h1 className="text-lg font-extrabold text-[#123027]">{tr("Bantuan di Sekitarku", "Help Near Me")}</h1>
+        <h1 className="text-lg font-semibold text-slate-900">{tr("Bantuan di Sekitarku", "Help Near Me")}</h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-1 leading-relaxed">
           {tr(
             "Sumber daya lokal untuk kesiapsiagaan. Menggunakan lokasi Anda (opsional) hanya untuk memberi konteks jarak dari deteksi satelit.",
@@ -105,7 +106,7 @@ export default function SekitarPage() {
 
       {/* Optional location context, graceful if denied */}
       <div className="rounded-2xl border border-[var(--community-border)] bg-white p-4 space-y-2">
-        <p className="text-xs font-semibold text-[#123027]">
+        <p className="text-xs font-semibold text-slate-900">
           {fix
             ? tr("Lokasi Anda sudah digunakan untuk konteks jarak di bawah.", "Your location is used for the distance context below.")
             : tr(
@@ -143,7 +144,7 @@ export default function SekitarPage() {
               : tr(`Tidak ada deteksi satelit dalam radius ${NEARBY_RADIUS_KM} km dari titik contoh saat ini.`, `No satellite detections within ${NEARBY_RADIUS_KM} km of the example point right now.`)}
           </p>
         ) : (
-          <p className="text-xs font-semibold text-[#123027]">
+          <p className="text-xs font-semibold text-slate-900">
             {tr(
               `${nearbyCount} deteksi satelit dalam ${NEARBY_RADIUS_KM} km${nearestDistance !== null ? ` (terdekat ${formatDistanceKm(nearestDistance)})` : ""}.`,
               `${nearbyCount} satellite detections within ${NEARBY_RADIUS_KM} km${nearestDistance !== null ? ` (nearest ${formatDistanceKm(nearestDistance)})` : ""}.`
@@ -174,10 +175,10 @@ export default function SekitarPage() {
 
       {/* Unverified local resource categories */}
       <section className="space-y-2">
-        <h2 className="text-sm font-bold text-[#123027]">{tr("Sumber daya lokal", "Local resources")}</h2>
+        <h2 className="text-sm font-bold text-slate-900">{tr("Sumber daya lokal", "Local resources")}</h2>
         {UNVERIFIED_CATEGORIES.map((cat) => (
           <div key={cat.id} className="rounded-xl border border-[var(--community-border)] bg-white p-3.5">
-            <p className="text-xs font-semibold text-[#123027]">{tr(...cat.title)}</p>
+            <p className="text-xs font-semibold text-slate-900">{tr(...cat.title)}</p>
             <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5 leading-relaxed">{tr(...cat.description)}</p>
             <p className="text-[11px] font-semibold text-amber-700 mt-2 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 inline-block">
               {tr("Belum terverifikasi. Data resmi belum tersedia", "Not verified. Official data not available yet")}
@@ -188,7 +189,7 @@ export default function SekitarPage() {
 
       {/* Official external sources */}
       <section className="rounded-2xl border border-[var(--community-border)] bg-white p-4 space-y-2">
-        <h2 className="text-sm font-bold text-[#123027]">{tr("Sumber resmi", "Official sources")}</h2>
+        <h2 className="text-sm font-bold text-slate-900">{tr("Sumber resmi", "Official sources")}</h2>
         <p className="text-[11px] text-[var(--community-ink-muted)] leading-relaxed">
           {tr("Untuk informasi cuaca dan kualitas udara resmi, rujuk BMKG:", "For official weather and air-quality information, see BMKG:")}{" "}
           <a href={BMKG_URL} target="_blank" rel="noreferrer" className="text-[var(--community-accent)] underline">
@@ -205,7 +206,7 @@ export default function SekitarPage() {
 
       {/* Supplementary article list kept from the old structure */}
       <section className="space-y-2">
-        <h2 className="text-sm font-bold text-[#123027]">{tr("Baca lebih lanjut", "Read more")}</h2>
+        <h2 className="text-sm font-bold text-slate-900">{tr("Baca lebih lanjut", "Read more")}</h2>
         <ul className="space-y-2">
           {EDU_ARTICLES.map((article) => (
             <li key={article.slug}>
@@ -213,9 +214,7 @@ export default function SekitarPage() {
                 href={`/community/edukasi/${article.slug}`}
                 className="block rounded-xl border border-[var(--community-border)] bg-white p-3 flex items-start gap-3"
               >
-                <span className="material-symbols-outlined text-[var(--community-accent)] mt-0.5">
-                  {article.icon}
-                </span>
+                <Icon name={article.icon} className="h-5 w-5 text-[var(--community-accent)] mt-0.5 shrink-0" />
                 <span>
                   <span className="block text-sm font-semibold">{articleText(article, language).title}</span>
                   <span className="block text-[11px] text-[var(--community-ink-muted)] mt-0.5">

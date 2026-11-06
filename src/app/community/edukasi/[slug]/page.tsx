@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { useTranslation } from "@/lib/i18n/LanguageContext";
 import { articleText, getEduArticle } from "../articles";
+import Icon from "@/components/community/Icon";
 
 export default function EduArticlePage() {
   const { tr, language } = useTranslation();
@@ -19,8 +20,8 @@ export default function EduArticlePage() {
       </Link>
 
       <div className="flex items-center gap-2">
-        <span className="material-symbols-outlined text-[var(--community-accent)] text-2xl">{article.icon}</span>
-        <h1 className="text-lg font-extrabold">{text.title}</h1>
+        <Icon name={article.icon} className="text-[var(--community-accent)] h-6 w-6 shrink-0" />
+        <h1 className="text-lg font-semibold text-slate-900">{text.title}</h1>
       </div>
 
       <div className="space-y-3">

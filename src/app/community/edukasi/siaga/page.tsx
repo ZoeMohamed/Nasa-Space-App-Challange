@@ -45,7 +45,7 @@ export default function SiagaChecklistPage() {
       </Link>
 
       <section>
-        <h1 className="text-lg font-extrabold text-[#123027]">{tr("Siapkan Tas Siaga", "Pack a Go-Bag")}</h1>
+        <h1 className="text-lg font-semibold text-slate-900">{tr("Siapkan Tas Siaga", "Pack a Go-Bag")}</h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-1 leading-relaxed">
           {tr(
             "Checklist ini membantu keluarga Anda siap sebelum kabut asap atau kebakaran terjadi. Tandai item yang sudah disiapkan. Progres Anda disimpan otomatis di perangkat ini.",
@@ -56,7 +56,7 @@ export default function SiagaChecklistPage() {
 
       <div className="rounded-2xl border border-[var(--community-border)] bg-white p-4 flex items-center justify-between">
         <div>
-          <p className="text-sm font-bold text-[#123027]">
+          <p className="text-sm font-bold text-slate-900">
             {checked === null
               ? tr("Memuat progres…", "Loading progress…")
               : tr(`${doneCount} dari ${TOTAL_CHECKLIST_ITEMS} selesai`, `${doneCount} of ${TOTAL_CHECKLIST_ITEMS} done`)}
@@ -85,7 +85,7 @@ export default function SiagaChecklistPage() {
                   <Icon className="h-6 w-6" />
                 </span>
               )}
-              <h2 className="text-sm font-bold text-[#123027]">{categoryTitle(category, language)}</h2>
+              <h2 className="text-sm font-bold text-slate-900">{categoryTitle(category, language)}</h2>
             </div>
 
             <ul className="space-y-2">
@@ -109,7 +109,7 @@ export default function SiagaChecklistPage() {
                         className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--community-accent)]"
                       />
                       <div className="min-w-0">
-                        <p className={`text-sm font-semibold ${isChecked ? "line-through text-[var(--community-ink-muted)]" : "text-[#123027]"}`}>
+                        <p className={`text-sm font-semibold ${isChecked ? "line-through text-[var(--community-ink-muted)]" : "text-slate-900"}`}>
                           {text.what}
                         </p>
                         <p className="text-[11px] text-[var(--community-ink-muted)] mt-1 leading-relaxed">

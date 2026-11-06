@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { labelOf, REGION_OPTIONS } from "@/lib/filters";
 import { loadAlertPrefs, saveAlertPrefs, type AlertPrefs } from "../lib/alertPrefs";
 import { useTranslation } from "@/lib/i18n/LanguageContext";
+import Icon from "@/components/community/Icon";
 
 const SEVERITY_OPTIONS: { value: AlertPrefs["minSeverity"]; label: readonly [string, string] }[] = [
   { value: "LOW", label: ["Semua tingkat (rendah, sedang, tinggi)", "All levels (low, medium, high)"] },
@@ -35,12 +35,9 @@ export default function PengaturanPage() {
 
   return (
     <div className="space-y-5">
-      <Link href="/community/saya" className="text-xs font-semibold text-[var(--community-ink-muted)]">
-        ← {tr("Kembali ke Saya", "Back to Me")}
-      </Link>
-
       <section>
-        <h1 className="text-lg font-extrabold">{tr("Atur Area Peringatan", "Alert Area Settings")}</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">{tr("Profil & Peringatan", "Profile & Alerts")}</h1>
+        <p className="mt-1 text-sm font-semibold text-slate-800">{tr("Atur Area Peringatan", "Alert Area Settings")}</p>
         <p className="text-sm text-[var(--community-ink-muted)] mt-0.5">
           {tr(
             "Preferensi ini tersimpan di perangkat ini saja dan digunakan untuk menyaring halaman Notifikasi. Bukan langganan push notification berbasis server.",
@@ -98,7 +95,7 @@ export default function PengaturanPage() {
               }`}
             >
               {tr(...opt.label)}
-              {prefs.minSeverity === opt.value && <span className="material-symbols-outlined text-[18px]">check</span>}
+              {prefs.minSeverity === opt.value && <Icon name="check" className="h-[18px] w-[18px] shrink-0" />}
             </button>
           ))}
         </div>

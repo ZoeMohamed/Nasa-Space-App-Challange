@@ -9,6 +9,7 @@ import type { WeatherResponse } from "@/types";
 import { useTranslation } from "@/lib/i18n/LanguageContext";
 import { compassLabel } from "../lib/geo";
 import { aqiCategoryLabel } from "../lib/areaStatus";
+import Icon from "@/components/community/Icon";
 
 const BMKG_URL = "https://www.bmkg.go.id/";
 
@@ -72,16 +73,14 @@ export default function UdaraPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2">
-        <Link href="/community" className="inline-flex items-center gap-1.5 text-xs font-bold text-[#123027] hover:text-[var(--community-accent)] transition">
-          <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
-            arrow_back
-          </span>
-          <span>{tr("Beranda", "Home")}</span>
+        <Link href="/community" className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-900 hover:text-[var(--community-accent)] transition">
+          <Icon name="arrow_back" className="h-[18px] w-[18px] shrink-0" />
+          <span>{tr("Peta", "Map")}</span>
         </Link>
       </div>
 
       <div>
-        <h1 className="text-lg font-bold text-[#123027]">{tr("Kualitas Udara & Cuaca", "Air Quality & Weather")}</h1>
+        <h1 className="text-lg font-bold text-slate-900">{tr("Kualitas Udara & Cuaca", "Air Quality & Weather")}</h1>
         <p className="text-xs text-[var(--community-ink-muted)] mt-1">{locationLabel}</p>
       </div>
 
@@ -127,24 +126,24 @@ export default function UdaraPage() {
           </div>
 
           <div className="rounded-2xl border border-[var(--community-border)] bg-white p-5">
-            <h2 className="text-sm font-bold text-[#123027] mb-3">{tr("Angin & Cuaca Saat Ini", "Current Wind & Weather")}</h2>
+            <h2 className="text-sm font-bold text-slate-900 mb-3">{tr("Angin & Cuaca Saat Ini", "Current Wind & Weather")}</h2>
             {weather.wind ? (
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-[11px] text-[var(--community-ink-muted)] block">{tr("Kecepatan angin", "Wind speed")}</span>
-                  <span className="font-bold text-[#123027]">{weather.wind.windSpeedKmh} {tr("km/j", "km/h")}</span>
+                  <span className="font-bold text-slate-900">{weather.wind.windSpeedKmh} {tr("km/j", "km/h")}</span>
                 </div>
                 <div>
                   <span className="text-[11px] text-[var(--community-ink-muted)] block">{tr("Arah angin (dari)", "Wind from")}</span>
-                  <span className="font-bold text-[#123027]">{windDirectionLabel(weather.wind.windDirectionDeg, language)}</span>
+                  <span className="font-bold text-slate-900">{windDirectionLabel(weather.wind.windDirectionDeg, language)}</span>
                 </div>
                 <div>
                   <span className="text-[11px] text-[var(--community-ink-muted)] block">{tr("Suhu", "Temperature")}</span>
-                  <span className="font-bold text-[#123027]">{weather.wind.temperatureC}°C</span>
+                  <span className="font-bold text-slate-900">{weather.wind.temperatureC}°C</span>
                 </div>
                 <div>
                   <span className="text-[11px] text-[var(--community-ink-muted)] block">{tr("Kelembapan", "Humidity")}</span>
-                  <span className="font-bold text-[#123027]">{weather.wind.relativeHumidityPct}%</span>
+                  <span className="font-bold text-slate-900">{weather.wind.relativeHumidityPct}%</span>
                 </div>
               </div>
             ) : (

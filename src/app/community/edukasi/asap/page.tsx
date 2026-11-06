@@ -105,7 +105,7 @@ export default function AsapPage() {
       </Link>
 
       <section>
-        <h1 className="text-lg font-extrabold text-[#123027]">{tr("Lindungi Keluarga dari Asap", "Protect Your Family from Smoke")}</h1>
+        <h1 className="text-lg font-semibold text-slate-900">{tr("Lindungi Keluarga dari Asap", "Protect Your Family from Smoke")}</h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-1 leading-relaxed">
           {tr(
             "Ringkasan dari panduan WHO soal asap kebakaran. Ada perintah evakuasi? Segera mengungsi, walau sudah pakai masker.",
@@ -123,7 +123,7 @@ export default function AsapPage() {
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50">
                   <Icon className="h-7 w-7" />
                 </span>
-                <h2 className="text-sm font-bold text-[#123027]">{tr(...card.title)}</h2>
+                <h2 className="text-sm font-bold text-slate-900">{tr(...card.title)}</h2>
               </div>
               <div className="space-y-2">
                 {card.body.map((p, i) => (
@@ -153,7 +153,7 @@ export default function AsapPage() {
       </section>
 
       <section className="rounded-2xl border border-[var(--community-border)] bg-white p-4 space-y-2">
-        <p className="text-xs font-bold text-[#123027]">{tr("Sumber", "Sources")}</p>
+        <p className="text-xs font-bold text-slate-900">{tr("Sumber", "Sources")}</p>
         <p className="text-[11px] text-[var(--community-ink-muted)] leading-relaxed">
           {tr("Ringkasan di atas mengacu pada lembar fakta WHO “Wildfires and health”:", "The summary above follows the WHO fact sheet “Wildfires and health”:")}{" "}
           <a href={WHO_URL} target="_blank" rel="noreferrer" className="text-[var(--community-accent)] underline">

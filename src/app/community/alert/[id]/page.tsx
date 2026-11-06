@@ -8,6 +8,7 @@ import { bearingDeg, compassLabel, formatDistanceKm, haversineKm, isUpwind } fro
 import { formatAdminFull } from "@/lib/adminRegion";
 import type { HotspotApiResponse, HotspotMarker, WeatherResponse } from "@/types";
 import { useTranslation, type Language } from "@/lib/i18n/LanguageContext";
+import Icon from "@/components/community/Icon";
 
 const CALM_WIND_KMH = 2;
 
@@ -144,19 +145,19 @@ export default function AlertDetailPage() {
       <div className="flex items-center justify-between">
         <Link
           href="/community"
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-[#123027] hover:text-[var(--community-accent)] py-1 pr-2 transition"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-900 hover:text-[var(--community-accent)] py-1 pr-2 transition"
         >
-          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          <Icon name="arrow_back" className="h-[18px] w-[18px] shrink-0" />
           {tr("Detail titik panas", "Hotspot details")}
         </Link>
         {state === "found" && (
           <button
             type="button"
             onClick={handleShare}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white border border-[var(--community-border)] text-[#123027] hover:bg-emerald-50 transition"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white border border-[var(--community-border)] text-slate-900 hover:bg-emerald-50 transition"
             aria-label={shareSuccess ? tr("Tautan disalin", "Link copied") : tr("Bagikan ke keluarga", "Share with family")}
           >
-            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">{shareSuccess ? "check" : "share"}</span>
+            <Icon name={shareSuccess ? "check" : "share"} className="h-[18px] w-[18px] shrink-0" />
           </button>
         )}
       </div>
@@ -167,8 +168,8 @@ export default function AlertDetailPage() {
 
       {(state === "missing" || state === "error") && (
         <div className="rounded-2xl border border-dashed border-[var(--community-border)] bg-white p-6 text-center space-y-3">
-          <span className="material-symbols-outlined text-[32px] text-[var(--community-ink-muted)]">location_off</span>
-          <p className="text-sm text-[#123027] font-semibold">
+          <Icon name="location_off" className="h-[32px] w-[32px] text-[var(--community-ink-muted)] shrink-0" />
+          <p className="text-sm text-slate-900 font-semibold">
             {state === "missing"
               ? tr("Titik ini sudah tidak ada di data 24 jam terakhir.", "This point is no longer in the last 24 hours of data.")
               : tr("Data titik panas sedang tidak bisa dimuat.", "Hotspot data can't be loaded right now.")}
@@ -182,7 +183,7 @@ export default function AlertDetailPage() {
               : tr("Coba lagi beberapa saat lagi.", "Please try again shortly.")}
           </p>
           <Link href="/community" className="inline-block text-xs font-bold text-[var(--community-accent)] hover:underline">
-            {tr("Kembali ke Beranda", "Back to Home")}
+            {tr("Kembali ke Peta", "Back to Map")}
           </Link>
         </div>
       )}
@@ -191,22 +192,22 @@ export default function AlertDetailPage() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-bold px-3 py-1 rounded-full">
-              <span className="material-symbols-outlined text-[14px]">satellite_alt</span>
+              <Icon name="satellite_alt" className="h-[14px] w-[14px] shrink-0" />
               {tr("Deteksi satelit · belum dikonfirmasi lapangan", "Satellite detection · not confirmed on the ground")}
             </span>
-            <span className="inline-flex items-center bg-white border border-[var(--community-border)] text-[#123027] text-[11px] font-bold px-3 py-1 rounded-full">
+            <span className="inline-flex items-center bg-white border border-[var(--community-border)] text-slate-900 text-[11px] font-bold px-3 py-1 rounded-full">
               {tr(...(MATCH_LABEL[marker.matchStatus ?? "UNMATCHED"] ?? MATCH_LABEL.UNMATCHED))}
             </span>
             {upwind && (
               <span className="inline-flex items-center gap-1 bg-sky-50 border border-sky-200 text-sky-800 text-[11px] font-bold px-3 py-1 rounded-full">
-                <span className="material-symbols-outlined text-[14px]">air</span>
+                <Icon name="air" className="h-[14px] w-[14px] shrink-0" />
                 {tr("Searah angin ke lokasimu", "Upwind of you")}
               </span>
             )}
           </div>
 
           <div>
-            <h1 className="text-2xl font-black text-[#123027] tracking-tight">
+            <h1 className="text-2xl font-semibold text-slate-900">
               {distanceKm !== null && bearing !== null
                 ? tr(
                     `Titik panas ${formatDistanceKm(distanceKm)} ke arah ${compass(bearing)}`,
@@ -226,7 +227,7 @@ export default function AlertDetailPage() {
               <p className="mt-2 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                 {tr("Atur lokasimu di", "Set your location on")}{" "}
                 <Link href="/community" className="font-bold underline">
-                  {tr("Beranda", "Home")}
+                  {tr("Peta", "Map")}
                 </Link>{" "}
                 {tr("untuk melihat jarak, arah, dan pengaruh angin.", "to see distance, direction, and wind effect.")}
               </p>
@@ -247,15 +248,15 @@ export default function AlertDetailPage() {
             ].map(([label, value]) => (
               <div key={label} className="rounded-2xl border border-[var(--community-border)] bg-white p-3 text-center">
                 <span className="text-[10px] font-semibold text-[var(--community-ink-muted)]">{label}</span>
-                <div className="text-sm font-black text-[#123027] mt-0.5">{value}</div>
+                <div className="text-sm font-black text-slate-900 mt-0.5">{value}</div>
               </div>
             ))}
           </div>
 
           {fix && (
             <div className={`rounded-2xl border p-3.5 flex items-start gap-3 ${upwind ? "border-sky-200 bg-sky-50/80" : "border-[var(--community-border)] bg-white"}`}>
-              <span className="material-symbols-outlined text-[20px] text-sky-700 shrink-0 mt-0.5">air</span>
-              <p className="text-xs text-[#123027] leading-relaxed">
+              <Icon name="air" className="h-[20px] w-[20px] text-sky-700 shrink-0 mt-0.5 shrink-0" />
+              <p className="text-xs text-slate-900 leading-relaxed">
                 {windFrom === null || windSpeed === null
                   ? tr("Data angin di lokasimu belum tersedia.", "Wind data for your location isn't available yet.")
                   : windSpeed < CALM_WIND_KMH
@@ -286,7 +287,7 @@ export default function AlertDetailPage() {
 
           <section className="rounded-2xl border border-[var(--community-border)] bg-white p-4 space-y-3">
             <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--community-ink-muted)]">{tr("Jika ada asap di sekitarmu", "If there's smoke around you")}</h2>
-            <ul className="space-y-2.5 text-xs text-[#123027] font-medium">
+            <ul className="space-y-2.5 text-xs text-slate-900 font-medium">
               {SMOKE_TIPS.map((item) => (
                 <li key={item[0]} className="flex items-start gap-2.5">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-[12px] font-bold">✓</span>
@@ -300,17 +301,17 @@ export default function AlertDetailPage() {
             </ul>
             <Link href="/community/edukasi/asap" className="inline-flex items-center gap-1 text-xs font-bold text-[var(--community-accent)] hover:underline">
               {tr("Panduan lengkap melindungi keluarga dari asap", "Full guide to protecting your family from smoke")}
-              <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              <Icon name="arrow_forward" className="h-[16px] w-[16px] shrink-0" />
             </Link>
           </section>
 
           <div className="rounded-2xl border border-[var(--community-border)] bg-white p-3.5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
-                <span className="material-symbols-outlined text-[18px]">phone_in_talk</span>
+                <Icon name="phone_in_talk" className="h-[18px] w-[18px] shrink-0" />
               </span>
               <div className="min-w-0">
-                <div className="text-xs font-bold text-[#123027]">{tr("Darurat 112", "Emergency 112")}</div>
+                <div className="text-xs font-bold text-slate-900">{tr("Darurat 112", "Emergency 112")}</div>
                 <div className="text-[10px] text-[var(--community-ink-muted)]">{tr("Nomor panggilan darurat nasional", "Indonesia's national emergency number")}</div>
               </div>
             </div>
@@ -322,17 +323,17 @@ export default function AlertDetailPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <Link
               href={`/community/report?lat=${marker.lat}&lon=${marker.lng}&source=manual-coords`}
-              className="flex items-center justify-center gap-2 rounded-xl bg-[#0c2e22] hover:bg-[#071f16] py-3.5 text-xs md:text-sm font-bold text-white transition"
+              className="flex items-center justify-center gap-2 rounded-xl bg-[#0d2f3a] hover:bg-[#071f16] py-3.5 text-xs md:text-sm font-bold text-white transition"
             >
-              <span className="material-symbols-outlined text-[18px]">photo_camera</span>
+              <Icon name="photo_camera" className="h-[18px] w-[18px] shrink-0" />
               {tr("Saya melihat api / asap. Lapor", "I see fire / smoke. Report")}
             </Link>
             <button
               type="button"
               onClick={handleShare}
-              className="flex items-center justify-center gap-2 rounded-xl border border-[var(--community-border)] bg-white hover:bg-gray-50 py-3 text-xs md:text-sm font-bold text-[#123027] transition"
+              className="flex items-center justify-center gap-2 rounded-xl border border-[var(--community-border)] bg-white hover:bg-gray-50 py-3 text-xs md:text-sm font-bold text-slate-900 transition"
             >
-              <span className="material-symbols-outlined text-[18px]">share</span>
+              <Icon name="share" className="h-[18px] w-[18px] shrink-0" />
               {shareSuccess ? tr("Tautan disalin", "Link copied") : tr("Bagikan ke keluarga", "Share with family")}
             </button>
           </div>

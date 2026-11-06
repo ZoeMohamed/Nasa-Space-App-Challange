@@ -12,6 +12,7 @@ import {
   TONE_CLASSES,
   type Fact,
 } from "../facts";
+import Icon from "@/components/community/Icon";
 
 function RefMarks({ refs }: { refs: number[] }) {
   return (
@@ -31,10 +32,10 @@ function FactCard({ fact }: { fact: Fact }) {
   return (
     <article className="rounded-2xl border border-[var(--community-border)] bg-white p-4 md:p-5 space-y-2">
       <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${TONE_CLASSES[fact.tone]}`}>
-        <span className="material-symbols-outlined text-[20px]">{fact.icon}</span>
+        <Icon name={fact.icon} className="h-[20px] w-[20px] shrink-0" />
       </span>
-      <p className="text-xl md:text-2xl font-extrabold text-[#123027] leading-tight">{text.value}</p>
-      <h3 className="text-sm font-bold text-[#123027]">{text.title}</h3>
+      <p className="text-xl md:text-2xl font-extrabold text-slate-900 leading-tight">{text.value}</p>
+      <h3 className="text-sm font-bold text-slate-900">{text.title}</h3>
       <p className="text-xs md:text-[13px] text-[var(--community-ink-muted)] leading-relaxed">
         {text.body} <RefMarks refs={fact.refs} />
       </p>
@@ -48,10 +49,10 @@ export default function FaktaPage() {
     <div className="space-y-7 max-w-4xl mx-auto">
       <div>
         <Link href="/community/edukasi" className="inline-flex items-center gap-1 text-xs font-bold text-[var(--community-accent)]">
-          <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+          <Icon name="arrow_back" className="h-[16px] w-[16px] shrink-0" />
           {tr("Edukasi", "Learn")}
         </Link>
-        <h1 className="text-xl md:text-2xl font-extrabold text-[#123027] mt-2">
+        <h1 className="text-xl md:text-2xl font-semibold text-slate-900 mt-2">
           {tr("Fakta & Data Karhutla", "Forest & Land Fire Facts")}
         </h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-1 leading-relaxed">
@@ -63,7 +64,7 @@ export default function FaktaPage() {
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-bold text-[#123027]">{tr("Dampak & penyebab", "Impact & causes")}</h2>
+        <h2 className="text-sm font-bold text-slate-900">{tr("Dampak & penyebab", "Impact & causes")}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[...HIGHLIGHT_FACTS, ...MORE_FACTS].map((fact) => (
             <FactCard key={fact.title} fact={fact} />
@@ -73,7 +74,7 @@ export default function FaktaPage() {
 
       <section className="rounded-2xl border border-[var(--community-border)] bg-white p-4 md:p-5 space-y-3">
         <div>
-          <h2 className="text-sm font-bold text-[#123027]">
+          <h2 className="text-sm font-bold text-slate-900">
             {tr("Membaca ISPU (Indeks Standar Pencemar Udara)", "Reading ISPU (Indonesia's Air Pollutant Standard Index)")}{" "}
             <RefMarks refs={[7]} />
           </h2>
@@ -88,8 +89,8 @@ export default function FaktaPage() {
           {ISPU_CATEGORIES.map((cat) => (
             <li key={cat.label} className="flex items-center gap-3 py-2.5">
               <span className={`h-3 w-3 shrink-0 rounded-full ${cat.color}`} />
-              <span className="w-16 shrink-0 text-xs font-bold text-[#123027] tabular-nums">{cat.range}</span>
-              <span className="w-32 shrink-0 text-xs font-semibold text-[#123027]">{tr(cat.label, cat.labelEn)}</span>
+              <span className="w-16 shrink-0 text-xs font-bold text-slate-900 tabular-nums">{cat.range}</span>
+              <span className="w-32 shrink-0 text-xs font-semibold text-slate-900">{tr(cat.label, cat.labelEn)}</span>
               <span className="text-xs text-[var(--community-ink-muted)]">{tr(cat.meaning, cat.meaningEn)}</span>
             </li>
           ))}
@@ -117,12 +118,12 @@ export default function FaktaPage() {
         </ul>
         <Link href="/community/edukasi/asap" className="inline-flex items-center gap-1 pt-1 text-xs font-bold text-sky-800 hover:underline">
           {tr("Panduan melindungi keluarga dari asap", "Guide to protecting your family from smoke")}
-          <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+          <Icon name="arrow_forward" className="h-[16px] w-[16px] shrink-0" />
         </Link>
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-bold text-[#123027]">{tr("Daftar Pustaka", "References")}</h2>
+        <h2 className="text-sm font-bold text-slate-900">{tr("Daftar Pustaka", "References")}</h2>
         <ol className="space-y-3">
           {REFERENCES.map((ref) => {
             const text = referenceText(ref, language);
@@ -130,7 +131,7 @@ export default function FaktaPage() {
             <li key={ref.id} id={`ref-${ref.id}`} className="flex gap-3 scroll-mt-24 text-xs leading-relaxed">
               <span className="w-6 shrink-0 font-bold text-[var(--community-accent)]">[{ref.id}]</span>
               <div className="min-w-0">
-                <p className="text-[#123027]">{text.citation}</p>
+                <p className="text-slate-900">{text.citation}</p>
                 <a href={ref.url} target="_blank" rel="noopener noreferrer" className="break-all text-[var(--community-accent)] hover:underline">
                   {ref.url}
                 </a>

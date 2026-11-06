@@ -67,6 +67,10 @@ export interface HotspotMarker {
   highConfidence?: boolean;
   /** NASA FIRMS class: MODIS 0–29 / 30–79 / 80–100 %, VIIRS l / n / h (h = saturated pixels only). */
   confidenceTier?: "low" | "nominal" | "high";
+  /** FIRMS brightness temperature in kelvin (MODIS `brightness`, VIIRS `bright_ti4`); null when not provided. */
+  brightnessK?: number | null;
+  /** FIRMS `daynight`: "D" day pass, "N" night pass; null when not provided. */
+  dayNight?: "D" | "N" | null;
 }
 
 export interface HotspotSourceSummary {

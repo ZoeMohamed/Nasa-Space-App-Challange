@@ -13,6 +13,7 @@ import {
   REPORT_STATUS_TONE,
   REPORT_STATUS_TONE_CLASSES,
 } from "../../lib/reportStatus";
+import Icon from "@/components/community/Icon";
 
 function formatClock(iso: string | null | undefined, language: Language): string | null {
   if (!iso) return null;
@@ -111,9 +112,9 @@ export default function ReportStatusPage() {
       <div className="flex items-center justify-between">
         <Link
           href="/community/saya"
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-[#123027] hover:text-[var(--community-accent)] transition"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-900 hover:text-[var(--community-accent)] transition"
         >
-          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          <Icon name="arrow_back" className="h-[18px] w-[18px] shrink-0" />
           <span>{tr("Laporan saya", "My reports")}</span>
         </Link>
       </div>
@@ -126,8 +127,8 @@ export default function ReportStatusPage() {
 
       {(state === "missing" || state === "error") && (
         <div className="rounded-2xl border border-dashed border-[var(--community-border)] bg-white p-6 text-center space-y-3">
-          <span className="material-symbols-outlined text-[32px] text-[var(--community-ink-muted)]">search_off</span>
-          <p className="text-sm font-semibold text-[#123027]">
+          <Icon name="search_off" className="h-[32px] w-[32px] text-[var(--community-ink-muted)] shrink-0" />
+          <p className="text-sm font-semibold text-slate-900">
             {state === "missing"
               ? tr("Laporan ini tidak ditemukan.", "This report was not found.")
               : tr("Status laporan sedang tidak bisa dimuat.", "The report status can't be loaded right now.")}
@@ -153,7 +154,7 @@ export default function ReportStatusPage() {
                 {reportStatusLabel(report.status, language)}
               </span>
             </div>
-            <h1 className="text-sm font-bold text-[#123027]">{report.description}</h1>
+            <h1 className="text-sm font-bold text-slate-900">{report.description}</h1>
             <p className="text-[11px] text-[var(--community-ink-muted)]">{place}</p>
             <p className="text-[11px] text-[var(--community-ink-muted)]">
               {tr("Dilihat", "Observed")}: {formatClock(report.observedAt, language) ?? "-"}
@@ -184,7 +185,7 @@ export default function ReportStatusPage() {
                   </span>
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-bold text-[#123027]">{step.title}</span>
+                      <span className="text-sm font-bold text-slate-900">{step.title}</span>
                       {step.time && <span className="text-[11px] text-[var(--community-ink-muted)]">{step.time}</span>}
                     </div>
                     <p className="text-xs text-[var(--community-ink-muted)] mt-0.5 leading-relaxed">{step.body}</p>
@@ -193,7 +194,7 @@ export default function ReportStatusPage() {
               ))}
             </ol>
             {report.reviewNote && (
-              <div className="rounded-xl bg-gray-50 border border-gray-200 p-3 text-xs text-[#123027]">
+              <div className="rounded-xl bg-gray-50 border border-gray-200 p-3 text-xs text-slate-900">
                 <span className="block text-[10px] font-bold uppercase tracking-wide text-[var(--community-ink-muted)] mb-0.5">
                   {tr("Catatan petugas", "Officer note")}
                 </span>

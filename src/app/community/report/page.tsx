@@ -11,6 +11,7 @@ import { useRegion } from "@/lib/useRegion";
 import { formatAdminFull } from "@/lib/adminRegion";
 import type { ReportCreateResponse } from "@/types";
 import { useTranslation, type Language } from "@/lib/i18n/LanguageContext";
+import Icon from "@/components/community/Icon";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/gif"];
@@ -102,7 +103,7 @@ function SubmittedView({ report }: { report: ReportCreateResponse }) {
 
   return (
     <div className="max-w-2xl mx-auto space-y-5 animate-fadeIn">
-      <div className="rounded-3xl bg-gradient-to-br from-[#0c2e22] to-[#12382c] text-white p-5 md:p-6 space-y-1.5">
+      <div className="rounded-3xl bg-gradient-to-br from-[#0d2f3a] to-[#12382c] text-white p-5 md:p-6 space-y-1.5">
         <div className="flex items-center gap-2">
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-[14px] font-bold">✓</span>
           <span className="text-sm md:text-base font-bold">{tr("Terima kasih, laporan terkirim!", "Thank you, your report was sent!")}</span>
@@ -117,7 +118,7 @@ function SubmittedView({ report }: { report: ReportCreateResponse }) {
 
       <div className="rounded-2xl border border-[var(--community-border)] bg-white p-4">
         <p className="text-[11px] text-[var(--community-ink-muted)]">{tr("ID laporan", "Report ID")} {report.id.slice(0, 8).toUpperCase()}</p>
-        <h2 className="text-sm font-bold text-[#123027] mt-0.5">{report.description}</h2>
+        <h2 className="text-sm font-bold text-slate-900 mt-0.5">{report.description}</h2>
         <p className="text-[11px] text-[var(--community-ink-muted)] mt-1">{place}</p>
       </div>
 
@@ -135,7 +136,7 @@ function SubmittedView({ report }: { report: ReportCreateResponse }) {
               </span>
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-bold text-[#123027]">{step.title}</span>
+                  <span className="text-sm font-bold text-slate-900">{step.title}</span>
                   {step.time && <span className="text-[11px] text-[var(--community-ink-muted)]">{step.time}</span>}
                 </div>
                 <p className="text-xs text-[var(--community-ink-muted)] mt-0.5 leading-relaxed">{step.body}</p>
@@ -148,12 +149,12 @@ function SubmittedView({ report }: { report: ReportCreateResponse }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Link
           href={`/community/reports/${report.id}`}
-          className="block text-center rounded-xl border border-[var(--community-border)] bg-white py-3 text-sm font-bold text-[#123027]"
+          className="block text-center rounded-xl border border-[var(--community-border)] bg-white py-3 text-sm font-bold text-slate-900"
         >
           {tr("Lihat detail laporan", "View report details")}
         </Link>
-        <Link href="/community" className="block text-center rounded-xl bg-[#0c2e22] text-white py-3 text-sm font-bold">
-          {tr("Kembali ke Beranda", "Back to Home")}
+        <Link href="/community" className="block text-center rounded-xl bg-[#0d2f3a] text-white py-3 text-sm font-bold">
+          {tr("Kembali ke Peta", "Back to Map")}
         </Link>
       </div>
     </div>
@@ -253,13 +254,13 @@ function ReportPageContent() {
       <div className="flex items-center gap-3 pb-4 md:pb-6">
         <Link
           href="/community"
-          className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/5 text-[#123027] transition"
+          className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/5 text-slate-900 transition"
           aria-label={tr("Tutup", "Close")}
         >
-          <span className="material-symbols-outlined text-[20px]">close</span>
+          <Icon name="close" className="h-[20px] w-[20px] shrink-0" />
         </Link>
         <div>
-          <h1 className="text-base md:text-xl font-black text-[#123027]">{tr("Lapor kebakaran", "Report a fire")}</h1>
+          <h1 className="text-base md:text-xl font-semibold text-slate-900">{tr("Lapor kebakaran", "Report a fire")}</h1>
           <p className="text-[11px] md:text-xs text-[var(--community-ink-muted)]">
             {tr("Isi yang kamu tahu saja. Lokasi wajib, sisanya opsional.", "Fill in only what you know. Location is required, the rest is optional.")}
           </p>
@@ -275,9 +276,9 @@ function ReportPageContent() {
         role={selectedCategory === "api" ? "alert" : undefined}
       >
         <div className="flex items-start gap-3 min-w-0">
-          <span className="material-symbols-outlined text-[22px] text-red-600 shrink-0" aria-hidden="true">emergency</span>
+          <Icon name="emergency" className="h-[22px] w-[22px] text-red-600 shrink-0 shrink-0" />
           <div className="min-w-0">
-            <p className="text-xs md:text-sm font-bold text-[#123027]">
+            <p className="text-xs md:text-sm font-bold text-slate-900">
               {selectedCategory === "api"
                 ? tr("Api terlihat dekat permukiman? Telepon 112 dulu.", "Fire visible near homes? Call 112 first.")
                 : tr("Darurat? Telepon 112 atau damkar setempat.", "Emergency? Call 112 or your local fire brigade.")}
@@ -294,7 +295,7 @@ function ReportPageContent() {
           href="tel:112"
           className="shrink-0 inline-flex items-center gap-1 rounded-xl bg-red-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-red-700"
         >
-          <span className="material-symbols-outlined text-[16px]" aria-hidden="true">call</span>
+          <Icon name="call" className="h-[16px] w-[16px] shrink-0" />
           112
         </a>
       </div>
@@ -303,7 +304,7 @@ function ReportPageContent() {
         {/* Left: what happened */}
         <div className="space-y-5">
           <fieldset className="space-y-2">
-            <legend className="text-xs font-bold text-[#123027] mb-2">{tr("Apa yang kamu lihat?", "What did you see?")}</legend>
+            <legend className="text-xs font-bold text-slate-900 mb-2">{tr("Apa yang kamu lihat?", "What did you see?")}</legend>
             <div className="grid grid-cols-2 gap-2">
               {REPORT_CATEGORIES.map((cat) => {
                 const selected = selectedCategory === cat.id;
@@ -315,11 +316,11 @@ function ReportPageContent() {
                     aria-pressed={selected}
                     className={`flex items-center gap-2 px-3.5 py-3 rounded-xl text-xs md:text-sm font-bold transition ${
                       selected
-                        ? "bg-[#075640] text-white"
-                        : "bg-white border border-[var(--community-border)] text-[#123027] hover:bg-gray-50"
+                        ? "bg-[#065f46] text-white"
+                        : "bg-white border border-[var(--community-border)] text-slate-900 hover:bg-gray-50"
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[18px]" aria-hidden="true">{cat.icon}</span>
+                    <Icon name={cat.icon} className="h-[18px] w-[18px] shrink-0" />
                     {tr(cat.label[0], cat.label[1])}
                   </button>
                 );
@@ -328,7 +329,7 @@ function ReportPageContent() {
           </fieldset>
 
           <div className="space-y-2">
-            <span className="text-xs font-bold text-[#123027]">{tr("Foto bukti (opsional, 1 foto)", "Photo evidence (optional, 1 photo)")}</span>
+            <span className="text-xs font-bold text-slate-900">{tr("Foto bukti (opsional, 1 foto)", "Photo evidence (optional, 1 photo)")}</span>
             {photo ? (
               <div className="relative overflow-hidden rounded-2xl border border-gray-200">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -338,13 +339,13 @@ function ReportPageContent() {
                   onClick={() => setPhoto(null)}
                   className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-600"
                 >
-                  <span className="material-symbols-outlined text-[14px]">close</span>
+                  <Icon name="close" className="h-[14px] w-[14px] shrink-0" />
                   {tr("Hapus", "Remove")}
                 </button>
               </div>
             ) : (
               <label className="flex h-32 md:h-44 cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 text-[var(--community-accent)] hover:bg-emerald-50 transition">
-                <span className="material-symbols-outlined text-[28px]">add_a_photo</span>
+                <Icon name="add_a_photo" className="h-[28px] w-[28px] shrink-0" />
                 <span className="text-xs font-bold">{tr("Tambah foto", "Add photo")}</span>
                 <span className="text-[11px] text-[var(--community-ink-muted)]">{tr("JPEG / PNG / GIF, maks. 5 MB", "JPEG / PNG / GIF, max 5 MB")}</span>
                 <input type="file" accept="image/jpeg,image/png,image/gif" onChange={handlePhotoAdd} className="sr-only" />
@@ -355,7 +356,7 @@ function ReportPageContent() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#123027]" htmlFor="keterangan">
+            <label className="text-xs font-bold text-slate-900" htmlFor="keterangan">
               {tr("Keterangan (opsional)", "Details (optional)")}
             </label>
             <textarea
@@ -367,7 +368,7 @@ function ReportPageContent() {
                 "e.g. thick white smoke from the peatland behind the garden, since about 9 am."
               )}
               rows={4}
-              className="w-full rounded-2xl border border-[var(--community-border)] bg-white p-3 text-sm text-[#123027] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              className="w-full rounded-2xl border border-[var(--community-border)] bg-white p-3 text-sm text-slate-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
             />
           </div>
         </div>
@@ -375,7 +376,7 @@ function ReportPageContent() {
         {/* Right: where + send (sticky on desktop) */}
         <div className="space-y-5 md:sticky md:top-24">
           <div className="space-y-2">
-            <span className="text-xs font-bold text-[#123027]">{tr("Lokasi kejadian", "Incident location")}</span>
+            <span className="text-xs font-bold text-slate-900">{tr("Lokasi kejadian", "Incident location")}</span>
             <div
               className={`rounded-2xl border bg-white p-3.5 flex items-center justify-between gap-3 ${
                 fix ? "border-[var(--community-border)]" : "border-amber-300 bg-amber-50/50"
@@ -383,10 +384,10 @@ function ReportPageContent() {
             >
               <div className="flex items-center gap-3 min-w-0">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
-                  <span className="material-symbols-outlined text-[20px]">location_on</span>
+                  <Icon name="location_on" className="h-[20px] w-[20px] shrink-0" />
                 </span>
                 <div className="min-w-0">
-                  <div className="text-xs font-bold text-[#123027] truncate">
+                  <div className="text-xs font-bold text-slate-900 truncate">
                     {fix ? (fix.label ?? fixRegionLabel ?? `${fix.lat.toFixed(4)}, ${fix.lon.toFixed(4)}`) : tr("Lokasi belum diatur", "Location not set")}
                   </div>
                   <div className="text-[11px] text-[var(--community-ink-muted)] truncate mt-0.5">
@@ -414,7 +415,7 @@ function ReportPageContent() {
           </div>
 
           <fieldset className="space-y-2">
-            <legend className="text-xs font-bold text-[#123027] mb-2">{tr("Perkiraan jarak dari kamu", "Approximate distance from you")}</legend>
+            <legend className="text-xs font-bold text-slate-900 mb-2">{tr("Perkiraan jarak dari kamu", "Approximate distance from you")}</legend>
             <div className="grid grid-cols-3 gap-2">
               {DISTANCE_OPTIONS.map((dist) => {
                 const selected = distanceEstimate === dist;
@@ -426,8 +427,8 @@ function ReportPageContent() {
                     aria-pressed={selected}
                     className={`py-2.5 rounded-xl text-xs font-bold transition ${
                       selected
-                        ? "bg-[#075640] text-white"
-                        : "bg-white border border-[var(--community-border)] text-[#123027] hover:bg-gray-50"
+                        ? "bg-[#065f46] text-white"
+                        : "bg-white border border-[var(--community-border)] text-slate-900 hover:bg-gray-50"
                     }`}
                   >
                     {dist}
@@ -438,7 +439,7 @@ function ReportPageContent() {
           </fieldset>
 
           <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3.5 flex items-start gap-3">
-            <span className="material-symbols-outlined text-[20px] text-[var(--community-accent)] shrink-0 mt-0.5">verified_user</span>
+            <Icon name="verified_user" className="h-[20px] w-[20px] text-[var(--community-accent)] shrink-0 mt-0.5 shrink-0" />
             <p className="text-[11px] text-emerald-950 leading-relaxed">
               {tr(
                 "Tanpa nama atau nomor HP. Laporan dicocokkan dengan data satelit, lalu dicek petugas.",
@@ -456,9 +457,9 @@ function ReportPageContent() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#ba1a1a] hover:bg-[#a01616] py-3.5 text-sm font-bold text-white transition active:scale-[0.99] disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#c81e1e] hover:bg-[#b01a1a] py-3.5 text-sm font-bold text-white transition active:scale-[0.99] disabled:opacity-50"
           >
-            <span className="material-symbols-outlined text-[18px]">send</span>
+            <Icon name="send" className="h-[18px] w-[18px] shrink-0" />
             {submitting ? tr("Mengirim laporan…", "Sending report…") : tr("Kirim Laporan", "Send Report")}
           </button>
         </div>

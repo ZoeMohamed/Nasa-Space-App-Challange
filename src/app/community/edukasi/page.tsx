@@ -12,6 +12,7 @@ import {
   LocalHelpEntryIllustration,
 } from "@/components/community/illustrations";
 import { useTranslation } from "@/lib/i18n/LanguageContext";
+import Icon from "@/components/community/Icon";
 
 /**
  * Rebuilt Edukasi hub ("Siap Sebelum Asap Datang"). Replaces the old
@@ -72,7 +73,7 @@ export default function EdukasiPage() {
   return (
     <div className="space-y-6">
       <section>
-        <h1 className="text-lg font-extrabold text-[#123027]">{tr("Siap Sebelum Asap Datang", "Ready Before the Smoke Arrives")}</h1>
+        <h1 className="text-lg font-semibold text-slate-900">{tr("Siap Sebelum Asap Datang", "Ready Before the Smoke Arrives")}</h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-1 leading-relaxed">
           {tr(
             "Kesiapan kecil hari ini membuat keluarga Anda lebih tenang saat musim kabut asap tiba. Pilih salah satu di bawah untuk mulai. Semua progres tersimpan otomatis di perangkat ini.",
@@ -84,7 +85,7 @@ export default function EdukasiPage() {
       {/* Emergency safety notice banner */}
       <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 flex items-start gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-600 text-white">
-          <span className="material-symbols-outlined text-[18px]">emergency</span>
+          <Icon name="emergency" className="h-[18px] w-[18px] shrink-0" />
         </span>
         <p className="text-[11px] text-rose-900 leading-relaxed">
           {tr(
@@ -102,7 +103,7 @@ export default function EdukasiPage() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold text-[var(--community-ink-muted)]">{tr("Progres checklist siaga", "Preparedness checklist progress")}</p>
-            <p className="text-sm font-bold text-[#123027] mt-0.5">
+            <p className="text-sm font-bold text-slate-900 mt-0.5">
               {checked === null
                 ? tr("Memuat…", "Loading…")
                 : tr(`${doneCount} dari ${TOTAL_CHECKLIST_ITEMS} selesai`, `${doneCount} of ${TOTAL_CHECKLIST_ITEMS} done`)}
@@ -121,7 +122,7 @@ export default function EdukasiPage() {
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <h2 className="text-sm font-bold text-[#123027]">{tr("Fakta karhutla yang perlu kamu tahu", "Fire facts you should know")}</h2>
+            <h2 className="text-sm font-bold text-slate-900">{tr("Fakta karhutla yang perlu kamu tahu", "Fire facts you should know")}</h2>
             <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5">
               {tr("Dari World Bank, jurnal ilmiah, BNPB, dan CDC.", "From the World Bank, scientific journals, BNPB, and the CDC.")}
             </p>
@@ -140,10 +141,10 @@ export default function EdukasiPage() {
               className="rounded-2xl border border-[var(--community-border)] bg-white p-4 space-y-1.5 hover:border-emerald-300 transition"
             >
               <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${TONE_CLASSES[fact.tone]}`}>
-                <span className="material-symbols-outlined text-[18px]">{fact.icon}</span>
+                <Icon name={fact.icon} className="h-[18px] w-[18px] shrink-0" />
               </span>
-              <p className="text-lg font-extrabold text-[#123027] leading-tight">{text.value}</p>
-              <p className="text-xs font-semibold text-[#123027]">{text.title}</p>
+              <p className="text-lg font-extrabold text-slate-900 leading-tight">{text.value}</p>
+              <p className="text-xs font-semibold text-slate-900">{text.title}</p>
               <p className="text-[11px] text-[var(--community-ink-muted)]">
                 {tr("Sumber", "Source")} [{fact.refs.join(", ")}]
               </p>
@@ -167,7 +168,7 @@ export default function EdukasiPage() {
                 <Icon className="h-8 w-8" />
               </span>
               <div>
-                <h2 className="text-sm font-bold text-[#123027]">{tr(...card.title)}</h2>
+                <h2 className="text-sm font-bold text-slate-900">{tr(...card.title)}</h2>
                 <p className="text-[11px] text-[var(--community-ink-muted)] mt-0.5 leading-relaxed">
                   {tr(...card.subtitle)}
                 </p>

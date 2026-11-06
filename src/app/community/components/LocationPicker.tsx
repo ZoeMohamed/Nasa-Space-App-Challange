@@ -5,6 +5,7 @@ import type { LocationState } from "../lib/useLocation";
 import { useRegion } from "@/lib/useRegion";
 import { formatAdminFull } from "@/lib/adminRegion";
 import { useTranslation } from "@/lib/i18n/LanguageContext";
+import Icon from "@/components/community/Icon";
 
 interface PlaceHit {
   level: "kecamatan" | "kabupatenKota";
@@ -105,9 +106,7 @@ export default function LocationPicker({ location, onDone }: { location: Locatio
       {fix && (
         <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-sm text-emerald-900">
           <div className="flex items-center gap-1.5 font-semibold">
-            <span className="material-symbols-outlined text-[18px]">
-              {fix.source === "gps" ? "my_location" : "location_on"}
-            </span>
+            <Icon name={fix.source === "gps" ? "my_location" : "location_on"} className="h-[18px] w-[18px] shrink-0" />
             {fix.source === "gps" ? tr("Lokasi GPS aktif", "GPS location active") : tr("Lokasi dipilih manual", "Location picked manually")}
           </div>
           <div className="text-xs mt-1 font-medium">{fix.label ?? fixRegionLabel ?? `${fix.lat.toFixed(4)}, ${fix.lon.toFixed(4)}`}</div>
@@ -132,7 +131,7 @@ export default function LocationPicker({ location, onDone }: { location: Locatio
           disabled={geoStatus === "loading"}
           className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--community-accent)] py-2.5 text-sm font-semibold text-white shadow-sm active:scale-[0.99] transition disabled:opacity-60"
         >
-          <span className="material-symbols-outlined text-[18px]">my_location</span>
+          <Icon name="my_location" className="h-[18px] w-[18px] shrink-0" />
           {geoStatus === "loading"
             ? tr("Mendeteksi lokasi…", "Detecting location…")
             : fix?.source === "gps"
@@ -150,9 +149,7 @@ export default function LocationPicker({ location, onDone }: { location: Locatio
           {tr("Atau cari kecamatan / kota", "Or search a district / city")}
         </label>
         <div className="relative">
-          <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-gray-400">
-            search
-          </span>
+          <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-gray-400 shrink-0" />
           <input
             id={searchId}
             type="search"
@@ -186,9 +183,7 @@ export default function LocationPicker({ location, onDone }: { location: Locatio
                       onClick={() => pickPlace(hit)}
                       className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm hover:bg-emerald-50 transition"
                     >
-                      <span className="material-symbols-outlined text-[18px] text-[var(--community-accent)]">
-                        {hit.level === "kecamatan" ? "location_on" : "location_city"}
-                      </span>
+                      <Icon name={hit.level === "kecamatan" ? "location_on" : "location_city"} className="h-[18px] w-[18px] text-[var(--community-accent)] shrink-0" />
                       <span className="min-w-0 flex-1 truncate">{hit.label}</span>
                     </button>
                   </li>

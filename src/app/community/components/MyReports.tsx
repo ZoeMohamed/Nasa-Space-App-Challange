@@ -88,7 +88,7 @@ export default function MyReports() {
                   className="block rounded-2xl border border-[var(--community-border)] bg-white p-3.5 hover:border-emerald-300 transition shadow-xs"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-[#123027] truncate pr-2">{report.description}</span>
+                    <span className="text-xs font-bold text-slate-900 truncate pr-2">{report.description}</span>
                     <span
                       className={`shrink-0 inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase ${REPORT_STATUS_TONE_CLASSES[tone]}`}
                     >

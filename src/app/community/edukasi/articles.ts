@@ -68,9 +68,9 @@ export const EDU_ARTICLES: EduArticle[] = [
     slug: "status-aman-awas",
     title: "Arti status Aman → Awas",
     icon: "warning",
-    summary: "Bagaimana aplikasi ini menghitung ringkasan status di halaman Beranda.",
+    summary: "Bagaimana aplikasi ini menghitung ringkasan status di tab Sekitarku pada halaman Peta.",
     body: [
-      "Status Aman/Waspada/Siaga/Awas yang tampil di Beranda BUKAN status peringatan resmi dari BNPB atau BMKG. Ini adalah ringkasan sederhana yang dihitung langsung di perangkat Anda. Status yang tampil adalah tingkat TERTINGGI dari empat faktor di bawah, dan faktor penentunya selalu ditampilkan di bawah status.",
+      "Status Aman/Waspada/Siaga/Awas yang tampil di tab Sekitarku BUKAN status peringatan resmi dari BNPB atau BMKG. Ini adalah ringkasan sederhana yang dihitung langsung di perangkat Anda. Status yang tampil adalah tingkat TERTINGGI dari empat faktor di bawah, dan faktor penentunya selalu ditampilkan di bawah status.",
       "Titik panas satelit (24 jam terakhir): dalam radius 5 km = Siaga; 5–10 km = Waspada.",
       "Arah angin: ada titik panas dalam 25 km di arah datangnya angin = Waspada, karena asapnya bisa terbawa ke lokasi Anda.",
       "Kualitas udara (skala US AQI, perkiraan model Open-Meteo): 151–200 (Tidak sehat) = Waspada; 201–300 (Sangat tidak sehat) = Siaga; di atas 300 (Berbahaya) = Awas. Asap bisa sampai ke lokasi Anda walaupun apinya jauh.",
@@ -81,9 +81,9 @@ export const EDU_ARTICLES: EduArticle[] = [
     ],
     en: {
       title: "What Safe → Danger means",
-      summary: "How this app calculates the status summary on the Home page.",
+      summary: "How this app calculates the status summary in the Near me tab of the Map page.",
       body: [
-        "The Safe/Watch/Alert/Danger status (Aman/Waspada/Siaga/Awas) on the Home page is NOT an official BNPB or BMKG warning level. It is a simple summary calculated on your device. The status shown is the HIGHEST level reached by the four factors below, and the deciding factor is always shown under the status.",
+        "The Safe/Watch/Alert/Danger status (Aman/Waspada/Siaga/Awas) in the Near me tab is NOT an official BNPB or BMKG warning level. It is a simple summary calculated on your device. The status shown is the HIGHEST level reached by the four factors below, and the deciding factor is always shown under the status.",
         "Satellite hotspots (last 24 hours): within 5 km = Alert; 5–10 km = Watch.",
         "Wind direction: a hotspot within 25 km on the side the wind is coming from = Watch, because its smoke may drift to you.",
         "Air quality (US AQI scale, Open-Meteo model estimate): 151–200 (Unhealthy) = Watch; 201–300 (Very unhealthy) = Alert; above 300 (Hazardous) = Danger. Smoke can reach you even when the fire is far away.",

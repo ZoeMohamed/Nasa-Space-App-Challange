@@ -47,7 +47,7 @@ export default function SimulasiPage() {
       </Link>
 
       <section>
-        <h1 className="text-lg font-extrabold text-[#123027]">{tr("Simulasi Keadaan Darurat", "Emergency Drill")}</h1>
+        <h1 className="text-lg font-semibold text-slate-900">{tr("Simulasi Keadaan Darurat", "Emergency Drill")}</h1>
         <p className="text-sm text-[var(--community-ink-muted)] mt-1 leading-relaxed">
           {tr(
             "Pilih tindakan untuk setiap skenario, lalu lihat penjelasannya. Anda bisa mencoba ulang kapan saja. Tujuannya belajar, bukan menguji.",
@@ -57,7 +57,7 @@ export default function SimulasiPage() {
       </section>
 
       <div className="rounded-2xl border border-[var(--community-border)] bg-white p-4 flex items-center justify-between">
-        <p className="text-sm font-bold text-[#123027]">
+        <p className="text-sm font-bold text-slate-900">
           {progress === null
             ? tr("Memuat progres…", "Loading progress…")
             : tr(`${completedCount}/${SCENARIOS.length} skenario selesai`, `${completedCount}/${SCENARIOS.length} scenarios done`)}
@@ -96,7 +96,7 @@ export default function SimulasiPage() {
       {/* Active scenario */}
       <div className="rounded-2xl border border-[var(--community-border)] bg-white p-4 space-y-4">
         <div>
-          <h2 className="text-sm font-bold text-[#123027]">{activeScenario.title}</h2>
+          <h2 className="text-sm font-bold text-slate-900">{activeScenario.title}</h2>
           <p className="text-xs text-[var(--community-ink-muted)] mt-1 leading-relaxed">{activeScenario.prompt}</p>
         </div>
 
@@ -144,7 +144,7 @@ export default function SimulasiPage() {
 
         {/* Safety guidance is always visible, regardless of the chosen option */}
         <div className="rounded-xl border border-[var(--community-border)] bg-gray-50 p-3">
-          <p className="text-[11px] font-bold text-[#123027]">{tr("Tindakan yang disarankan", "Recommended action")}</p>
+          <p className="text-[11px] font-bold text-slate-900">{tr("Tindakan yang disarankan", "Recommended action")}</p>
           <p className="text-[11px] text-[var(--community-ink-muted)] mt-1 leading-relaxed">{activeScenario.safeAction}</p>
         </div>
       </div>

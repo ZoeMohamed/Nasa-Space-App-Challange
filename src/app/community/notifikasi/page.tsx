@@ -9,6 +9,7 @@ import { getOrCreateSubmitterToken } from "../lib/submitterToken";
 import { reportStatusLabel } from "../lib/reportStatus";
 import type { CommunityReport, HotspotApiResponse, HotspotMarker, ReportsListResponse } from "@/types";
 import { useTranslation, pick, type Language } from "@/lib/i18n/LanguageContext";
+import Icon from "@/components/community/Icon";
 
 const SEVERITY_RANK: Record<HotspotMarker["severity"], number> = { LOW: 0, MEDIUM: 1, HIGH: 2 };
 
@@ -129,7 +130,7 @@ export default function NotifikasiPage() {
       )}
       {state === "loaded" && items.length === 0 && (
         <div className="rounded-2xl border border-dashed border-[var(--community-border)] bg-white p-8 text-center space-y-2">
-          <span className="material-symbols-outlined text-[32px] text-emerald-700">notifications_none</span>
+          <Icon name="notifications_none" className="h-[32px] w-[32px] text-emerald-700 shrink-0" />
           <p className="text-sm text-[var(--community-ink-muted)]">
             {tr(`Tidak ada peringatan baru untuk ${regionLabel} saat ini.`, `No new alerts for ${regionLabel} right now.`)}
           </p>
@@ -149,12 +150,10 @@ export default function NotifikasiPage() {
                       item.kind === "report" ? "bg-sky-50 text-sky-700" : "bg-red-50 text-red-600"
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[20px]">
-                      {item.kind === "report" ? "assignment_turned_in" : "local_fire_department"}
-                    </span>
+                    <Icon name={item.kind === "report" ? "assignment_turned_in" : "local_fire_department"} className="h-[20px] w-[20px] shrink-0" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs md:text-sm font-bold text-[#123027] truncate">{item.title}</p>
+                    <p className="text-xs md:text-sm font-bold text-slate-900 truncate">{item.title}</p>
                     <p className="text-[11px] md:text-xs text-[var(--community-ink-muted)] truncate mt-0.5">{item.subtitle}</p>
                   </div>
                   <span className="text-[10px] md:text-[11px] text-[var(--community-ink-muted)] shrink-0 font-medium">{item.time}</span>
@@ -193,9 +192,7 @@ export default function NotifikasiPage() {
                   <span
                     className={`flex h-4 w-4 items-center justify-center rounded ${item.kind === "report" ? "bg-blue-600" : "bg-red-600"}`}
                   >
-                    <span className="material-symbols-outlined text-[11px]">
-                      {item.kind === "report" ? "assignment" : "local_fire_department"}
-                    </span>
+                    <Icon name={item.kind === "report" ? "assignment" : "local_fire_department"} className="h-[11px] w-[11px] shrink-0" />
                   </span>
                   AGNIBHŪMI
                 </span>
@@ -220,7 +217,7 @@ export default function NotifikasiPage() {
     <div className="max-w-xl md:max-w-5xl mx-auto space-y-5 animate-fadeIn">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-black text-[#123027]">{tr("Notifikasi", "Notifications")}</h1>
+          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">{tr("Notifikasi", "Notifications")}</h1>
           <p className="text-xs md:text-sm text-[var(--community-ink-muted)] mt-0.5">
             {tr("Peringatan deteksi satelit & perkembangan laporanmu.", "Satellite detection alerts & updates on your reports.")}
           </p>
@@ -239,7 +236,7 @@ export default function NotifikasiPage() {
           <button
             type="button"
             onClick={() => setActiveTab("feed")}
-            className={`flex-1 py-2 rounded-xl transition ${activeTab === "feed" ? "bg-white text-[#123027] shadow-xs" : "text-[var(--community-ink-muted)]"}`}
+            className={`flex-1 py-2 rounded-xl transition ${activeTab === "feed" ? "bg-white text-slate-900 shadow-xs" : "text-[var(--community-ink-muted)]"}`}
           >
             {tr("Pemberitahuan", "Alerts")} ({items.length})
           </button>
@@ -247,10 +244,10 @@ export default function NotifikasiPage() {
             type="button"
             onClick={() => setActiveTab("push_preview")}
             className={`flex-1 py-2 rounded-xl transition flex items-center justify-center gap-1.5 ${
-              activeTab === "push_preview" ? "bg-[#075640] text-white shadow-xs" : "text-[var(--community-ink-muted)]"
+              activeTab === "push_preview" ? "bg-[#065f46] text-white shadow-xs" : "text-[var(--community-ink-muted)]"
             }`}
           >
-            <span className="material-symbols-outlined text-[15px]">smartphone</span>
+            <Icon name="smartphone" className="h-[15px] w-[15px] shrink-0" />
             {tr("Pratinjau Layar Kunci", "Lock Screen Preview")}
           </button>
         </div>
@@ -260,24 +257,24 @@ export default function NotifikasiPage() {
       {/* Desktop: feed + side panel */}
       <div className="hidden md:grid md:grid-cols-[1fr_340px] md:gap-6 items-start">
         <section className="space-y-3">
-          <h2 className="text-sm font-bold text-[#123027]">{tr("Pemberitahuan", "Alerts")} ({items.length})</h2>
+          <h2 className="text-sm font-bold text-slate-900">{tr("Pemberitahuan", "Alerts")} ({items.length})</h2>
           {feed}
         </section>
         <aside className="space-y-4 sticky top-24">
           <div className="rounded-2xl border border-[var(--community-border)] bg-white p-4 space-y-3">
-            <h2 className="text-sm font-bold text-[#123027]">{tr("Filter aktif", "Active filters")}</h2>
+            <h2 className="text-sm font-bold text-slate-900">{tr("Filter aktif", "Active filters")}</h2>
             <dl className="space-y-2 text-xs">
               <div className="flex justify-between gap-3">
                 <dt className="text-[var(--community-ink-muted)]">{tr("Wilayah", "Area")}</dt>
-                <dd className="font-semibold text-[#123027] text-right">{regionLabel}</dd>
+                <dd className="font-semibold text-slate-900 text-right">{regionLabel}</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-[var(--community-ink-muted)]">{tr("Tingkat titik api", "Hotspot level")}</dt>
-                <dd className="font-semibold text-[#123027] text-right">{severityLabel}</dd>
+                <dd className="font-semibold text-slate-900 text-right">{severityLabel}</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-[var(--community-ink-muted)]">{tr("Update laporanku", "My report updates")}</dt>
-                <dd className="font-semibold text-[#123027] text-right">{prefs.notifyReportUpdates ? tr("Aktif", "On") : tr("Mati", "Off")}</dd>
+                <dd className="font-semibold text-slate-900 text-right">{prefs.notifyReportUpdates ? tr("Aktif", "On") : tr("Mati", "Off")}</dd>
               </div>
             </dl>
             <Link
@@ -288,7 +285,7 @@ export default function NotifikasiPage() {
             </Link>
           </div>
           <div className="space-y-2">
-            <h2 className="text-sm font-bold text-[#123027]">{tr("Pratinjau layar kunci HP", "Phone lock screen preview")}</h2>
+            <h2 className="text-sm font-bold text-slate-900">{tr("Pratinjau layar kunci HP", "Phone lock screen preview")}</h2>
             {lockScreen}
           </div>
         </aside>
