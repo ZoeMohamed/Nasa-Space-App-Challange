@@ -19,28 +19,27 @@ const FireMap = dynamic(() => import("@/components/map/FireMap"), { ssr: false }
  * proxied via src/app/api/reports/route.ts and src/app/api/reports/[id]/route.ts) instead of the
  * illustrative DEMO_REPORTS this page previously shipped with. Report submission and photo
  * capture happen on the separate public Community View (src/app/community/) — this screen is
- * the officer-facing review/validation surface: list real reports, drill into one, see which
- * live satellite detections it correlates with, and update its review status.
+ * the public verified-report surface: list reduced summaries, drill into one, and see which
+ * live satellite detections it correlates with without exposing reporter data.
  *
- * Dropped vs. the old demo version (intentionally, not an oversight):
+ * Dropped vs. the previous public version (intentionally, not an oversight):
  *   - the fake "AI pre-check" confidence percentages (e.g. "Indikasi api · 92%") — the real
  *     backend has no AI inference step over report photos, so showing a number here would be
  *     fabricated data dressed up as a real signal.
- *   - the fake reporter handles ("Warga #082") — the backend only stores an opaque
- *     `submitterToken`, which is what's shown instead.
- *   - the "Semua kategori" / "7 hari terakhir" filter chips — purely decorative in the demo;
+ *   - reporter handles and submission tokens — neither belongs in the public response.
+ *   - the "Semua kategori" / "7 hari terakhir" filter chips — they had no backing query;
  *     the real API only supports filtering by status (and submitterToken), so only real filters
  *     are offered now.
  *   - per-row "Satelit" / sensor column in the table — the list endpoint deliberately omits
  *     `satelliteLinks` (only the single-report detail fetch includes it), so that correlation is
  *     now shown in the detail panel once a report is selected, not guessed at in the table.
  *
- * Access: this demo surface is public. Route handlers attach the server-only Python bridge key,
- * while the browser never receives that credential. Review events use the generic
- * "Public Operator" audit identity.
+ * Access: this public surface is read-only by default. Route handlers attach the server-only Python bridge key,
+ * while the browser never receives that credential.
  */
 
 const STATUS_ORDER: ReportStatus[] = ["submitted", "under_review", "satellite_matched", "verified", "rejected"];
+const PUBLIC_REVIEW_ENABLED = process.env.NEXT_PUBLIC_REPORT_REVIEW_ENABLED === "true";
 
 const STATUS_LABEL: Record<ReportStatus, readonly [string, string]> = {
   submitted: ["Baru masuk", "New"],
@@ -58,7 +57,7 @@ const STATUS_STYLE: Record<ReportStatus, { bg: string; text: string; dot: string
   rejected: { bg: "bg-gray-100", text: "text-gray-600", dot: "#6b7280" },
 };
 
-const STATUS_FILTERS: ("all" | ReportStatus)[] = ["all", ...STATUS_ORDER];
+const STATUS_FILTERS: ("all" | ReportStatus)[] = ["all", "verified"];
 
 
 function formatDateTime(value: string | null | undefined, language: Language): string {
@@ -125,8 +124,8 @@ function PublicAccessBar() {
         <span className="material-symbols-outlined mt-0.5 shrink-0 text-[20px] text-amber-700">public</span>
         <p className="text-xs leading-relaxed text-amber-950">
           {tr(
-            "Mode demo publik aktif. Semua pengunjung dapat melihat dan meninjau laporan; perubahan dicatat sebagai Public Operator.",
-            "Public demo mode is active. Every visitor can view and review reports; changes are recorded as Public Operator."
+            "Akses publik hanya menampilkan ringkasan laporan terverifikasi dengan koordinat perkiraan. Token pelapor, foto, catatan tinjauan, dan teks bebas tidak dipublikasikan; pengiriman serta peninjauan laporan baru ditutup.",
+            "Public access shows only verified-report summaries with approximate coordinates. Reporter tokens, photos, review notes and free text are not published; new submissions and reviews are closed."
           )}
         </p>
       </div>
@@ -318,8 +317,8 @@ export default function CitizenReportsPage() {
             <h1 className="mt-1 text-3xl font-bold text-gray-900">{tr("Laporan Warga", "Citizen / Community Reports")}</h1>
             <p className="mt-1 max-w-3xl text-sm text-gray-500">
               {tr(
-                "Laporan warga melengkapi deteksi satelit. Petugas meninjau tiap laporan dan menentukan status validasi akhir.",
-                "Citizen reports complement satellite detections. Officers review each report and decide its final validation status."
+                "Ringkasan publik dari laporan yang sudah terverifikasi. Informasi sensitif tidak ditampilkan.",
+                "Public summaries of previously verified reports. Sensitive information is not displayed."
               )}
             </p>
           </div>
@@ -347,7 +346,7 @@ export default function CitizenReportsPage() {
 
         {/* Stat cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatTile label={tr("Total laporan", "Total reports")} value={listLoading ? "…" : total} caption={tr("Seluruh laporan warga", "All citizen reports")} />
+          <StatTile label={tr("Ringkasan publik", "Public summaries")} value={listLoading ? "…" : total} caption={tr("Hanya laporan terverifikasi", "Verified reports only")} />
           <StatTile
             label={tr("Perlu ditinjau", "Needs review")}
             value={<span className="text-[#b96016]">{listLoading ? "…" : needsReview}</span>}
@@ -367,7 +366,7 @@ export default function CitizenReportsPage() {
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder={tr("Cari ID, deskripsi, atau token pelapor…", "Search ID, description, or reporter token…")}
+              placeholder={tr("Cari ID atau wilayah…", "Search ID or area…")}
               className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-emerald-400/40"
             />
           </div>
@@ -401,8 +400,8 @@ export default function CitizenReportsPage() {
             <h2 className="text-lg font-bold text-gray-900">{tr("Sebaran laporan warga", "Where reports come from")}</h2>
             <p className="text-xs text-gray-500">
               {tr(
-                "Koordinat asli dari laporan warga, ditampilkan bersama deteksi satelit di sekitarnya.",
-                "Real coordinates from citizen reports, shown together with nearby satellite detections."
+                "Koordinat diperkirakan ke sekitar 1 km dan ditampilkan bersama deteksi satelit di sekitarnya.",
+                "Coordinates are rounded to roughly 1 km and shown with nearby satellite detections."
               )}
             </p>
 
@@ -451,26 +450,13 @@ export default function CitizenReportsPage() {
 
                 <div>
                   <p className="text-xs font-semibold text-gray-500">{detail.id}</p>
-                  <h3 className="text-sm leading-relaxed text-gray-900">{detail.description}</h3>
+                  <h3 className="text-sm leading-relaxed text-gray-900">{detail.description || tr("Laporan warga terverifikasi", "Verified citizen report")}</h3>
                   <p className="mt-1 text-xs text-gray-500">
-                    {formatAdminFull(detail.admin) ? `${formatAdminFull(detail.admin)} · ` : ""}{tr("Koordinat", "Coordinates")}: {detail.lat.toFixed(4)}, {detail.lon.toFixed(4)}
+                    {formatAdminFull(detail.admin) ? `${formatAdminFull(detail.admin)} · ` : ""}{tr("Koordinat perkiraan", "Approximate coordinates")}: {detail.lat.toFixed(2)}, {detail.lon.toFixed(2)}
                   </p>
                   <p className="text-xs text-gray-500">{tr("Dilaporkan", "Observed")}: {formatDateTime(detail.observedAt, language)}</p>
                   <p className="text-xs text-gray-500">{tr("Diterima sistem", "Received")}: {formatDateTime(detail.createdAt, language)}</p>
-                  <p className="text-xs text-gray-500">{tr("Token pelapor", "Reporter token")}: {detail.submitterToken}</p>
-                  {detail.photoFilename ? (
-                    <a
-                      href={`/api/reports/${detail.id}/photo`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-[#075640] underline"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">image</span>
-                      {tr("Ada foto terlampir. Lihat foto", "Photo attached. View photo")}
-                    </a>
-                  ) : (
-                    <p className="mt-2 text-xs text-gray-400">{tr("Tidak ada foto terlampir.", "No photo attached.")}</p>
-                  )}
+                  <p className="mt-2 text-xs text-gray-400">{tr("Foto dan identitas teknis pelapor tidak tersedia pada akses publik.", "Photos and reporter technical identifiers are not available through public access.")}</p>
                 </div>
 
                 <div className="border-t border-gray-100 pt-4">
@@ -510,7 +496,7 @@ export default function CitizenReportsPage() {
                   )}
                 </div>
 
-                <div className="border-t border-gray-100 pt-4">
+                {PUBLIC_REVIEW_ENABLED && <div className="border-t border-gray-100 pt-4">
                   <h4 className="text-sm font-semibold text-gray-900">{tr("Perbarui status", "Update status")}</h4>
                   <select
                     value={pendingStatus}
@@ -543,7 +529,7 @@ export default function CitizenReportsPage() {
                   {detail.reviewedAt && (
                     <p className="mt-2 text-xs text-gray-400">{tr("Terakhir ditinjau", "Last reviewed")}: {formatDateTime(detail.reviewedAt, language)}</p>
                   )}
-                </div>
+                </div>}
               </>
             )}
           </Card>
@@ -559,9 +545,9 @@ export default function CitizenReportsPage() {
               <thead className="bg-[#eef5f1] text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-5 py-3 font-semibold">{tr("ID / Waktu", "ID / Time")}</th>
-                  <th className="px-5 py-3 font-semibold">{tr("Deskripsi & lokasi", "Description & location")}</th>
+                  <th className="px-5 py-3 font-semibold">{tr("Ringkasan & lokasi", "Summary & location")}</th>
                   <th className="px-5 py-3 font-semibold">{tr("Foto", "Photo")}</th>
-                  <th className="px-5 py-3 font-semibold">{tr("Status petugas", "Officer status")}</th>
+                  <th className="px-5 py-3 font-semibold">{tr("Status verifikasi", "Verification status")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -585,10 +571,10 @@ export default function CitizenReportsPage() {
                         {report.id.slice(0, 8)} · {formatDateTime(report.createdAt, language)}
                       </td>
                       <td className="px-5 py-3">
-                        <div className="max-w-xs truncate font-medium text-gray-900">{report.description}</div>
+                        <div className="max-w-xs truncate font-medium text-gray-900">{report.description || tr("Laporan warga terverifikasi", "Verified citizen report")}</div>
                         <div className="text-gray-500">{placeLabel(report.admin, report.lat, report.lon)}</div>
                       </td>
-                      <td className="px-5 py-3 text-gray-700">{report.photoFilename ? tr("Ada", "Yes") : tr("Tidak ada", "No")}</td>
+                      <td className="px-5 py-3 text-gray-500">{tr("Privat", "Private")}</td>
                       <td className="px-5 py-3">
                         <StatusPill status={report.status} />
                       </td>

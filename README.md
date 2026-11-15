@@ -29,7 +29,7 @@ Ada dua tampilan, keduanya memakai backend yang sama:
 - **Skor prioritas itu formula, bukan AI.** Bobotnya kami pilih sendiri dan belum pernah diuji bersama instansi pemadam. Gunanya untuk mengurutkan mana yang dicek duluan, bukan untuk mengukur bahaya.
 - **Kami tidak menghitung risiko kebakaran.** Untuk itu dibutuhkan data bahan bakar, kelembapan tanah, dan lain-lain yang tidak kami punya.
 - **Semua angka penting dihitung di backend Python** (`python-service/fire_pipeline/`). Frontend hanya menampilkan.
-- **Data contoh selalu diberi label "Contoh".** Data contoh hanya muncul kalau data asli gagal dimuat, dan tidak pernah dicampur diam-diam dengan data asli.
+- **Angka pada jalur produksi selalu berasal dari sumber nyata yang tercatat.** Jika NASA FIRMS atau arsip lokal tidak tersedia, halaman menampilkan keadaan kosong beserta penyebabnya.
 
 ## Fitur
 
@@ -43,7 +43,7 @@ Kode: `matching.py`, `harmonize_events.py`, `live.py`.
 
 ### 2. Kalender aktivitas kebakaran
 
-Kalender (`/calendar`) adalah inti tantangannya, jadi ia menjadi menu pertama di sidebar. Datanya berasal dari arsip FIRMS 2000–2026 yang sudah dipadatkan menjadi 1.069.505 baris, ditambah data live sampai kemarin. Satu baris berisi jumlah kejadian pada satu tanggal di satu sel grid 0,25°. Isi halaman ini:
+Kalender (`/calendar`) adalah inti tantangannya, jadi ia menjadi menu pertama di sidebar. Datanya dibangun dari 6.355.534 observasi mentah dalam file tahunan resmi NASA FIRMS Indonesia (MODIS 2000–2025, VIIRS S-NPP 2012–2025, dan VIIRS NOAA-20 2018–2025), lalu dilanjutkan dengan SP/NRT 2026 dari Area API produksi. Store final berisi 1.108.570 baris MODIS+S-NPP dan 844.326 baris MODIS+NOAA-20 untuk rentang 1 November 2000–15 November 2026. Satu baris hasil agregasi berisi jumlah kejadian pada satu tanggal di satu sel grid 0,25°. Isi halaman ini:
 - heatmap bulan × tahun;
 - ringkasan per tahun;
 - beberapa insight yang dihitung langsung dari arsip, dan setiap angkanya bisa diklik untuk melihat data mentahnya.
@@ -78,21 +78,15 @@ Ada juga kotak "area dengan aktivitas tidak biasa". Kotak ini menandai sel yang 
 
 ### 4. Laporan warga
 
-Warga bisa melapor lewat `/community/report`: lokasi (cari nama kecamatan atau pakai GPS), jenis kejadian, dan satu foto. Laporan tersimpan di `reports.sqlite`. Sistem otomatis mencari deteksi satelit dalam radius 5 km dan 24 jam dari laporan itu.
+Pelaporan warga nyata dinonaktifkan pada konfigurasi akses publik ini. `/community/report` hanya menampilkan arahan ke 112/pemadam setempat, route Next.js menolak `POST /api/reports`, dan backend Python menerapkan penolakan yang sama sebagai lapisan kedua.
 
-Hasil pencocokan ini tidak mengubah status laporan. Keputusan manusia tetap dilakukan di `/citizen-reports`. Untuk demo, halaman ini dibuka tanpa login dan setiap perubahan dicatat sebagai `Public Operator`.
+Data lama hanya dapat muncul sebagai ringkasan publik setelah berstatus terverifikasi. Bentuk publik membulatkan koordinat ke sekitar 1 km serta menghapus token pelapor, foto, teks bebas, dan catatan review. Detail lengkap dan foto hanya dapat diambil dengan token browser yang membuat laporan. Data E2E lama ditandai `is_test` dan dikeluarkan dari seluruh query produksi.
 
-Form laporan menampilkan tombol telepon 112 di bagian atas. Dari wawancara, warga biasa menghubungi damkar atau perangkat desa lebih dulu, dan laporan di aplikasi ini ditinjau belakangan, jadi aplikasi ini bukan saluran darurat.
-
-Aturan akses laporan pada mode demo publik:
-- `/community` tetap memakai bentuk publik laporan terverifikasi: koordinat dibulatkan ±1 km, tanpa foto, catatan, atau token (`GET /api/reports/public`).
-- `/citizen-reports` sengaja membuka detail lengkap, foto, dan koordinat tanpa login untuk kebutuhan demo. Jangan gunakan mode ini dengan data pribadi nyata.
-- Setiap foto tetap dibuat ulang menjadi JPEG baru di backend sehingga metadata EXIF, termasuk lokasi GPS kamera, terbuang.
-- Satu browser atau satu IP maksimal 5 laporan per 10 menit (`REPORT_RATE_LIMIT`, `REPORT_RATE_WINDOW_S`).
+Pelaporan baru baru boleh diaktifkan setelah tersedia penyimpanan dan review berotorisasi. Aplikasi tetap bukan saluran darurat.
 
 ### 5. Operasi insiden
 
-`/incidents` mengisi alur operasional yang sebelumnya belum ada di FireWatch. Pada mode demo publik, siapa pun dapat membuka insiden dari deteksi satelit atau laporan warga, lalu menjalankan empat keputusan yang terpisah:
+`/incidents` mengisi alur operasional yang sebelumnya belum ada di FireWatch. Pada konfigurasi akses publik, pengunjung dapat membuka insiden dari deteksi satelit atau laporan warga, lalu menjalankan empat keputusan yang terpisah:
 - verifikasi manusia (`confirmed`, `not_confirmed`, atau perlu informasi);
 - prioritas manual (kritis/tinggi/sedang/rendah);
 - penugasan tim lapangan;
@@ -179,7 +173,7 @@ Supabase Postgres                     ─────────────►
 - **Frontend:** Next.js App Router, React, TypeScript, Tailwind, Leaflet.
 - **Backend:** Python 3.12, FastAPI, pandas, numpy, shapely.
 - **Penyimpanan:** SQLite untuk arsip dan laporan warga; Supabase Postgres untuk data operasional.
-- **Akses operasi:** mode demo publik tanpa login. Supabase RLS memberi `anon` akses baca dan RPC tervalidasi, sementara tulis langsung tetap ditolak.
+- **Akses operasi:** akses publik tanpa login. Supabase RLS memberi `anon` akses baca dan RPC tervalidasi, sementara tulis langsung tetap ditolak.
 - **Identitas pelapor:** token acak yang disimpan di browser, bukan akun.
 
 ## API
@@ -194,12 +188,12 @@ Supabase Postgres                     ─────────────►
 | `GET /api/historical/map` | Agregat grid arsip untuk peta |
 | `GET /api/region`, `GET /api/region/search` | Titik → kecamatan/kab-kota/provinsi, dan pencarian nama wilayah |
 | `GET /api/weather` | Angin dan kualitas udara untuk satu titik |
-| `POST /api/reports` | Kirim laporan warga (dibatasi per token dan per IP) |
-| `GET /api/reports/public` | Laporan terverifikasi saja, bentuk publik (tanpa token/foto/catatan, koordinat ±1 km) |
-| `GET /api/reports` | Semua laporan pada mode demo publik melalui bridge server-only |
-| `GET /api/reports/{id}` | Detail laporan lengkap pada mode demo publik |
-| `PATCH /api/reports/{id}` | Ubah status laporan tanpa login; audit `Public Operator` |
-| `GET /api/reports/{id}/photo` | Foto laporan pada mode demo publik |
+| `POST /api/reports` | Dinonaktifkan pada konfigurasi publik (`503`) |
+| `GET /api/reports/public` | Laporan terverifikasi saja, bentuk publik (tanpa token/foto/teks bebas/catatan, koordinat ±1 km) |
+| `GET /api/reports` | Bentuk publik tereduksi, atau laporan milik token browser yang sama |
+| `GET /api/reports/{id}` | Detail lengkap hanya untuk token browser pelapor; selain itu bentuk publik tereduksi |
+| `PATCH /api/reports/{id}` | Ubah status bila peninjauan publik secara eksplisit diaktifkan |
+| `GET /api/reports/{id}/photo` | Foto hanya untuk token browser pelapor |
 | `GET`, `POST /api/operations/incidents` | Antrean dan pembuatan insiden publik lewat Supabase RPC tervalidasi |
 | `GET`, `PATCH /api/operations/incidents/{id}` | Detail + timeline, serta verifikasi/prioritas/assignment/progres dengan optimistic locking |
 | `GET`, `POST /api/operations/teams` | Daftar dan pembuatan tim lapangan |
@@ -221,7 +215,7 @@ npm run supabase:reset
 npx supabase status -o env     # salin API_URL + PUBLISHABLE_KEY ke .env.local
 ```
 
-Tidak ada akun login yang diperlukan untuk menjalankan alur demo publik.
+Tidak ada akun login yang diperlukan untuk membaca alur akses publik.
 
 Lalu jalankan dua terminal:
 
@@ -235,20 +229,41 @@ npm run dev -- --hostname 127.0.0.1 --port 3000
 
 Buka http://127.0.0.1:3000.
 
-### Membangun ulang arsip (opsional)
+### Membangun ulang arsip produksi (opsional)
 
-Arsip dibangun dari CSV FIRMS Archive Download:
+Unduh file tahunan resmi NASA FIRMS Indonesia beserta ukuran dan SHA-256 dalam manifest provenance. Hanya manifest kecil yang masuk version control; CSV mentah tetap diabaikan:
+
+```bash
+python-service/.venv/bin/python python-service/scripts/fetch_firms_country_archive.py
+```
+
+Lanjutkan tahun berjalan dari Area API produksi. Skrip membaca rentang ketersediaan resmi, membatasi setiap permintaan maksimal lima hari, memotong hasil ke batas ADM0 Indonesia, dan tidak membuat data untuk tanggal yang tidak disediakan NASA:
+
+```bash
+set -a && source .env.local && set +a
+python-service/.venv/bin/python python-service/scripts/fetch_firms_api_archive.py \
+  --output-dir python-service/data/firms_api_current --start-date 2026-01-01
+```
+
+Bangun SQLite dari kedua sumber tersebut:
 
 ```bash
 python-service/.venv/bin/python python-service/scripts/build_historical_store.py \
-  --modis-archive fire_archive_M-C61_*.csv --modis-nrt fire_nrt_M-C61_*.csv \
-  --viirs-archive fire_archive_SV-C2_*.csv --viirs-nrt fire_nrt_SV-C2_*.csv \
+  --modis-archive python-service/data/firms_country_archive/MODIS_SP.csv \
+  --modis-archive python-service/data/firms_api_current/MODIS_SP.csv \
+  --modis-nrt python-service/data/firms_api_current/MODIS_NRT.csv \
+  --viirs-archive python-service/data/firms_country_archive/VIIRS_SNPP_SP.csv \
+  --viirs-archive python-service/data/firms_api_current/VIIRS_SNPP_SP.csv \
+  --viirs-nrt python-service/data/firms_api_current/VIIRS_SNPP_NRT.csv \
+  --viirs-noaa20-archive python-service/data/firms_country_archive/VIIRS_NOAA20_SP.csv \
+  --viirs-noaa20-archive python-service/data/firms_api_current/VIIRS_NOAA20_SP.csv \
+  --viirs-noaa20-nrt python-service/data/firms_api_current/VIIRS_NOAA20_NRT.csv \
   --out python-service/data/historical.sqlite
 ```
 
-Kalau arsip NOAA-20 (produk FIRMS `J1V-C2`) sudah diunduh, tambahkan `--viirs-noaa20-archive fire_archive_J1V-C2_*.csv` (dan `--viirs-noaa20-nrt`). Builder lalu membuat tabel kedua, `daily_area_activity_noaa20` (MODIS + NOAA-20). Setelah Suomi-NPP berhenti, Kalender otomatis memakai tabel itu sebagai acuan. Tanpa file itu, tabelnya tidak dibuat dan tidak diperkirakan dari apa pun.
+Builder membuat `daily_area_activity` (MODIS + S-NPP) dan `daily_area_activity_noaa20` (MODIS + NOAA-20). Tidak ada sensor, tanggal, atau baris yang diperkirakan untuk menutup kekosongan sumber.
 
-Arsip selalu dibangun dari nol, jadi menjalankannya dua kali tidak menghasilkan data dobel. Prosesnya ±7,5 menit dan butuh RAM ±7 GB. Hasilnya 118 MB, lebih besar dari batas file GitHub (100 MB), jadi untuk dibagikan dan di-deploy arsip disiapkan dalam bentuk `.gz` (29 MB). Dockerfile yang mengekstraknya.
+Arsip selalu dibangun dari nol, jadi menjalankannya dua kali tidak menghasilkan data dobel. Build penuh membutuhkan RAM beberapa GB. Hasil audit saat ini 216 MB, lebih besar dari batas file GitHub (100 MB), sehingga file yang di-commit adalah `historical.sqlite.gz` berukuran 51 MB. Dockerfile mengekstraknya saat build image.
 
 ### Data batas wilayah (opsional tapi disarankan)
 
@@ -265,11 +280,13 @@ Kalau file ini tidak ada, aplikasi tetap jalan dan lokasi ditampilkan sebagai ko
 ### Test
 
 ```bash
-cd python-service && .venv/bin/python -m pytest          # 130 test produksi
+cd python-service && .venv/bin/python -m pytest          # 133 test produksi
 .venv/bin/python -m pytest ml_experiments                # 22 test riset (terpisah dari produksi)
-cd .. && npm run supabase:test                           # 20 tes pgTAP/RLS
+cd .. && npm run supabase:test                           # 22 tes pgTAP/RLS
 npm run lint && npm run build
-npm run test:e2e                                         # stack lokal + server harus hidup
+npm run test:e2e                                         # smoke test data/UI read-only; tes mutasi dilewati
+# E2E_DATA_MODE=isolated hanya boleh dipakai pada stack lokal terisolasi
+# dengan pelaporan/review diaktifkan; tes operasi tersebut menulis fixture.
 ```
 
 Panduan deploy (Render + Vercel, Docker) ada di [DEPLOY.md](DEPLOY.md).
@@ -288,7 +305,8 @@ supabase/                 config lokal, migration Postgres/RLS/RPC, seed, tes pg
 python-service/
   fire_pipeline/          clean, matching, harmonize_events, features, model, live,
                           historical, live_calendar, reports, correlation, weather, admin_lookup
-  scripts/                build_historical_store.py, build_admin_boundaries.py
+  scripts/                pengunduh FIRMS produksi, build_historical_store.py,
+                          build_admin_boundaries.py
   ml_experiments/         riset terpisah: anomaly_detection/, matching_audit/, audit_2026_10/
   tests/                  test produksi
   data/                   historical.sqlite(.gz), admin_boundaries.sqlite, reports.sqlite

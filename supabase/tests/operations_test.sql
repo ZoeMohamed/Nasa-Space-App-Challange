@@ -1,6 +1,16 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(20);
+select plan(22);
+
+insert into public.operation_teams (name, area, lead_name, created_by_name, is_test)
+values ('Tim E2E hidden', 'Test area', 'Test lead', 'Test runner', false);
+
+insert into public.operation_incidents (
+  reference, source_type, title, description, lat, lon, created_by_name, is_test
+) values (
+  'E2E-HIDDEN', 'manual', 'E2E hidden incident', 'E2E Supabase hidden fixture',
+  -1.2, 110.4, 'Test runner', false
+);
 
 set local role anon;
 
@@ -12,6 +22,18 @@ select throws_ok(
 select lives_ok(
   $$select * from public.operation_incidents$$,
   'public visitors can read incidents without signing in'
+);
+
+select is(
+  (select count(*)::int from public.operation_teams where name = 'Tim E2E hidden'),
+  0,
+  'public RLS hides E2E teams even when the caller knows the exact name'
+);
+
+select is(
+  (select count(*)::int from public.operation_incidents where reference = 'E2E-HIDDEN'),
+  0,
+  'public RLS hides E2E incidents even when the caller knows the exact reference'
 );
 
 select lives_ok(

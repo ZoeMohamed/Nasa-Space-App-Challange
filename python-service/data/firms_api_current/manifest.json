@@ -1,0 +1,68 @@
+{
+  "provider": "NASA FIRMS production API",
+  "api": "https://firms.modaps.eosdis.nasa.gov/api",
+  "fetchedAt": "2026-11-15T15:03:32.186512+00:00",
+  "country": "Indonesia",
+  "boundary": {
+    "id": "IDN-ADM0-11942859",
+    "source": "OpenStreetMap, Wambacher",
+    "license": "Open Data Commons Open Database License 1.0",
+    "url": "https://github.com/wmgeolab/geoBoundaries/raw/9469f09/releaseData/gbOpen/IDN/ADM0/geoBoundaries-IDN-ADM0.geojson"
+  },
+  "sources": {
+    "MODIS_SP": {
+      "startDate": "2026-01-01",
+      "endDate": "2026-08-31",
+      "requests": 49,
+      "cachedRequests": 49,
+      "receivedBoundingBoxRows": null,
+      "indonesiaRows": 46542,
+      "file": "MODIS_SP.csv"
+    },
+    "MODIS_NRT": {
+      "startDate": "2026-09-01",
+      "endDate": "2026-11-15",
+      "requests": 16,
+      "cachedRequests": 16,
+      "receivedBoundingBoxRows": null,
+      "indonesiaRows": 96491,
+      "file": "MODIS_NRT.csv"
+    },
+    "VIIRS_SNPP_SP": {
+      "startDate": "2026-01-01",
+      "endDate": "2026-07-31",
+      "requests": 43,
+      "cachedRequests": 43,
+      "receivedBoundingBoxRows": null,
+      "indonesiaRows": 54051,
+      "file": "VIIRS_SNPP_SP.csv"
+    },
+    "VIIRS_SNPP_NRT": {
+      "startDate": "2026-08-01",
+      "endDate": "2026-11-02",
+      "requests": 19,
+      "cachedRequests": 19,
+      "receivedBoundingBoxRows": null,
+      "indonesiaRows": 571069,
+      "file": "VIIRS_SNPP_NRT.csv"
+    },
+    "VIIRS_NOAA20_SP": {
+      "startDate": "2026-01-01",
+      "endDate": "2026-07-31",
+      "requests": 43,
+      "cachedRequests": 43,
+      "receivedBoundingBoxRows": null,
+      "indonesiaRows": 61993,
+      "file": "VIIRS_NOAA20_SP.csv"
+    },
+    "VIIRS_NOAA20_NRT": {
+      "startDate": "2026-08-01",
+      "endDate": "2026-11-15",
+      "requests": 22,
+      "cachedRequests": 22,
+      "receivedBoundingBoxRows": null,
+      "indonesiaRows": 599437,
+      "file": "VIIRS_NOAA20_NRT.csv"
+    }
+  }
+}

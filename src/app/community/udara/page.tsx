@@ -13,9 +13,6 @@ import Icon from "@/components/community/Icon";
 
 const BMKG_URL = "https://www.bmkg.go.id/";
 
-// Same fallback reference point used on /community when no real fix exists.
-const DEFAULT_LOCATION = { lat: -3.125, lon: 114.15, name: ["Desa Bahaur, Pulang Pisau (contoh)", "Bahaur village, Pulang Pisau (example)"] as const };
-
 const AQI_CATEGORY_STYLE: Record<string, { bg: string; text: string }> = {
   Baik: { bg: "bg-emerald-50 border-emerald-200", text: "text-emerald-800" },
   Sedang: { bg: "bg-amber-50 border-amber-200", text: "text-amber-800" },
@@ -31,41 +28,38 @@ function windDirectionLabel(deg: number | null, language: "id" | "en"): string {
 
 export default function UdaraPage() {
   const { tr, language } = useTranslation();
-  const { fix } = useLocationState();
-  const [weather, setWeather] = useState<WeatherResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const activeLat = fix ? fix.lat : DEFAULT_LOCATION.lat;
-  const activeLon = fix ? fix.lon : DEFAULT_LOCATION.lon;
+  const location = useLocationState();
+  const { fix } = location;
+  const locationKey = fix ? `${fix.lat},${fix.lon}` : null;
+  const [request, setRequest] = useState<{ key: string; weather: WeatherResponse | null; error: string | null } | null>(null);
+  const weather = request?.key === locationKey ? request.weather : null;
+  const error = request?.key === locationKey ? request.error : null;
+  const loading = locationKey !== null && request?.key !== locationKey;
   const fixRegion = useRegion(fix?.lat, fix?.lon);
   const locationLabel = fix
     ? fix.label ?? formatAdminFull(fixRegion) ?? `${tr("Koordinat", "Coordinates")} ${fix.lat.toFixed(3)}, ${fix.lon.toFixed(3)}`
-    : tr(DEFAULT_LOCATION.name[0], DEFAULT_LOCATION.name[1]);
+    : tr("Lokasi belum dipilih", "No location selected");
 
   useEffect(() => {
+    if (!fix || !locationKey) return;
     let cancelled = false;
-    fetch(`/api/weather?lat=${activeLat}&lon=${activeLon}`, { cache: "no-store" })
+    fetch(`/api/weather?lat=${fix.lat}&lon=${fix.lon}`, { cache: "no-store" })
       .then(async (res) => {
         if (!res.ok) throw new Error("Gagal memuat data cuaca");
         return (await res.json()) as WeatherResponse;
       })
       .then((body) => {
         if (cancelled) return;
-        setWeather(body);
-        setError(null);
+        setRequest({ key: locationKey, weather: body, error: null });
       })
       .catch(() => {
         if (cancelled) return;
-        setError("unavailable");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        setRequest({ key: locationKey, weather: null, error: "unavailable" });
       });
     return () => {
       cancelled = true;
     };
-  }, [activeLat, activeLon]);
+  }, [fix, locationKey]);
 
   const aqiCategory = weather?.airQuality?.usAqiCategory ?? null;
   const aqiStyle = aqiCategory ? AQI_CATEGORY_STYLE[aqiCategory] : null;
@@ -83,6 +77,22 @@ export default function UdaraPage() {
         <h1 className="text-lg font-bold text-slate-900">{tr("Kualitas Udara & Cuaca", "Air Quality & Weather")}</h1>
         <p className="text-xs text-[var(--community-ink-muted)] mt-1">{locationLabel}</p>
       </div>
+
+      {!fix && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <p className="text-sm font-semibold text-amber-950">
+            {tr("Pilih lokasi agar data cuaca dan kualitas udara dihitung untuk tempat yang benar.", "Choose a location so weather and air quality are calculated for the correct place.")}
+          </p>
+          <button
+            type="button"
+            onClick={location.requestGeolocation}
+            className="mt-3 rounded-xl bg-[var(--community-accent)] px-4 py-2 text-xs font-bold text-white"
+          >
+            {tr("Gunakan lokasi GPS", "Use GPS location")}
+          </button>
+          {location.errorMessage && <p className="mt-2 text-xs text-amber-800">{location.errorMessage}</p>}
+        </div>
+      )}
 
       {loading && (
         <div className="rounded-2xl border border-[var(--community-border)] bg-white p-6 text-center text-sm text-[var(--community-ink-muted)] animate-pulse">

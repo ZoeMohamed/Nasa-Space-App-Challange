@@ -1,4 +1,4 @@
-"""Small in-memory submission rate limiter for the public demo."""
+"""Small in-memory submission rate limiter for the public endpoint."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ class SlidingWindowLimiter:
 
     Per-process only, so it resets on restart and is not shared between
     instances. Good enough to stop one browser or one IP from flooding the
-    public queue during a demo; not a substitute for a real gateway limit.
+    public queue; not a substitute for a real gateway limit.
     """
 
     def __init__(self, limit: int, window_s: float):

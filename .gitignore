@@ -54,3 +54,9 @@ __pycache__/
 python-service/data/*
 !python-service/data/historical.sqlite.gz
 !python-service/data/admin_boundaries.sqlite
+!python-service/data/firms_country_archive/
+python-service/data/firms_country_archive/*
+!python-service/data/firms_country_archive/manifest.json
+!python-service/data/firms_api_current/
+python-service/data/firms_api_current/*
+!python-service/data/firms_api_current/manifest.json

@@ -40,7 +40,6 @@ export default function NotifikasiPage() {
   const [markers, setMarkers] = useState<HotspotMarker[]>([]);
   const [reports, setReports] = useState<CommunityReport[]>([]);
   const [state, setState] = useState<"loading" | "loaded" | "error">("loading");
-  const [activeTab, setActiveTab] = useState<"feed" | "push_preview">("feed");
   const prefs = useMemo(() => loadAlertPrefs(), []);
 
   useEffect(() => {
@@ -166,60 +165,13 @@ export default function NotifikasiPage() {
     </div>
   );
 
-  const now = new Date();
-  const lockScreen = (
-    <div className="rounded-[2rem] bg-[#091b15] text-white p-5 space-y-5 border border-emerald-950">
-      <div className="text-center pt-1">
-        <p className="text-xs text-white/70" suppressHydrationWarning>
-          {now.toLocaleDateString(language === "en" ? "en-GB" : "id-ID", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Jakarta" })}
-        </p>
-        <p className="text-4xl font-light tracking-tight mt-1" suppressHydrationWarning>
-          {now.toLocaleTimeString(language === "en" ? "en-GB" : "id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" })}
-        </p>
-      </div>
-      {items.length === 0 ? (
-        <p className="text-center text-xs text-white/60 pb-2">{tr("Belum ada notifikasi untuk ditampilkan.", "No notifications to show yet.")}</p>
-      ) : (
-        <div className="space-y-2.5">
-          {items.slice(0, 3).map((item) => (
-            <Link
-              key={`lock-${item.kind}-${item.id}`}
-              href={item.href}
-              className="block rounded-2xl bg-white/10 border border-white/10 p-3 space-y-1 hover:bg-white/15 transition"
-            >
-              <div className="flex items-center justify-between text-[11px] text-white/70">
-                <span className="flex items-center gap-1.5 font-bold text-white">
-                  <span
-                    className={`flex h-4 w-4 items-center justify-center rounded ${item.kind === "report" ? "bg-blue-600" : "bg-red-600"}`}
-                  >
-                    <Icon name={item.kind === "report" ? "assignment" : "local_fire_department"} className="h-[11px] w-[11px] shrink-0" />
-                  </span>
-                  AGNIBHŪMI
-                </span>
-                <span>{item.time}</span>
-              </div>
-              <p className="text-[13px] font-bold leading-snug">{item.title}</p>
-              <p className="text-[11px] text-white/75 truncate">{item.subtitle}</p>
-            </Link>
-          ))}
-        </div>
-      )}
-      <p className="text-[10px] text-white/50 text-center leading-relaxed">
-        {tr(
-          "Pratinjau dari notifikasi di atas. Notifikasi push ke HP belum tersedia di prototipe ini.",
-          "A preview of the notifications above. Push notifications to phones aren't available in this prototype yet."
-        )}
-      </p>
-    </div>
-  );
-
   return (
     <div className="max-w-xl md:max-w-5xl mx-auto space-y-5 animate-fadeIn">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">{tr("Notifikasi", "Notifications")}</h1>
+          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">{tr("Pemberitahuan dalam aplikasi", "In-app alerts")}</h1>
           <p className="text-xs md:text-sm text-[var(--community-ink-muted)] mt-0.5">
-            {tr("Peringatan deteksi satelit & perkembangan laporanmu.", "Satellite detection alerts & updates on your reports.")}
+            {tr("Data terbaru dimuat saat halaman ini dibuka. Sistem belum mengirim push notification ke perangkat.", "Latest data loads when this page is opened. The system does not send push notifications to devices.")}
           </p>
         </div>
         <Link
@@ -230,32 +182,10 @@ export default function NotifikasiPage() {
         </Link>
       </div>
 
-      {/* Mobile: tabs */}
-      <div className="md:hidden space-y-4">
-        <div className="flex rounded-2xl bg-gray-100 p-1 border border-gray-200 text-xs font-bold">
-          <button
-            type="button"
-            onClick={() => setActiveTab("feed")}
-            className={`flex-1 py-2 rounded-xl transition ${activeTab === "feed" ? "bg-white text-slate-900 shadow-xs" : "text-[var(--community-ink-muted)]"}`}
-          >
-            {tr("Pemberitahuan", "Alerts")} ({items.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("push_preview")}
-            className={`flex-1 py-2 rounded-xl transition flex items-center justify-center gap-1.5 ${
-              activeTab === "push_preview" ? "bg-[#065f46] text-white shadow-xs" : "text-[var(--community-ink-muted)]"
-            }`}
-          >
-            <Icon name="smartphone" className="h-[15px] w-[15px] shrink-0" />
-            {tr("Pratinjau Layar Kunci", "Lock Screen Preview")}
-          </button>
-        </div>
-        {activeTab === "feed" ? feed : lockScreen}
-      </div>
+      <div className="md:hidden">{feed}</div>
 
       {/* Desktop: feed + side panel */}
-      <div className="hidden md:grid md:grid-cols-[1fr_340px] md:gap-6 items-start">
+      <div className="hidden md:grid md:grid-cols-[1fr_300px] md:gap-6 items-start">
         <section className="space-y-3">
           <h2 className="text-sm font-bold text-slate-900">{tr("Pemberitahuan", "Alerts")} ({items.length})</h2>
           {feed}
@@ -283,10 +213,6 @@ export default function NotifikasiPage() {
             >
               {tr("Ubah filter", "Change filters")}
             </Link>
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-sm font-bold text-slate-900">{tr("Pratinjau layar kunci HP", "Phone lock screen preview")}</h2>
-            {lockScreen}
           </div>
         </aside>
       </div>

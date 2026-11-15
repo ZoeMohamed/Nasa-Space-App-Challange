@@ -10,7 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY main.py ./
 COPY fire_pipeline ./fire_pipeline
 # Generated offline stores (see ../DEPLOY.md "File data"). The archive is shipped gzipped
-# (~29 MB instead of ~118 MB, under GitHub's 100 MB per-file limit) and unpacked here.
+# (~51 MB instead of ~216 MB, under GitHub's 100 MB per-file limit) and unpacked here.
 #   data/historical.sqlite.gz     (scripts/build_historical_store.py, then: gzip -9 -k)
 #   data/admin_boundaries.sqlite  (scripts/build_admin_boundaries.py)
 COPY data/historical.sqlite.gz data/admin_boundaries.sqlite ./data/

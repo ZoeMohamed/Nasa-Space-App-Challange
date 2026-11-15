@@ -10,14 +10,13 @@ const PYTHON_API = process.env.PYTHON_PROCESSING_API_URL ?? "http://127.0.0.1:80
  * `satelliteLinks` — that field is only populated on the single-report detail
  * fetch, see src/app/api/reports/[id]/route.ts.
  *
- * Public demo access gets every report through the server-only Python bridge.
- * The bridge credential never reaches the browser.
+ * Anonymous callers receive only the reduced verified-report view. A
+ * reporter token narrows the response to that browser's own reports.
  */
 export async function GET(request: Request) {
   const incomingUrl = new URL(request.url);
-  const upstreamUrl = new URL(`${PYTHON_API}/api/reports`);
-
   const submitterToken = incomingUrl.searchParams.get("submitterToken");
+  const upstreamUrl = new URL(`${PYTHON_API}${submitterToken ? "/api/reports" : "/api/reports/public"}`);
   const status = incomingUrl.searchParams.get("status");
   if (submitterToken) upstreamUrl.searchParams.set("submitterToken", submitterToken);
   if (status) upstreamUrl.searchParams.set("status", status);
@@ -59,6 +58,16 @@ export async function GET(request: Request) {
  * "failed" toast.
  */
 export async function POST(request: Request) {
+  if (process.env.ENABLE_CITIZEN_REPORTS !== "true") {
+    return Response.json(
+      {
+        error: "Citizen reporting is not open while the public-access review workflow is disabled.",
+        code: "REPORTING_DISABLED",
+      },
+      { status: 503 }
+    );
+  }
+
   let payload: unknown;
   try {
     payload = await request.json();

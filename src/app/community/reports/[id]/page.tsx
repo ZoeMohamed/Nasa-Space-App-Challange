@@ -27,7 +27,7 @@ function formatClock(iso: string | null | undefined, language: Language): string
 }
 
 /**
- * Status of one citizen report. Every line comes from GET /api/reports/{id} — there is no demo
+ * Status of one citizen report. Every line comes from GET /api/reports/{id} — there is no local
  * fallback: if the report can't be loaded, the page says so instead of showing a made-up one.
  */
 export default function ReportStatusPage() {

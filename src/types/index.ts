@@ -321,7 +321,7 @@ export interface CommunityReport {
   lon: number;
   description: string;
   status: ReportStatus;
-  /** Present on the public demo review surface. The reduced
+  /** Present on the public review surface. The reduced
    * /api/reports/public shape omits it. */
   submitterToken?: string;
   photoFilename: string | null;

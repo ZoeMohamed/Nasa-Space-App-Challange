@@ -70,3 +70,18 @@ def test_build_historical_store_is_idempotent_on_repeated_runs(tmp_path):
     row_count = pd.read_sql_query("SELECT COUNT(*) AS n FROM daily_area_activity", connection)["n"].iloc[0]
     connection.close()
     assert int(row_count) == second_count
+
+
+def test_build_historical_store_accepts_repeated_source_files(tmp_path):
+    first = _write_csv(tmp_path / "modis_2024.csv", [MODIS_ARCHIVE_ROWS[0]])
+    second_row = {**MODIS_ARCHIVE_ROWS[0], "acq_date": "2025-01-05"}
+    second = _write_csv(tmp_path / "modis_2025.csv", [second_row])
+    out = str(tmp_path / "historical.sqlite")
+
+    args = parse_args(["--modis-archive", first, "--modis-archive", second, "--out", out])
+    build(args)
+
+    connection = sqlite3.connect(out)
+    dates = {row[0] for row in connection.execute("SELECT date FROM daily_area_activity")}
+    connection.close()
+    assert dates == {"2026-01-05", "2025-01-05"}

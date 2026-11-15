@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
 
+test.skip(
+  process.env.E2E_DATA_MODE !== "isolated",
+  "Operations E2E writes records and must only run against isolated local data stores."
+);
+
 test("public citizen report becomes a verified, assigned incident in Supabase", async ({ page, request }) => {
   const unique = Date.now().toString(36);
   const description = `E2E Supabase ${unique}: asap tebal terlihat dari permukiman.`;
@@ -35,7 +40,7 @@ test("public citizen report becomes a verified, assigned incident in Supabase", 
 
   await page.goto("/citizen-reports");
   await expect(page.getByRole("heading", { name: "Laporan Warga", exact: true })).toBeVisible();
-  await expect(page.getByText(/Mode demo publik aktif/)).toBeVisible();
+  await expect(page.getByText(/Akses publik aktif/)).toBeVisible();
   const reportRow = page.locator("tbody tr").filter({ hasText: description });
   await expect(reportRow).toBeVisible();
   await reportRow.click();

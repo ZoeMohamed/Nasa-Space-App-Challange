@@ -1,4 +1,5 @@
 import base64
+import hmac
 import binascii
 import io
 import os
@@ -34,7 +35,7 @@ app = FastAPI(title="AGNIBHUMI Live Processing API", version="1.1.0")
 @app.on_event("startup")
 def _warm_live_caches() -> None:
     """With NASA_FIRMS_MAP_KEY set on the backend and WARM_CACHE=1, pre-process every enabled
-    window at startup and keep it fresh, so a demo never waits for a cold 7d/30d fetch."""
+    window at startup and keep it fresh, so production requests avoid a cold 7d/30d fetch."""
     key = os.getenv("NASA_FIRMS_MAP_KEY")
     if key and os.getenv("WARM_CACHE", "0") == "1":
         start_cache_warmer(key, enabled_windows())
@@ -382,6 +383,12 @@ def submit_report(payload: ReportCreateRequest, request: Request) -> dict:
     and the response includes a `correlationWarning` note instead of
     erroring.
     """
+    if os.getenv("ENABLE_CITIZEN_REPORTS", "false").lower() != "true":
+        raise HTTPException(
+            status_code=503,
+            detail="Pelaporan warga belum dibuka pada akses publik.",
+        )
+
     ip = _client_ip(request)
     if not report_limiter.allow(f"ip:{ip}" if ip else None, f"token:{payload.submitterToken}"):
         raise HTTPException(
@@ -446,19 +453,26 @@ def list_reports(
     submitterToken: str | None = None,
     status: str | None = None,
 ) -> dict:
-    """Public demo list. An optional token still narrows results to one reporter."""
+    """A reporter may list their own rows; everyone else gets the reduced public list."""
+    if not submitterToken:
+        return {"reports": reports_store.list_public_reports()}
     return {"reports": reports_store.list_reports(submitter_token=submitterToken, status=status)}
 
 
 @app.get("/api/reports/{report_id}")
 def get_report(
     report_id: str,
+    submitterToken: str | None = None,
 ) -> dict:
-    """Full report detail for the public demo review surface."""
+    """Return full detail only to the originating browser token."""
     report = reports_store.get_report(report_id)
     if report is None:
         raise HTTPException(status_code=404, detail="Report not found")
-    return report
+    if submitterToken and hmac.compare_digest(report["submitterToken"], submitterToken):
+        return report
+    if not report.get("isTest") and report["status"] in reports_store.PUBLIC_STATUSES:
+        return reports_store.public_view(report)
+    raise HTTPException(status_code=404, detail="Report not found")
 
 
 @app.patch("/api/reports/{report_id}")
@@ -469,9 +483,11 @@ def update_report(
     """Update a report's review status (e.g. moving it to under_review,
     verified, or rejected) and optionally attach a reviewer note.
 
-    Public demo mode. A verified report raises the area status of nearby
+    Public-access mode. A verified report raises the area status of nearby
     citizens to "Awas".
     """
+    if os.getenv("ENABLE_PUBLIC_REPORT_REVIEW", "false").lower() != "true":
+        raise HTTPException(status_code=403, detail="Public report review is disabled")
     try:
         updated = reports_store.update_report_status(report_id, payload.status, review_note=payload.reviewNote)
     except ValueError as exc:
@@ -484,10 +500,13 @@ def update_report(
 @app.get("/api/reports/{report_id}/photo")
 def get_report_photo(
     report_id: str,
+    submitterToken: str | None = None,
 ):
-    """Photo access for the public demo review surface."""
+    """Photo access is limited to the originating browser token."""
     report = reports_store.get_report(report_id)
     if report is None or not report.get("photoFilename"):
+        raise HTTPException(status_code=404, detail="No photo for this report")
+    if not submitterToken or not hmac.compare_digest(report["submitterToken"], submitterToken):
         raise HTTPException(status_code=404, detail="No photo for this report")
     path = os.path.join(_report_photos_dir(), report["photoFilename"])
     if not os.path.exists(path):

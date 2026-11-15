@@ -448,7 +448,7 @@ export default function IncidentsPage() {
         </div>
 
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-950">
-          <strong>{tr("Mode demo publik:", "Public demo mode:")}</strong>{" "}
+          <strong>{tr("Akses publik:", "Public access:")}</strong>{" "}
           {tr(
             "Semua pengunjung dapat menjalankan aksi; audit dicatat sebagai Public Operator. ",
             "Every visitor can run actions; the audit trail records Public Operator. "

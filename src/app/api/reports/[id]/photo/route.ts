@@ -11,8 +11,8 @@ const PYTHON_API = process.env.PYTHON_PROCESSING_API_URL ?? "http://127.0.0.1:80
  * service's own URL to the browser. 404s (no photo / missing file) pass
  * through as-is.
  *
- * Public demo access loads photos through the server-only bridge; the bridge
- * credential is never exposed to the browser.
+ * The upstream requires the originating reporter token. Verified public
+ * reports never expose their uploaded photo.
  */
 export async function GET(
   request: Request,

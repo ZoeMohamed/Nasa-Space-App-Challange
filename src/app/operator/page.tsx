@@ -675,7 +675,7 @@ function DashboardPageContent() {
         </div>
 
         {/* Priority area teaser — replaces Figma's fabricated "Tanah Laut: Prioritas
-            Verifikasi" example with the real #1 priorityRank area, or an honest empty state. */}
+            Verifikasi" card with the real #1 priorityRank area, or an honest empty state. */}
         {topArea ? (
           <Card className="p-5 bg-red-50 border-red-100">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

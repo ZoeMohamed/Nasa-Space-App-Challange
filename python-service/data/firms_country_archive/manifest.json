@@ -1,0 +1,417 @@
+{
+  "provider": "NASA LANCE FIRMS",
+  "dataset": "Yearly country summaries, Standard Processing",
+  "country": "Indonesia",
+  "indexUrl": "https://firms.modaps.eosdis.nasa.gov/data/country/yearly_summary_files.txt",
+  "fetchedAt": "2026-11-15T14:28:05.789624+00:00",
+  "products": {
+    "MODIS_SP": {
+      "firstYear": 2000,
+      "lastYear": 2025,
+      "rows": 1533411,
+      "combinedFile": "MODIS_SP.csv",
+      "files": [
+        {
+          "filename": "modis_2000_Indonesia.csv",
+          "year": 2000,
+          "publishedSize": 53996,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "ffdedd9211fba5526064a26cd28735c354cacbbef7df6a2f388a0100bb045e69",
+          "size": 53996
+        },
+        {
+          "filename": "modis_2001_Indonesia.csv",
+          "year": 2001,
+          "publishedSize": 1179929,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "9fcaeaf6515aaa6335c7d442d711425f33bd75ac7dc078c4f46ab14fcc97372d",
+          "size": 1179929
+        },
+        {
+          "filename": "modis_2002_Indonesia.csv",
+          "year": 2002,
+          "publishedSize": 9595460,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "8de9de871b0ecec11282cb351fdfe608473006f5ed7d97037bf7e2a1923a7a36",
+          "size": 9595460
+        },
+        {
+          "filename": "modis_2003_Indonesia.csv",
+          "year": 2003,
+          "publishedSize": 4875686,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "aa64834a096c7d8c73a2d77fb02ef599158d33563423ca67c431719dc41334d0",
+          "size": 4875686
+        },
+        {
+          "filename": "modis_2004_Indonesia.csv",
+          "year": 2004,
+          "publishedSize": 8322604,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "0e6a418dbed38654e13186897006409bb9508d6e9eb460acad35c913f8b8c576",
+          "size": 8322604
+        },
+        {
+          "filename": "modis_2005_Indonesia.csv",
+          "year": 2005,
+          "publishedSize": 5798891,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "d4f9134c67b220136d0d4de12434b675c6c8476fba9464bfe9531d76ec69188b",
+          "size": 5798891
+        },
+        {
+          "filename": "modis_2006_Indonesia.csv",
+          "year": 2006,
+          "publishedSize": 12058484,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "a94389d5be532e5c2f7048230f2c1d90a2187a4455f6c1674bafa2500db53133",
+          "size": 12058484
+        },
+        {
+          "filename": "modis_2007_Indonesia.csv",
+          "year": 2007,
+          "publishedSize": 3346298,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "61e8dabddc4043e194edb972c40d01c29dcb9471eebaa3682835feeac24de801",
+          "size": 3346298
+        },
+        {
+          "filename": "modis_2008_Indonesia.csv",
+          "year": 2008,
+          "publishedSize": 3186516,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "24fba3b1a40ea19b72e9d2830355af13029ea2650b031da9e808fe23003e2072",
+          "size": 3186516
+        },
+        {
+          "filename": "modis_2009_Indonesia.csv",
+          "year": 2009,
+          "publishedSize": 7945933,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "c45f4871fc9d3090fec52d5293d7475d3624472a8828abfcccd0979337b9fe47",
+          "size": 7945933
+        },
+        {
+          "filename": "modis_2010_Indonesia.csv",
+          "year": 2010,
+          "publishedSize": 1604037,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "12a3ac027fec3870c8a9caba4415d34ffa0a28e4960e121b2fdb7c1c55f1aa56",
+          "size": 1604037
+        },
+        {
+          "filename": "modis_2011_Indonesia.csv",
+          "year": 2011,
+          "publishedSize": 4871314,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "4a0cffe94dc448061fff1a9bb8120b714fb56e33f1bb6291968fd8d3d876295a",
+          "size": 4871314
+        },
+        {
+          "filename": "modis_2012_Indonesia.csv",
+          "year": 2012,
+          "publishedSize": 5524163,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "2c4e88d3b132f9ed94d75b24cfafccf347bac343f2a7c50cd6ba47b0f5bfacf5",
+          "size": 5524163
+        },
+        {
+          "filename": "modis_2013_Indonesia.csv",
+          "year": 2013,
+          "publishedSize": 4178716,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "c1287263311b2829411c586a5eb1fccbb8484f1b10356f0be847fea97eba3c9b",
+          "size": 4178716
+        },
+        {
+          "filename": "modis_2014_Indonesia.csv",
+          "year": 2014,
+          "publishedSize": 8933232,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "3c6c51a63ba857d81e30e8017864cf457e0736dcfe4971b7669be9ec6b40f32f",
+          "size": 8933232
+        },
+        {
+          "filename": "modis_2015_Indonesia.csv",
+          "year": 2015,
+          "publishedSize": 13914029,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "986e4a768333b229fbf48759f7ca7b019b9eb4192f85251946ea6ac3220199b0",
+          "size": 13914029
+        },
+        {
+          "filename": "modis_2016_Indonesia.csv",
+          "year": 2016,
+          "publishedSize": 1861699,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "47a08f058c57baa2ea725ec980e67a1089d7583eb3e2a042fc019cf35589d1a6",
+          "size": 1861699
+        },
+        {
+          "filename": "modis_2017_Indonesia.csv",
+          "year": 2017,
+          "publishedSize": 1382026,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "054a1cccca3da84fc35fee962d5f4167ea2a3ce221be3be7884d4c4b5aa89061",
+          "size": 1382026
+        },
+        {
+          "filename": "modis_2018_Indonesia.csv",
+          "year": 2018,
+          "publishedSize": 2996769,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "3e7b488cf08c3043fe0ebf0db447d10e57cc6c25aadf900ca8183eae73300a0e",
+          "size": 2996769
+        },
+        {
+          "filename": "modis_2019_Indonesia.csv",
+          "year": 2019,
+          "publishedSize": 7142482,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "049f010fb65375c1bd5020a0aeb00f0c0a93630585c8439e4979894bafee35ec",
+          "size": 7142482
+        },
+        {
+          "filename": "modis_2020_Indonesia.csv",
+          "year": 2020,
+          "publishedSize": 1272113,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "e00db019742905232b11f56bb5cfb9158d5d10479c3d895202376b1046baf19f",
+          "size": 1272113
+        },
+        {
+          "filename": "modis_2021_Indonesia.csv",
+          "year": 2021,
+          "publishedSize": 1114710,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "62d0c407f9e9ebbecdddeae1529cc405e254e0aaa4a01f7a427929a186e3d0a0",
+          "size": 1114710
+        },
+        {
+          "filename": "modis_2022_Indonesia.csv",
+          "year": 2022,
+          "publishedSize": 883571,
+          "updated": "2023-12-14 11:15:07",
+          "sha256": "7ba203f76f72e96d73b03abb76a08613d59edb2c90fe17aaf580a18648f6fd33",
+          "size": 883571
+        },
+        {
+          "filename": "modis_2023_Indonesia.csv",
+          "year": 2023,
+          "publishedSize": 4151442,
+          "updated": "2024-06-03 14:07:28",
+          "sha256": "9f9d79cc84eefab271fc82e63b7c49309547a1c31639bfd8590be91d1eea7f1e",
+          "size": 4151442
+        },
+        {
+          "filename": "modis_2024_Indonesia.csv",
+          "year": 2024,
+          "publishedSize": 1865779,
+          "updated": "2025-05-30 10:28:44",
+          "sha256": "ac90c680c1d0cd493b6997388ea5084037b2f1104c415a4570e4a05c6ef359d2",
+          "size": 1865779
+        },
+        {
+          "filename": "modis_2025_Indonesia.csv",
+          "year": 2025,
+          "publishedSize": 1409943,
+          "updated": "2026-10-10 08:56:42",
+          "sha256": "949bf85a132fe817d0778e164c92ec0378a6045c0f72e684a70b2d16a3c3a19a",
+          "size": 1409943
+        }
+      ]
+    },
+    "VIIRS_SNPP_SP": {
+      "firstYear": 2012,
+      "lastYear": 2025,
+      "rows": 3514520,
+      "combinedFile": "VIIRS_SNPP_SP.csv",
+      "files": [
+        {
+          "filename": "viirs-snpp_2012_Indonesia.csv",
+          "year": 2012,
+          "publishedSize": 25193408,
+          "updated": "2025-06-20 10:22:28",
+          "sha256": "be12c40c90faf9b9a5144f57f1e0ae917f44b65d5a1231b118b634652d892dec",
+          "size": 25193408
+        },
+        {
+          "filename": "viirs-snpp_2013_Indonesia.csv",
+          "year": 2013,
+          "publishedSize": 20276400,
+          "updated": "2025-06-20 09:46:53",
+          "sha256": "3883e4cc54b8b362c47edd7d0af4d87459d562f58257c3e1d2f9e88f4f3dd26b",
+          "size": 20276400
+        },
+        {
+          "filename": "viirs-snpp_2014_Indonesia.csv",
+          "year": 2014,
+          "publishedSize": 43844957,
+          "updated": "2025-06-20 09:06:02",
+          "sha256": "f774a04bb726c39157138a4bbdb17b737f5c8433fb076efcf2ea0afbc6f36938",
+          "size": 43844957
+        },
+        {
+          "filename": "viirs-snpp_2015_Indonesia.csv",
+          "year": 2015,
+          "publishedSize": 69346331,
+          "updated": "2025-06-20 08:35:48",
+          "sha256": "88ffeba70b181aedbf8601504e082a1d3e8cc690902f5e86979ae4716f240208",
+          "size": 69346331
+        },
+        {
+          "filename": "viirs-snpp_2016_Indonesia.csv",
+          "year": 2016,
+          "publishedSize": 9242773,
+          "updated": "2025-06-20 08:05:47",
+          "sha256": "5a9d7a854583476b6cc5444407db63ec6cad5c7a936f62231e304c87c31300da",
+          "size": 9242773
+        },
+        {
+          "filename": "viirs-snpp_2017_Indonesia.csv",
+          "year": 2017,
+          "publishedSize": 7181743,
+          "updated": "2025-06-19 19:43:46",
+          "sha256": "8ec126472021982aaaf9d71f99a975517e08f838527fa8ac6c94e08240e71073",
+          "size": 7181743
+        },
+        {
+          "filename": "viirs-snpp_2018_Indonesia.csv",
+          "year": 2018,
+          "publishedSize": 15118642,
+          "updated": "2025-06-19 18:52:50",
+          "sha256": "677dd2fcbb5d9445e372b0a79fc6553a2cc838862686ae4c4cd98fc89ebc4b44",
+          "size": 15118642
+        },
+        {
+          "filename": "viirs-snpp_2019_Indonesia.csv",
+          "year": 2019,
+          "publishedSize": 34617768,
+          "updated": "2025-06-19 17:54:52",
+          "sha256": "1dd309b8ae9dd74464f6fce4e0b61c261b7f39326c2dde3f029db55e22fe1a82",
+          "size": 34617768
+        },
+        {
+          "filename": "viirs-snpp_2020_Indonesia.csv",
+          "year": 2020,
+          "publishedSize": 7235719,
+          "updated": "2025-06-19 15:28:36",
+          "sha256": "39079f13921efeca4659e285515a2e3fb32d213a256a8d5499745c23a4bb67d0",
+          "size": 7235719
+        },
+        {
+          "filename": "viirs-snpp_2021_Indonesia.csv",
+          "year": 2021,
+          "publishedSize": 5401447,
+          "updated": "2025-06-19 14:57:45",
+          "sha256": "6d99f3fb49d154b5bb4eaaaa8a9da4f62ef930fa91ba0c4325835164a9a5a946",
+          "size": 5401447
+        },
+        {
+          "filename": "viirs-snpp_2022_Indonesia.csv",
+          "year": 2022,
+          "publishedSize": 4521004,
+          "updated": "2025-06-19 14:25:55",
+          "sha256": "06627b2f80bde393725e285e097cbc1bfd592c39bf0e3ef78774db2ac2981804",
+          "size": 4521004
+        },
+        {
+          "filename": "viirs-snpp_2023_Indonesia.csv",
+          "year": 2023,
+          "publishedSize": 20067598,
+          "updated": "2025-06-19 14:01:41",
+          "sha256": "2dba3b772b5a3a2cc0feed128af74637810021dd41dc34d584cb99b40411665a",
+          "size": 20067598
+        },
+        {
+          "filename": "viirs-snpp_2024_Indonesia.csv",
+          "year": 2024,
+          "publishedSize": 8238988,
+          "updated": "2025-06-19 13:27:55",
+          "sha256": "23be16b48fb6ac3a21fd2130e66149d305af71c62bbb39e76a6a0632a9dd69bd",
+          "size": 8238988
+        },
+        {
+          "filename": "viirs-snpp_2025_Indonesia.csv",
+          "year": 2025,
+          "publishedSize": 7584099,
+          "updated": "2026-10-10 08:57:09",
+          "sha256": "11abffff52dedfe985a8f03c59b8ebff55a903bd0de07d4897f76d734788d811",
+          "size": 7584099
+        }
+      ]
+    },
+    "VIIRS_NOAA20_SP": {
+      "firstYear": 2018,
+      "lastYear": 2025,
+      "rows": 1307603,
+      "combinedFile": "VIIRS_NOAA20_SP.csv",
+      "files": [
+        {
+          "filename": "viirs-jpss1_2018_Indonesia.csv",
+          "year": 2018,
+          "publishedSize": 14692256,
+          "updated": "2025-06-20 13:28:41",
+          "sha256": "49ee29685f715227d651e5b2895f0a79c329bab493d2e1163935ad47a151162c",
+          "size": 14692256
+        },
+        {
+          "filename": "viirs-jpss1_2019_Indonesia.csv",
+          "year": 2019,
+          "publishedSize": 35526723,
+          "updated": "2025-06-20 13:04:49",
+          "sha256": "4a895f42a8a58e8715691d02c5ec524bdeb85bfac19a54f66ad983c91c3998c5",
+          "size": 35526723
+        },
+        {
+          "filename": "viirs-jpss1_2020_Indonesia.csv",
+          "year": 2020,
+          "publishedSize": 7556481,
+          "updated": "2025-06-20 14:03:33",
+          "sha256": "78f2c93862e9b2eb81b88ce0f1e3c6b9ac4dda8bb35057823e3f3224fb3141d6",
+          "size": 7556481
+        },
+        {
+          "filename": "viirs-jpss1_2021_Indonesia.csv",
+          "year": 2021,
+          "publishedSize": 5760722,
+          "updated": "2025-06-20 14:38:18",
+          "sha256": "b9ce13a8a47ab46864c1dfbabf2c6e9ab2f3acc1b11f3f5ca63ade05700b87cf",
+          "size": 5760722
+        },
+        {
+          "filename": "viirs-jpss1_2022_Indonesia.csv",
+          "year": 2022,
+          "publishedSize": 5168954,
+          "updated": "2025-06-20 15:04:06",
+          "sha256": "fdff1fa25cd0a271b9dfe094fbe0134ce9cc364746045663e3069e2447fa975b",
+          "size": 5168954
+        },
+        {
+          "filename": "viirs-jpss1_2023_Indonesia.csv",
+          "year": 2023,
+          "publishedSize": 20327760,
+          "updated": "2025-06-20 15:33:41",
+          "sha256": "99969d975480ab57a129b02502b4b968ced195dc2c7fcaf947eb693ef7010fd7",
+          "size": 20327760
+        },
+        {
+          "filename": "viirs-jpss1_2024_Indonesia.csv",
+          "year": 2024,
+          "publishedSize": 9408241,
+          "updated": "2025-06-20 16:06:56",
+          "sha256": "f978dc06ac3d14c3852ab3a0410422346678a4f221179d8f2f891695caeeaaad",
+          "size": 9408241
+        },
+        {
+          "filename": "viirs-jpss1_2025_Indonesia.csv",
+          "year": 2025,
+          "publishedSize": 7646219,
+          "updated": "2026-10-10 08:57:30",
+          "sha256": "3034d45ce3b106e9a507be3936f445df0e762d9d6cf4318244bb44b30a794b8e",
+          "size": 7646219
+        }
+      ]
+    }
+  }
+}

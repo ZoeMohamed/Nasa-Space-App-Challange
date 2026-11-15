@@ -128,14 +128,16 @@ def _read_jobs(jobs) -> list[pd.DataFrame]:
 
 def _load_inputs(args) -> dict[str, list[pd.DataFrame]]:
     """Raw frames per group: "modis", "snpp", "noaa20" (empty list when not given)."""
+    def jobs(value, sensor, source, platform=None):
+        paths = value if isinstance(value, list) else ([value] if value else [])
+        return [(path, sensor, source, platform) for path in paths]
+
     groups = {
-        "modis": _read_jobs([(args.modis_archive, "MODIS", "archive", None), (args.modis_nrt, "MODIS", "nrt", None)]),
-        "snpp": _read_jobs([(args.viirs_archive, "VIIRS", "archive", "SNPP"), (args.viirs_nrt, "VIIRS", "nrt", "SNPP")]),
+        "modis": _read_jobs(jobs(args.modis_archive, "MODIS", "archive") + jobs(args.modis_nrt, "MODIS", "nrt")),
+        "snpp": _read_jobs(jobs(args.viirs_archive, "VIIRS", "archive", "SNPP") + jobs(args.viirs_nrt, "VIIRS", "nrt", "SNPP")),
         "noaa20": _read_jobs(
-            [
-                (getattr(args, "viirs_noaa20_archive", None), "VIIRS", "archive", "NOAA20"),
-                (getattr(args, "viirs_noaa20_nrt", None), "VIIRS", "nrt", "NOAA20"),
-            ]
+            jobs(getattr(args, "viirs_noaa20_archive", None), "VIIRS", "archive", "NOAA20")
+            + jobs(getattr(args, "viirs_noaa20_nrt", None), "VIIRS", "nrt", "NOAA20")
         ),
     }
     if not any(groups.values()):
@@ -233,12 +235,12 @@ def _build_daily(raw: pd.DataFrame) -> pd.DataFrame:
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--modis-archive", help="Path to fire_archive_M-C61_*.csv")
-    parser.add_argument("--modis-nrt", help="Path to fire_nrt_M-C61_*.csv")
-    parser.add_argument("--viirs-archive", help="Path to fire_archive_SV-C2_*.csv")
-    parser.add_argument("--viirs-nrt", help="Path to fire_nrt_SV-C2_*.csv")
-    parser.add_argument("--viirs-noaa20-archive", help="Path to fire_archive_J1V-C2_*.csv (VIIRS NOAA-20); builds daily_area_activity_noaa20")
-    parser.add_argument("--viirs-noaa20-nrt", help="Path to fire_nrt_J1V-C2_*.csv (VIIRS NOAA-20)")
+    parser.add_argument("--modis-archive", action="append", help="Path to a MODIS Standard Processing CSV; repeatable")
+    parser.add_argument("--modis-nrt", action="append", help="Path to a MODIS NRT CSV; repeatable")
+    parser.add_argument("--viirs-archive", action="append", help="Path to a VIIRS S-NPP Standard Processing CSV; repeatable")
+    parser.add_argument("--viirs-nrt", action="append", help="Path to a VIIRS S-NPP NRT CSV; repeatable")
+    parser.add_argument("--viirs-noaa20-archive", action="append", help="Path to a VIIRS NOAA-20 Standard Processing CSV; repeatable")
+    parser.add_argument("--viirs-noaa20-nrt", action="append", help="Path to a VIIRS NOAA-20 NRT CSV; repeatable")
     parser.add_argument("--out", required=True, help="Output sqlite path (fully rebuilt from scratch each run)")
     return parser.parse_args(argv)
 

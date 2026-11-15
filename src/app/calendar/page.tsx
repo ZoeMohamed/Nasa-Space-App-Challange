@@ -11,7 +11,6 @@ import dynamic from "next/dynamic";
 const AoiDrawMap = dynamic(() => import("@/components/map/AoiDrawMap"), { ssr: false });
 import WorkstationLayout from "@/components/layout/WorkstationLayout";
 import Card from "@/components/ui/Card";
-import Badge from "@/components/ui/Badge";
 import StatTile from "@/components/ui/StatTile";
 import { getRegionOption, getRangeOption, historicalQuery, isArchiveRange, matchesRegion, type RegionOption, withFilters, labelOf } from "@/lib/filters";
 import { useLiveHotspots } from "@/lib/useLiveHotspots";
@@ -48,10 +47,8 @@ import InfoNote from "@/components/ui/InfoNote";
  * FIRMS archive + NRT files (2000-2026, 177,983 daily/grid rows) exposed via
  * `GET /api/historical` (proxying the Python `/api/historical/calendar` endpoint — see
  * src/app/api/historical/route.ts). The heatmap, yearly overview and baseline/deviation stat
- * tiles below now render that real data when it's available (`months`/`cells` non-empty) and
- * only fall back to the DEMO_* constants further down if the fetch fails or the store happens to
- * be empty — see `hasRealMonths` in CalendarPageContent. The DEMO_* constants are kept
- * intentionally, as a documented fallback path, not deleted.
+ * tiles render only real NASA FIRMS data. If the archive is unavailable, the page shows an
+ * explicit empty state and never substitutes synthetic values.
  *
  * Two real, honest limitations remain even with real data (see the methodology note rendered
  * near the heatmap): (1) the archive's `type==0` vegetation-fire filter only applies to archive
@@ -73,39 +70,8 @@ import InfoNote from "@/components/ui/InfoNote";
  */
 
 
-// ---------------------------------------------------------------------------------------------
-// DEMO / ILLUSTRATIVE DATA — FALLBACK ONLY, isolated here so it's obvious at a glance what is
-// fabricated. Used only when GET /api/historical fails or returns empty `months` (see
-// `hasRealMonths` below) — the primary path now renders the real multi-year NASA FIRMS archive
-// ingest instead. Contoh — data historis asli: FIRMS Archive Download
-// (firms.modaps.eosdis.nasa.gov/download). Setiap angka di bawah ini ilustratif untuk keperluan
-// tampilan, BUKAN hasil pengukuran atau perhitungan nyata dari NASA FIRMS.
-// ---------------------------------------------------------------------------------------------
-
 const MONTH_LABELS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTH_LABELS_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-
-/** `null` = bulan belum terjadi / belum ada data (mis. sisa 2026 setelah September dalam contoh ini). */
-const DEMO_MONTHLY_INTENSITY: Record<number, (number | null)[]> = {
-  2023: [80, 260, 640, 1800, 3400, 6200, 9800, 16800, 13200, 3900, 700, 180],
-  2024: [60, 210, 520, 1500, 2900, 5600, 8700, 12200, 9800, 3100, 640, 150],
-  2025: [70, 230, 580, 1650, 3100, 5900, 9100, 13400, 10600, 3300, 680, 160],
-  2026: [90, 280, 690, 1950, 3600, 6500, 10200, 17600, 14100, null, null, null],
-};
-const DEMO_YEARS = Object.keys(DEMO_MONTHLY_INTENSITY).map(Number).sort((a, b) => a - b);
-
-// Konsep "kondisi tidak biasa" dari brief NASA Space Apps: bandingkan periode berjalan terhadap
-// baseline historis. Di sini "periode berjalan" = September tahun terbaru dalam dataset contoh
-// (bulan puncak yang berulang tiap tahun, lihat array di atas), dibandingkan rata-rata 3 tahun
-// sebelumnya pada bulan yang sama. Baseline asli butuh arsip multi-tahun yang sama seperti di atas.
-const DEMO_BASELINE_MONTH_LABEL = "September";
-const DEMO_BASELINE_REFERENCE = Math.round(
-  ((DEMO_MONTHLY_INTENSITY[2023][8] ?? 0) + (DEMO_MONTHLY_INTENSITY[2024][8] ?? 0) + (DEMO_MONTHLY_INTENSITY[2025][8] ?? 0)) / 3
-);
-const DEMO_CURRENT_PERIOD_VALUE = DEMO_MONTHLY_INTENSITY[2026][8] ?? 0;
-const DEMO_BASELINE_DEVIATION_PCT = Math.round(
-  ((DEMO_CURRENT_PERIOD_VALUE - DEMO_BASELINE_REFERENCE) / DEMO_BASELINE_REFERENCE) * 100
-);
 
 interface IntensityBucket {
   label: string;
@@ -145,7 +111,7 @@ function bucketLabel(index: number, thresholds: number[]): string {
   return `${shortCount(thresholds[index - 1])} – ${shortCount(thresholds[index])}`;
 }
 
-/** Works for either DEMO_MONTHLY_INTENSITY[year] or a real per-year array built from `months`. */
+/** Summarize one year of real monthly NASA FIRMS values. */
 function summarizeYear(months: (number | null)[], monthLabels: string[], thresholds: number[] = INTENSITY_THRESHOLDS) {
   const observed = months.filter((value): value is number => value !== null);
   const total = observed.reduce((sum, value) => sum + value, 0);
@@ -182,7 +148,7 @@ function areaQuery(region: RegionOption, aoi: AreaSelection): string {
 /**
  * Real multi-year archive data from the Python pipeline (see src/app/api/historical/route.ts).
  * Never throws for an empty-but-valid store — `{ months: [], cells: [] }` is a legitimate
- * response, not an error (the caller treats that the same as a fetch failure: fall back to demo).
+ * response rendered as an explicit unavailable state.
  */
 async function requestHistorical(
   region: RegionOption,
@@ -223,14 +189,6 @@ async function requestLiveMonths(region: RegionOption, aoi: AreaSelection, signa
   const body = (await response.json()) as LiveMonthsResponse & { error?: string };
   if (!response.ok) throw new Error(body.error ?? "Unable to load live calendar months.");
   return body;
-}
-
-function DemoBadge({ className = "" }: { className?: string }) {
-  return (
-    <Badge tone="medium" className={className}>
-      Contoh data
-    </Badge>
-  );
 }
 
 // VIIRS (Suomi-NPP) enters the FIRMS archive on 2012-01-20 and, with the nominal+high filter,
@@ -320,13 +278,10 @@ function CalendarPageContent() {
     [liveAreas]
   );
 
-  // Real multi-year archive data (months + per-cell baselines) — fetched once on mount. Falls
-  // back to the DEMO_* constants below if this fails or comes back empty; see `hasRealMonths`.
-  // `historicalLoading` starts true and stays true until the fetch actually settles, so the UI
-  // shows a loading state rather than flashing DEMO_* data and then swapping to real data once
-  // it arrives (historical was previously null during the fetch, which hasRealMonths read as
-  // "no real data yet" and rendered the demo fallback for that whole window).
+  // Real multi-year archive data (months + per-cell baselines), fetched once per selected area.
+  // Missing or failed data stays empty: production must never substitute fabricated values.
   const [historicalState, setHistoricalState] = useState<{ key: string; data: HistoricalCalendarResponse } | null>(null);
+  const [historicalError, setHistoricalError] = useState<string | null>(null);
   const historicalLoading = historicalState?.key !== areaKey;
   const historical = useMemo(() => {
     if (historicalLoading || !historicalState) return null;
@@ -349,10 +304,14 @@ function CalendarPageContent() {
 
     const key = areaKey;
     requestHistorical(activeRegion, areaSelection, controller.signal)
-      .then((body) => setHistoricalState({ key, data: body }))
+      .then((body) => {
+        setHistoricalError(null);
+        setHistoricalState({ key, data: body });
+      })
       .catch((requestError: unknown) => {
         if (requestError instanceof DOMException && requestError.name === "AbortError") return;
-        console.error("Historical NASA FIRMS fetch failed, falling back to demo data", requestError);
+        console.error("Historical NASA FIRMS fetch failed", requestError);
+        setHistoricalError(requestError instanceof Error ? requestError.message : "Arsip NASA FIRMS tidak tersedia.");
         setHistoricalState({ key, data: { months: [], cells: [] } });
       });
 
@@ -409,8 +368,7 @@ function CalendarPageContent() {
     return [lat, lon];
   }, [activeRegion.provinsi, historical]);
 
-  // Real per-year month arrays built from `seriesMonths`, same shape as DEMO_MONTHLY_INTENSITY
-  // (12-length array indexed by month - 1, `null` = no data for that month).
+  // Real per-year month arrays (12-length array indexed by month - 1; null = no data).
   const realMonthlyIntensity = useMemo(() => {
     if (seriesMonths.length === 0) return null;
     const byYear: Record<number, (number | null)[]> = {};
@@ -445,10 +403,8 @@ function CalendarPageContent() {
     return map;
   }, [mergedMonths]);
 
-  // The data actually rendered by the heatmap + yearly overview below — real archive data when
-  // available, otherwise the illustrative DEMO_* fallback.
-  const activeMonthlyIntensity = hasRealMonths ? realMonthlyIntensity! : DEMO_MONTHLY_INTENSITY;
-  const activeYears = hasRealMonths ? realYears : DEMO_YEARS;
+  const activeMonthlyIntensity = realMonthlyIntensity ?? {};
+  const activeYears = realYears;
   // Heatmap rows only — insights/baselines above still use every year in `activeYears`.
   const heatmapYears = yearSpan === "all" ? activeYears : activeYears.slice(-yearSpan);
 
@@ -535,7 +491,7 @@ function CalendarPageContent() {
   );
 
   // Real aggregate peak month across every real year available, used by the insight panel below
-  // instead of the hardcoded "Agustus–September" demo claim.
+  // instead of any hardcoded seasonal claim.
   const realPeakMonthLabel = useMemo(() => {
     if (!hasRealMonths) return null;
     // Settled months only: provisional (NRT / live / unfinished) months would skew the totals.
@@ -551,7 +507,7 @@ function CalendarPageContent() {
   // "Yearly Activity Overview" shows one bar per year — with real data spanning 2000-2026 that's
   // 26 rows, too many to read usefully next to the insight panel, so this card specifically shows
   // only the most recent 6 real years. The heatmap above still shows every real year.
-  const overviewYears = hasRealMonths ? realYears.slice(-6) : DEMO_YEARS;
+  const overviewYears = realYears.slice(-6);
 
   // Multiple real, independently-computed insights (not one hardcoded sentence) — each one is
   // pure arithmetic over `historical.months`, and is simply omitted if the archive doesn't have
@@ -719,7 +675,7 @@ function CalendarPageContent() {
     }
 
     return insights;
-  }, [hasRealMonths, seriesMonths, series, comparisonStartYear, realPeakMonthLabel, realBaseline, unusualAreas, activeYears, monthLabels, numLocale, tr, critical, unusualMonths]);
+  }, [hasRealMonths, seriesMonths, comparisonStartYear, realPeakMonthLabel, realBaseline, unusualAreas, activeYears, monthLabels, numLocale, tr, critical, unusualMonths]);
 
   // Display name of the area every number on the page is for.
   const areaName = aoiPoints
@@ -869,8 +825,7 @@ function CalendarPageContent() {
           </div>
         )}
 
-        {/* Live stat (always real) + baseline/deviation/anomaly stats — real once `historical`
-            loads with data, demo-labeled fallback otherwise. */}
+        {/* Every value below comes from NASA FIRMS. Missing data is shown as unavailable. */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatTile
             icon="local_fire_department"
@@ -892,24 +847,14 @@ function CalendarPageContent() {
           <StatTile
             icon="query_stats"
             iconTone="blue"
-            label={
-              historicalLoading
-                ? tr("Baseline Historis", "Historical Baseline")
-                : realBaseline
-                  ? `${tr("Baseline Historis", "Historical Baseline")} ${realBaseline.monthLabel}`
-                  : `${tr("Baseline Historis", "Historical Baseline")} ${DEMO_BASELINE_MONTH_LABEL} (${tr("Contoh", "Example")})`
-            }
-            value={
-              historicalLoading
-                ? "…"
-                : (realBaseline ? realBaseline.baseline : DEMO_BASELINE_REFERENCE).toLocaleString(numLocale)
-            }
+            label={realBaseline ? `${tr("Baseline Historis", "Historical Baseline")} ${realBaseline.monthLabel}` : tr("Baseline Historis", "Historical Baseline")}
+            value={historicalLoading ? "…" : realBaseline ? realBaseline.baseline.toLocaleString(numLocale) : "-"}
             caption={
               historicalLoading
                 ? tr("Memuat arsip historis…", "Loading historical archive…")
                 : realBaseline
                   ? tr(`Rata-rata ${realBaseline.monthLabel} di tahun-tahun sebelumnya`, `Average ${realBaseline.monthLabel} in earlier years`)
-                  : tr("Data ilustratif (contoh)", "Illustrative data (example)")
+                  : tr("Arsip NASA FIRMS belum tersedia", "NASA FIRMS archive unavailable")
             }
             detailsTitle={tr("Cara membaca angka ini", "How to read this")}
             details={
@@ -925,41 +870,30 @@ function CalendarPageContent() {
           <StatTile
             icon="warning"
             iconTone="amber"
-            label={
-              historicalLoading || realBaseline
-                ? tr("Deviasi dari Baseline", "Deviation from Baseline")
-                : tr("Deviasi dari Baseline (Contoh)", "Deviation from Baseline (Example)")
-            }
+            label={tr("Deviasi dari Baseline", "Deviation from Baseline")}
             value={
               historicalLoading
                 ? "…"
                 : realBaseline && realBaseline.deviationPct !== null
                   ? `${realBaseline.deviationPct > 0 ? "+" : ""}${realBaseline.deviationPct}%`
-                  : realBaseline
-                    ? "-"
-                    : `${DEMO_BASELINE_DEVIATION_PCT > 0 ? "+" : ""}${DEMO_BASELINE_DEVIATION_PCT}%`
+                  : "-"
             }
             trend={
               historicalLoading
                 ? undefined
-                : realBaseline
-                  ? realBaseline.deviationPct !== null
-                    ? {
-                        direction: realBaseline.deviationPct > 0 ? "up" : "down",
-                        label: realBaseline.deviationPct > 0 ? tr("Di atas baseline", "Above baseline") : tr("Di bawah baseline", "Below baseline"),
-                      }
-                    : undefined
-                  : {
-                      direction: DEMO_BASELINE_DEVIATION_PCT > 0 ? "up" : "down",
-                      label: DEMO_BASELINE_DEVIATION_PCT > 0 ? tr("Di atas baseline", "Above baseline") : tr("Di bawah baseline", "Below baseline"),
+                : realBaseline?.deviationPct !== null && realBaseline?.deviationPct !== undefined
+                  ? {
+                      direction: realBaseline.deviationPct > 0 ? "up" : "down",
+                      label: realBaseline.deviationPct > 0 ? tr("Di atas baseline", "Above baseline") : tr("Di bawah baseline", "Below baseline"),
                     }
+                  : undefined
             }
             caption={
               historicalLoading
                 ? tr("Memuat arsip historis…", "Loading historical archive…")
                 : realBaseline
                   ? tr(`${realBaseline.monthLabel} ${realBaseline.year} dibanding rata-ratanya`, `${realBaseline.monthLabel} ${realBaseline.year} compared with its average`)
-                  : tr("Data ilustratif (contoh), bukan kondisi sebenarnya", "Illustrative data (example), not real conditions")
+                  : tr("Baseline nyata belum tersedia", "Real baseline unavailable")
             }
             detailsTitle={tr("Cara membaca angka ini", "How to read this")}
             details={
@@ -1055,6 +989,21 @@ function CalendarPageContent() {
               {tr("Memuat arsip historis NASA FIRMS…", "Loading the NASA FIRMS historical archive…")}
             </span>
           </Card>
+        ) : !hasRealMonths ? (
+          <Card className="border-amber-200 bg-amber-50 p-8" data-testid="historical-real-data-empty">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-amber-700">database_off</span>
+              <div>
+                <h2 className="font-bold text-amber-950">{tr("Arsip historis nyata belum tersedia", "Real historical archive unavailable")}</h2>
+                <p className="mt-1 text-sm leading-relaxed text-amber-900/80">
+                  {historicalError ?? tr(
+                    "Data arsip NASA FIRMS sedang tidak tersedia, jadi angka historis tidak ditampilkan.",
+                    "The NASA FIRMS archive is unavailable, so historical values are not displayed."
+                  )}
+                </p>
+              </div>
+            </div>
+          </Card>
         ) : (
           <>
             {/* Yearly Activity Overview + Insight & rekomendasi — moved above the calendar heatmap
@@ -1063,17 +1012,12 @@ function CalendarPageContent() {
               <Card className="p-6">
                 <div className="flex items-start justify-between gap-3 mb-6">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-gray-900 text-base">{tr("Ringkasan Aktivitas Tahunan", "Yearly Activity Overview")}</h3>
-                      {!hasRealMonths && <DemoBadge />}
-                    </div>
+                    <h3 className="font-bold text-gray-900 text-base">{tr("Ringkasan Aktivitas Tahunan", "Yearly Activity Overview")}</h3>
                     <p className="text-xs text-gray-400 mt-1">
-                      {hasRealMonths
-                        ? tr(
-                            `Perbandingan total titik panas dan periode puncak. ${overviewYears.length} tahun terakhir dari arsip nyata.`,
-                            `Total hotspots and peak period comparison. Last ${overviewYears.length} years of the real archive.`
-                          )
-                        : tr("Perbandingan total titik panas dan periode puncak.", "Total hotspots and peak period comparison.")}
+                      {tr(
+                        `Perbandingan total titik panas dan periode puncak. ${overviewYears.length} tahun terakhir dari arsip nyata.`,
+                        `Total hotspots and peak period comparison. Last ${overviewYears.length} years of the real archive.`
+                      )}
                     </p>
                   </div>
                   {/* No historical cluster/trend view exists yet for this page specifically — routes
@@ -1096,7 +1040,7 @@ function CalendarPageContent() {
                           <div className="flex items-baseline gap-2">
                             <span className="text-sm font-bold text-gray-800">{year}</span>
                             <span className="text-xs text-gray-400">
-                              {total.toLocaleString(numLocale)} {tr("titik panas", "hotspots")}{hasRealMonths ? "" : tr(" (contoh)", " (example)")}
+                              {total.toLocaleString(numLocale)} {tr("titik panas", "hotspots")}
                             </span>
                           </div>
                         </div>
@@ -1129,13 +1073,10 @@ function CalendarPageContent() {
                     <span className="material-symbols-outlined text-[16px] text-[#b91c1c]">warning</span>
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-[#b91c1c] text-sm">{tr("Insight & rekomendasi aktivitas", "Activity insights & recommendations")}</h3>
-                      {!hasRealMonths && <DemoBadge />}
-                    </div>
+                    <h3 className="font-bold text-[#b91c1c] text-sm">{tr("Insight & rekomendasi aktivitas", "Activity insights & recommendations")}</h3>
                     <p className="text-[11px] text-red-900/70">
                       {labelOf(activeRegion, language)} •{" "}
-                      {hasRealMonths ? `${activeYears[0]}–${activeYears[activeYears.length - 1]}` : "2023–2026"} •{" "}
+                      {`${activeYears[0]}–${activeYears[activeYears.length - 1]}`} •{" "}
                       {tr("Gabungan (MODIS + VIIRS)", "Unified (MODIS + VIIRS)")}
                     </p>
                   </div>
@@ -1143,7 +1084,7 @@ function CalendarPageContent() {
 
                 <div className="space-y-2.5 mb-4">
                   <h4 className="text-sm font-semibold text-[#b91c1c]">{tr("Insight historis", "Historical insights")}</h4>
-                  {hasRealMonths && historicalInsights.length > 0 ? (
+                  {historicalInsights.length > 0 ? (
                     <ul className="space-y-2">
                       {historicalInsights.map((insight, index) => (
                         <li key={index} className="flex items-start gap-2.5 text-[13px] leading-[18px] text-red-900/80">
@@ -1170,10 +1111,7 @@ function CalendarPageContent() {
                     </ul>
                   ) : (
                     <p className="text-[13px] leading-[18px] text-red-900/80">
-                      {tr(
-                        "Agustus–September menjadi puncak aktivitas pada contoh data 2023–2026 ini. Pola berulang seperti ini membantu menentukan waktu prioritas pemantauan. Aktivitas lebih rendah di luar puncak tidak berarti bebas risiko.",
-                        "August–September is the activity peak in this 2023–2026 example data. Recurring patterns like this help time monitoring priorities. Lower activity outside the peak doesn't mean no risk."
-                      )}
+                      {tr("Belum cukup riwayat nyata untuk menghasilkan insight.", "There is not enough real history to generate an insight yet.")}
                     </p>
                   )}
                 </div>
@@ -1184,16 +1122,16 @@ function CalendarPageContent() {
                     <li className="flex items-start gap-2.5 text-[13px] text-red-900/80">
                       <span className="material-symbols-outlined text-red-600 text-base shrink-0 leading-5">check_circle</span>
                       {tr("Sebelum bulan puncak", "Before the peak month")}
-                      {hasRealMonths && realPeakMonthLabel ? ` (${realPeakMonthLabel})` : tr(" (Agustus)", " (August)")}:{" "}
+                      {realPeakMonthLabel ? ` (${realPeakMonthLabel})` : ""}:{" "}
                       {tr("siapkan jadwal pemantauan dan koordinasi tim.", "prepare the monitoring schedule and team coordination.")}
                     </li>
                     <li className="flex items-start gap-2.5 text-[13px] text-red-900/80">
                       <span className="material-symbols-outlined text-red-600 text-base shrink-0 leading-5">check_circle</span>
                       {tr("Pada bulan puncak", "During the peak month")}
-                      {hasRealMonths && realPeakMonthLabel ? ` (${realPeakMonthLabel})` : tr(" (Agustus–September)", " (August–September)")}:{" "}
+                      {realPeakMonthLabel ? ` (${realPeakMonthLabel})` : ""}:{" "}
                       {tr("prioritaskan pemantauan dan verifikasi deteksi.", "prioritize monitoring and verifying detections.")}
                     </li>
-                    {hasRealMonths && unusualAreas && unusualAreas.unusualCells > 0 && (
+                    {unusualAreas && unusualAreas.unusualCells > 0 && (
                       <li className="flex items-start gap-2.5 text-[13px] text-red-900/80">
                         <span className="material-symbols-outlined text-red-600 text-base shrink-0 leading-5">priority_high</span>
                         {tr(
@@ -1225,17 +1163,12 @@ function CalendarPageContent() {
             <Card className="p-6">
               <div ref={heatmapRef} className="flex items-start justify-between gap-4 mb-2 flex-wrap">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-gray-900 text-sm">{tr("Kalender Aktivitas Kebakaran", "Burning Activity Calendar")}</h3>
-                    {!hasRealMonths && <DemoBadge />}
-                  </div>
+                  <h3 className="font-bold text-gray-900 text-sm">{tr("Kalender Aktivitas Kebakaran", "Burning Activity Calendar")}</h3>
                   <p className="text-xs text-gray-400 mt-1">
-                    {hasRealMonths
-                      ? tr(
-                          `Pola historis aktivitas kebakaran, ${heatmapYears[0]}–${heatmapYears[heatmapYears.length - 1]} (arsip NASA FIRMS nyata). Klik satu sel untuk melihat angka pastinya.`,
-                          `Historical fire activity pattern, ${heatmapYears[0]}–${heatmapYears[heatmapYears.length - 1]} (real NASA FIRMS archive). Click a cell for its exact numbers.`
-                        )
-                      : tr("Pola historis aktivitas kebakaran di area ini.", "Historical pattern of fire activity in this area.")}
+                    {tr(
+                      `Pola historis aktivitas kebakaran, ${heatmapYears[0]}–${heatmapYears[heatmapYears.length - 1]} (arsip NASA FIRMS nyata). Klik satu sel untuk melihat angka pastinya.`,
+                      `Historical fire activity pattern, ${heatmapYears[0]}–${heatmapYears[heatmapYears.length - 1]} (real NASA FIRMS archive). Click a cell for its exact numbers.`
+                    )}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -1302,7 +1235,7 @@ function CalendarPageContent() {
                 </div>
               </div>
 
-              {hasRealMonths && series === "comparable" ? (
+              {series === "comparable" ? (
                 <div className="rounded-lg border border-dashed border-blue-200 bg-blue-50/60 px-3 py-2 mb-5 text-xs leading-relaxed text-blue-900">
                   <strong>{tr("Seri sebanding: hanya deteksi MODIS (Terra & Aqua).", "Comparable series: MODIS detections only (Terra & Aqua).")}</strong>{" "}
                   {tr(
@@ -1314,19 +1247,12 @@ function CalendarPageContent() {
                     "Note: since 2021–2022 the Terra and Aqua orbits have been drifting, changing their overpass times. NASA is still studying how this affects fire detection counts, so read the most recent years with extra care."
                   )}
                 </div>
-              ) : hasRealMonths ? (
+              ) : (
                 <div className="rounded-lg border border-dashed border-blue-200 bg-blue-50/60 px-3 py-2 mb-5 text-xs leading-relaxed text-blue-900">
                   <strong>{tr("Seri detail: MODIS + VIIRS, 2012–2026.", "Detail series: MODIS + VIIRS, 2012–2026.")}</strong>{" "}
                   {tr(
                     "VIIRS punya piksel lebih kecil, jadi jauh lebih banyak api kecil yang terlihat. Pasangan MODIS–VIIRS dihitung satu kali. Seri ini hanya dimulai 2012 karena VIIRS belum ada sebelumnya; untuk membandingkan dengan tahun-tahun yang lebih lama, pakai seri sebanding.",
                     "VIIRS has smaller pixels, so far more small fires show up. A MODIS–VIIRS pair counts once. This series starts in 2012 because VIIRS didn't exist before; to compare with older years, use the comparable series."
-                  )}
-                </div>
-              ) : (
-                <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50/60 px-3 py-2 mb-5 text-xs text-amber-800">
-                  {tr(
-                    "Data ilustratif untuk mendemonstrasikan tampilan kalender multi-tahun. Gagal memuat arsip historis nyata dari backend, menampilkan data contoh sebagai fallback.",
-                    "Illustrative data to demonstrate the multi-year calendar. The real historical archive failed to load from the backend, so example data is shown as a fallback."
                   )}
                 </div>
               )}
@@ -1389,22 +1315,20 @@ function CalendarPageContent() {
                                         "live data incomplete (some days couldn't be fetched from NASA FIRMS; retrying)"
                                       )}`
                                     : `${monthLabels[monthIndex]} ${year}: ${tr("belum ada data", "no data")}`
-                                  : hasRealMonths
-                                    ? `${monthLabels[monthIndex]} ${year}: ${value.toLocaleString(numLocale)} ${tr("deteksi. Klik untuk detail", "detections. Click for details")}${
-                                        provisional
-                                          ? provisional.partialThroughDay !== undefined
-                                            ? ` • ${tr(`data sementara, baru sampai tanggal ${provisional.partialThroughDay}`, `provisional, only up to day ${provisional.partialThroughDay}`)}`
-                                            : ` • ${tr("data NRT sementara", "provisional NRT data")}`
-                                          : ""
-                                      }${
-                                        unusualMonth
-                                          ? ` • ${tr(
-                                              `jauh di atas ${monthLabels[monthIndex]} tahun lain (${(unusualMonth.value / unusualMonth.mean).toLocaleString(numLocale, { maximumFractionDigits: 1 })}× rata-ratanya)`,
-                                              `far above ${monthLabels[monthIndex]} in other years (${(unusualMonth.value / unusualMonth.mean).toLocaleString(numLocale, { maximumFractionDigits: 1 })}× its average)`
-                                            )}`
-                                          : ""
-                                      }`
-                                    : `${monthLabels[monthIndex]} ${year}: ${value.toLocaleString(numLocale)} ${tr("deteksi (contoh)", "detections (example)")}`
+                                  : `${monthLabels[monthIndex]} ${year}: ${value.toLocaleString(numLocale)} ${tr("deteksi. Klik untuk detail", "detections. Click for details")}${
+                                      provisional
+                                        ? provisional.partialThroughDay !== undefined
+                                          ? ` • ${tr(`data sementara, baru sampai tanggal ${provisional.partialThroughDay}`, `provisional, only up to day ${provisional.partialThroughDay}`)}`
+                                          : ` • ${tr("data NRT sementara", "provisional NRT data")}`
+                                        : ""
+                                    }${
+                                      unusualMonth
+                                        ? ` • ${tr(
+                                            `jauh di atas ${monthLabels[monthIndex]} tahun lain (${(unusualMonth.value / unusualMonth.mean).toLocaleString(numLocale, { maximumFractionDigits: 1 })}× rata-ratanya)`,
+                                            `far above ${monthLabels[monthIndex]} in other years (${(unusualMonth.value / unusualMonth.mean).toLocaleString(numLocale, { maximumFractionDigits: 1 })}× its average)`
+                                          )}`
+                                        : ""
+                                    }`
                               }
                             >
                               {provisional && (
@@ -1516,9 +1440,7 @@ function CalendarPageContent() {
                   )}
                 </div>
                 <span className="text-xs text-gray-400">
-                  {hasRealMonths
-                    ? tr("Satuan: jumlah kejadian termal unik per sel kalender (arsip NASA FIRMS nyata).", "Unit: unique thermal events per calendar cell (real NASA FIRMS archive).")
-                    : tr("Satuan: jumlah kejadian termal unik per sel kalender (data ilustratif).", "Unit: unique thermal events per calendar cell (illustrative data).")}
+                  {tr("Satuan: jumlah kejadian termal unik per sel kalender (arsip NASA FIRMS nyata).", "Unit: unique thermal events per calendar cell (real NASA FIRMS archive).")}
                 </span>
               </div>
             </Card>

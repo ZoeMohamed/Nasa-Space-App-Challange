@@ -172,7 +172,7 @@ function TopBarFallback({ onOpenMenu }: { onOpenMenu: () => void }) {
           </div>
           <div className="hidden sm:flex flex-col">
             <span className="text-sm font-semibold text-[var(--color-sidebar-foreground)] leading-tight">Public Operator</span>
-            <span className="text-xs text-[var(--color-sidebar-foreground)]/60 leading-tight">{tr("Mode Demo Publik", "Public Demo Mode")}</span>
+            <span className="text-xs text-[var(--color-sidebar-foreground)]/60 leading-tight">{tr("Akses Publik", "Public Access")}</span>
           </div>
         </div>
       </div>
@@ -255,7 +255,7 @@ function TopBarInner({ onOpenMenu }: { onOpenMenu: () => void }) {
           </div>
           <div className="hidden sm:flex flex-col">
             <span className="text-sm font-semibold text-[var(--color-sidebar-foreground)] leading-tight">Public Operator</span>
-            <span className="text-xs text-[var(--color-sidebar-foreground)]/60 leading-tight">{tr("Mode Demo Publik", "Public Demo Mode")}</span>
+            <span className="text-xs text-[var(--color-sidebar-foreground)]/60 leading-tight">{tr("Akses Publik", "Public Access")}</span>
           </div>
         </div>
       </div>

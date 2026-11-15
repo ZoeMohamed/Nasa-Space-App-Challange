@@ -71,6 +71,19 @@ def _ensure_schema(connection: sqlite3.Connection) -> None:
         )
         """
     )
+    columns = {row[1] for row in connection.execute("PRAGMA table_info(reports)")}
+    if "is_test" not in columns:
+        connection.execute("ALTER TABLE reports ADD COLUMN is_test INTEGER NOT NULL DEFAULT 0")
+    # Preserve historical E2E rows for auditability, but explicitly mark them
+    # so they can never leak into production-facing lists or baselines.
+    connection.execute(
+        """
+        UPDATE reports
+        SET is_test = 1
+        WHERE is_test = 0
+          AND (lower(description) LIKE 'e2e %' OR lower(description) LIKE '[e2e]%')
+        """
+    )
     connection.execute(
         """
         CREATE TABLE IF NOT EXISTS report_satellite_links (
@@ -131,6 +144,7 @@ def _row_to_report(row: sqlite3.Row) -> dict:
         "photoFilename": row["photo_filename"],
         "reviewNote": row["review_note"],
         "reviewedAt": row["reviewed_at"],
+        "isTest": bool(row["is_test"]),
     }
 
 
@@ -186,15 +200,14 @@ def create_report(
 
 def list_reports(submitter_token=None, status=None, sqlite_path: str | None = None) -> list[dict]:
     query = "SELECT * FROM reports"
-    clauses, params = [], []
+    clauses, params = ["is_test = 0"], []
     if submitter_token:
         clauses.append("submitter_token = ?")
         params.append(submitter_token)
     if status:
         clauses.append("status = ?")
         params.append(status)
-    if clauses:
-        query += " WHERE " + " AND ".join(clauses)
+    query += " WHERE " + " AND ".join(clauses)
     query += " ORDER BY created_at DESC"
 
     connection = _connect(sqlite_path)
@@ -337,7 +350,8 @@ def public_view(report: dict) -> dict:
         "observedAt": report["observedAt"],
         "lat": round(float(report["lat"]), PUBLIC_COORD_DECIMALS),
         "lon": round(float(report["lon"]), PUBLIC_COORD_DECIMALS),
-        "description": report["description"],
+        # Free text may contain names or addresses; keep it out of the public shape.
+        "description": "",
         "status": report["status"],
         "photoFilename": None,
         "reviewNote": None,

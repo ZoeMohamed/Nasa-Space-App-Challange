@@ -155,7 +155,7 @@ export default function LocationPicker({ location, onDone }: { location: Locatio
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder={tr("Contoh: Jekan Raya, Pulang Pisau, Pekanbaru", "e.g. Jekan Raya, Pulang Pisau, Pekanbaru")}
+            placeholder={tr("Cari Jekan Raya, Pulang Pisau, atau Pekanbaru", "Search Jekan Raya, Pulang Pisau, or Pekanbaru")}
             autoComplete="off"
             className="w-full rounded-xl border border-[var(--community-border)] bg-white pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
           />

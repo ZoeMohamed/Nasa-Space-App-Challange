@@ -32,7 +32,7 @@ import { useTranslation } from "@/lib/i18n/LanguageContext";
  * instead of fabricating an image asset that doesn't exist.
  *
  * "Citizen Reports" and "Incident Operations" were added separately (not part of the Figma
- * sidebar instance above). They expose the public demo workflow: review citizen evidence,
+ * sidebar instance above). They expose the public-access workflow: review citizen evidence,
  * create incidents, verify, prioritize, assign and track field response.
  */
 // The burning activity calendar is the core of the Space Apps brief, so it leads the menu.

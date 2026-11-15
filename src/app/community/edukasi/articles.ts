@@ -2,8 +2,8 @@
  * Static, authored reference content for the Education hub ("08 Community —
  * Edukasi & Kontribusi", Figma node 186:3013) and its 3 article detail
  * views (folded in from the 186:31xx sibling nodes — see community/README
- * note in the agent report). This is genuinely-authored reference text, not
- * a stand-in for an unbuilt data feed, so it is NOT marked "Contoh data".
+ * note in the agent report). This is authored reference content rather than
+ * a feed-backed measurement.
  */
 
 interface EduArticleText {
@@ -76,7 +76,7 @@ export const EDU_ARTICLES: EduArticle[] = [
       "Kualitas udara (skala US AQI, perkiraan model Open-Meteo): 151–200 (Tidak sehat) = Waspada; 201–300 (Sangat tidak sehat) = Siaga; di atas 300 (Berbahaya) = Awas. Asap bisa sampai ke lokasi Anda walaupun apinya jauh.",
       "Laporan warga yang sudah diverifikasi petugas dalam radius 5 km = Awas.",
       "Aman berarti tidak satu pun faktor di atas terpenuhi. Bukan jaminan tidak ada kebakaran.",
-      "Status hanya dihitung setelah Anda mengatur lokasi (GPS atau cari nama kecamatan/kota). Aplikasi tidak menampilkan status untuk lokasi contoh.",
+      "Status hanya dihitung setelah Anda mengatur lokasi (GPS atau cari nama kecamatan/kota). Tanpa lokasi yang dipilih, status tidak dihitung.",
       "Untuk informasi resmi dan tindakan darurat, selalu rujuk ke BNPB, BMKG, atau instansi pemadam kebakaran setempat. Aplikasi ini adalah alat bantu pemantauan, bukan pengganti jalur resmi.",
     ],
     en: {
@@ -89,7 +89,7 @@ export const EDU_ARTICLES: EduArticle[] = [
         "Air quality (US AQI scale, Open-Meteo model estimate): 151–200 (Unhealthy) = Watch; 201–300 (Very unhealthy) = Alert; above 300 (Hazardous) = Danger. Smoke can reach you even when the fire is far away.",
         "A citizen report verified by an officer within 5 km = Danger.",
         "Safe means none of the factors above is met. It is not a guarantee that there is no fire.",
-        "The status is only calculated after you set your location (GPS, or search a district/city name). The app doesn't show a status for an example location.",
+        "The status is only calculated after you set your location (GPS, or search a district/city name). Without a selected location, no status is calculated.",
         "For official information and emergency action, always refer to BNPB, BMKG, or your local fire service. This app is a monitoring aid, not a replacement for official channels.",
       ],
     },

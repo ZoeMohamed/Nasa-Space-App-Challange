@@ -20,6 +20,8 @@ TINY_PNG_B64 = (
 def _configure_storage(tmp_path, monkeypatch):
     monkeypatch.setenv("FIRE_REPORTS_DB_PATH", str(tmp_path / "reports.sqlite"))
     monkeypatch.setenv("FIRE_REPORT_PHOTOS_DIR", str(tmp_path / "report_photos"))
+    monkeypatch.setenv("ENABLE_CITIZEN_REPORTS", "true")
+    monkeypatch.setenv("ENABLE_PUBLIC_REPORT_REVIEW", "true")
     report_limiter.reset()
 
 
@@ -57,7 +59,7 @@ def test_submit_report_appears_in_list_and_detail(tmp_path, monkeypatch):
     ids = [report["id"] for report in list_response.json()["reports"]]
     assert report_id in ids
 
-    detail_response = client.get(f"/api/reports/{report_id}", headers=PUBLIC_HEADERS)
+    detail_response = client.get(f"/api/reports/{report_id}", params={"submitterToken": "reporter-1"})
     assert detail_response.status_code == 200
     detail = detail_response.json()
     assert detail["id"] == report_id
@@ -156,7 +158,7 @@ def test_correlation_links_marker_within_window_and_excludes_marker_outside_it(t
     assert near_link["timeDiffMin"] < 24 * 60
 
     # Confirm the same links are visible on a subsequent GET (persisted, not just in the POST response).
-    detail = client.get(f"/api/reports/{body['id']}", headers=PUBLIC_HEADERS).json()
+    detail = client.get(f"/api/reports/{body['id']}", params={"submitterToken": "reporter-2"}).json()
     assert {link["markerId"] for link in detail["satelliteLinks"]} == {near_marker["id"]}
 
 
@@ -180,7 +182,7 @@ def test_patch_status_update_persists_and_rejects_invalid_status(tmp_path, monke
     assert valid_response.json()["status"] == "verified"
     assert valid_response.json()["reviewNote"] == "Confirmed by field team"
 
-    confirm = client.get(f"/api/reports/{report_id}", headers=PUBLIC_HEADERS).json()
+    confirm = client.get(f"/api/reports/{report_id}", params={"submitterToken": "reporter-3"}).json()
     assert confirm["status"] == "verified"
     assert confirm["reviewNote"] == "Confirmed by field team"
 
@@ -188,7 +190,7 @@ def test_patch_status_update_persists_and_rejects_invalid_status(tmp_path, monke
     assert invalid_response.status_code == 422
 
     # The bad status attempt must not have clobbered the previously-persisted valid status.
-    still_verified = client.get(f"/api/reports/{report_id}", headers=PUBLIC_HEADERS).json()
+    still_verified = client.get(f"/api/reports/{report_id}", params={"submitterToken": "reporter-3"}).json()
     assert still_verified["status"] == "verified"
 
 
@@ -219,7 +221,7 @@ def test_submit_report_when_live_fetch_unavailable_still_saves_with_no_links(tmp
     assert "NASA_FIRMS_MAP_KEY" in body["correlationWarning"]
 
     # Report itself is durably saved even though correlation failed.
-    detail = client.get(f"/api/reports/{body['id']}", headers=PUBLIC_HEADERS)
+    detail = client.get(f"/api/reports/{body['id']}", params={"submitterToken": "reporter-4"})
     assert detail.status_code == 200
     assert detail.json()["satelliteLinks"] == []
 
@@ -256,10 +258,10 @@ def test_submit_and_fetch_photo_round_trip(tmp_path, monkeypatch):
     assert photo_response.headers["content-type"] == "image/jpeg"
     assert photo_response.content[:3] == b"\xff\xd8\xff"
 
-    # Public demo mode exposes the photo without a login or reporter token.
-    assert client.get(f"/api/reports/{report_id}/photo").status_code == 200
-    assert client.get(f"/api/reports/{report_id}/photo", params={"submitterToken": "someone-else"}).status_code == 200
-    assert client.get(f"/api/reports/{report_id}/photo", headers=PUBLIC_HEADERS).status_code == 200
+    # The reporter token is required; public and unrelated tokens cannot fetch it.
+    assert client.get(f"/api/reports/{report_id}/photo").status_code == 404
+    assert client.get(f"/api/reports/{report_id}/photo", params={"submitterToken": "someone-else"}).status_code == 404
+    assert client.get(f"/api/reports/{report_id}/photo", headers=PUBLIC_HEADERS).status_code == 404
 
 
 def test_submit_report_with_invalid_photo_bytes_returns_422_and_nothing_persisted(tmp_path, monkeypatch):
@@ -298,7 +300,7 @@ def test_photo_endpoint_404_when_no_photo_was_submitted(tmp_path, monkeypatch):
     assert response.status_code == 404
 
 
-# --- Public demo access and abuse protection --------------------------------
+# --- Public access and abuse protection -------------------------------------
 
 
 def _submit(client, token="reporter-x", lat=-2.123456, lon=104.876543, **extra):
@@ -310,21 +312,20 @@ def _submit(client, token="reporter-x", lat=-2.123456, lon=104.876543, **extra):
     return response.json()
 
 
-def test_full_list_is_public_and_token_can_still_filter(tmp_path, monkeypatch):
+def test_public_list_is_reduced_and_token_can_filter_own_reports(tmp_path, monkeypatch):
     _configure_storage(tmp_path, monkeypatch)
     monkeypatch.setattr(main, "load_live_hotspots", _no_live_markers)
     client = TestClient(main.app)
     mine = _submit(client, token="alice")
     _submit(client, token="bob")
 
-    assert len(client.get("/api/reports").json()["reports"]) == 2
-    assert len(client.get("/api/reports", headers={"X-Officer-Key": "wrong"}).json()["reports"]) == 2
+    assert client.get("/api/reports").json()["reports"] == []
+    assert client.get("/api/reports", headers={"X-Officer-Key": "wrong"}).json()["reports"] == []
 
     own = client.get("/api/reports", params={"submitterToken": "alice"}).json()["reports"]
     assert [r["id"] for r in own] == [mine["id"]]
 
-    everything = client.get("/api/reports", headers=PUBLIC_HEADERS).json()["reports"]
-    assert len(everything) == 2
+    assert client.get("/api/reports", headers=PUBLIC_HEADERS).json()["reports"] == []
 
 
 def test_public_access_needs_no_special_header(tmp_path, monkeypatch):
@@ -349,6 +350,39 @@ def test_patch_is_public(tmp_path, monkeypatch):
     assert client.get(f"/api/reports/{report['id']}").json()["status"] == "verified"
 
 
+def test_submission_and_public_review_are_disabled_by_default(tmp_path, monkeypatch):
+    _configure_storage(tmp_path, monkeypatch)
+    monkeypatch.setenv("ENABLE_CITIZEN_REPORTS", "false")
+    monkeypatch.setenv("ENABLE_PUBLIC_REPORT_REVIEW", "false")
+    client = TestClient(main.app)
+
+    blocked = client.post(
+        "/api/reports",
+        json={"lat": -2.0, "lon": 104.8, "description": "Smoke", "submitterToken": "reporter"},
+    )
+    assert blocked.status_code == 503
+
+    monkeypatch.setenv("ENABLE_CITIZEN_REPORTS", "true")
+    report = _submit(client)
+    monkeypatch.setenv("ENABLE_PUBLIC_REPORT_REVIEW", "false")
+    assert client.patch(f"/api/reports/{report['id']}", json={"status": "verified"}).status_code == 403
+
+
+def test_e2e_reports_are_marked_and_hidden_from_public_routes(tmp_path, monkeypatch):
+    _configure_storage(tmp_path, monkeypatch)
+    monkeypatch.setattr(main, "load_live_hotspots", _no_live_markers)
+    client = TestClient(main.app)
+    report = _submit(client, token="e2e-owner", description="E2E production guard fixture")
+    client.patch(f"/api/reports/{report['id']}", json={"status": "verified"})
+
+    assert client.get("/api/reports/public").json()["reports"] == []
+    assert client.get(f"/api/reports/{report['id']}").status_code == 404
+    owner = client.get(
+        f"/api/reports/{report['id']}", params={"submitterToken": "e2e-owner"}
+    ).json()
+    assert owner["isTest"] is True
+
+
 def test_public_list_shows_only_verified_reports_without_private_fields(tmp_path, monkeypatch):
     _configure_storage(tmp_path, monkeypatch)
     monkeypatch.setattr(main, "load_live_hotspots", _no_live_markers)
@@ -371,23 +405,23 @@ def test_public_list_shows_only_verified_reports_without_private_fields(tmp_path
     assert item["locationPrecision"] == "approximate"
 
 
-def test_full_report_detail_is_public(tmp_path, monkeypatch):
+def test_full_report_detail_requires_owner_token(tmp_path, monkeypatch):
     _configure_storage(tmp_path, monkeypatch)
     monkeypatch.setattr(main, "load_live_hotspots", _no_live_markers)
     client = TestClient(main.app)
     report = _submit(client, token="alice")
     report_id = report["id"]
 
-    public = client.get(f"/api/reports/{report_id}").json()
-    assert public["submitterToken"] == "alice"
-    assert public["lat"] == -2.123456
-    stranger = client.get(f"/api/reports/{report_id}", params={"submitterToken": "bob"}).json()
-    assert stranger["submitterToken"] == "alice"
+    assert client.get(f"/api/reports/{report_id}").status_code == 404
+    assert client.get(f"/api/reports/{report_id}", params={"submitterToken": "bob"}).status_code == 404
+    owner = client.get(f"/api/reports/{report_id}", params={"submitterToken": "alice"}).json()
+    assert owner["submitterToken"] == "alice"
+    assert owner["lat"] == -2.123456
 
     client.patch(f"/api/reports/{report_id}", json={"status": "verified"}, headers=PUBLIC_HEADERS)
     stranger = client.get(f"/api/reports/{report_id}").json()
-    assert stranger["submitterToken"] == "alice"
-    assert stranger["lat"] == -2.123456
+    assert "submitterToken" not in stranger
+    assert stranger["lat"] == -2.12
 
 
 def test_uploaded_photo_is_reencoded_without_exif_gps(tmp_path, monkeypatch):

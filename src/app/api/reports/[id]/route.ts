@@ -9,7 +9,8 @@ const PYTHON_API = process.env.PYTHON_PROCESSING_API_URL ?? "http://127.0.0.1:80
  * detail including `satelliteLinks` (the correlated live satellite markers),
  * unlike the list endpoint in src/app/api/reports/route.ts.
  *
- * Public demo access receives the full report through the server-only bridge.
+ * Full detail is returned only when the originating reporter token matches;
+ * otherwise only a verified, reduced public view can be returned upstream.
  */
 export async function GET(request: Request, ctx: RouteContext<"/api/reports/[id]">) {
   const { id } = await ctx.params;
@@ -46,11 +47,18 @@ export async function GET(request: Request, ctx: RouteContext<"/api/reports/[id]
 
 /**
  * Proxies PATCH /api/reports/{id} to update a report's review status.
- * Public demo access. A "verified" report raises nearby citizens' area
- * status to "Awas".
+ * Public review is disabled by default because there is no officer
+ * authentication in the selected public-access deployment mode.
  */
 export async function PATCH(request: Request, ctx: RouteContext<"/api/reports/[id]">) {
   const { id } = await ctx.params;
+
+  if (process.env.ENABLE_PUBLIC_REPORT_REVIEW !== "true") {
+    return Response.json(
+      { error: "Public report review is disabled.", code: "REPORT_REVIEW_DISABLED" },
+      { status: 403 }
+    );
+  }
 
   let payload: unknown;
   try {

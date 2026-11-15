@@ -16,6 +16,7 @@ import Icon from "@/components/community/Icon";
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/gif"];
 const VALID_SOURCES: LocationSource[] = ["gps", "manual-coords", "manual-area"];
+const REPORTING_ENABLED = process.env.NEXT_PUBLIC_CITIZEN_REPORTS_ENABLED === "true";
 
 // label = [Indonesian, English]. The Indonesian label is what gets stored in the report text, so
 // officers see one consistent prefix whatever language the reporter's UI was in.
@@ -181,6 +182,7 @@ function ReportPageContent() {
 
   // Prefill from ?lat=&lon= (e.g. "Laporkan" from an alert page).
   useEffect(() => {
+    if (!REPORTING_ENABLED) return;
     if (didInitFromQuery.current) return;
     didInitFromQuery.current = true;
     const lat = Number(searchParams.get("lat"));
@@ -248,6 +250,32 @@ function ReportPageContent() {
   }
 
   if (submittedReport) return <SubmittedView report={submittedReport} />;
+
+  if (!REPORTING_ENABLED) {
+    return (
+      <div className="mx-auto max-w-xl space-y-5 pb-8">
+        <div className="flex items-center gap-3">
+          <Link href="/community" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/5" aria-label={tr("Tutup", "Close")}>
+            <Icon name="close" className="h-[20px] w-[20px]" />
+          </Link>
+          <h1 className="text-lg font-semibold text-slate-900">{tr("Pelaporan warga belum dibuka", "Citizen reporting is not open")}</h1>
+        </div>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-relaxed text-amber-950">
+          {tr(
+            "Aplikasi saat ini memakai akses publik tanpa login petugas. Untuk melindungi token, koordinat, foto, dan catatan peninjauan, sistem tidak menerima laporan warga nyata.",
+            "The app currently uses public access without officer sign-in. To protect tokens, coordinates, photos and review notes, the system does not accept real citizen reports."
+          )}
+        </div>
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+          <p className="text-sm font-bold text-red-950">{tr("Jika ada kebakaran atau asap berbahaya", "If there is a fire or dangerous smoke")}</p>
+          <p className="mt-1 text-xs leading-relaxed text-red-900/80">{tr("Hubungi 112 atau pemadam kebakaran setempat. Aplikasi ini bukan kanal darurat.", "Call 112 or your local fire service. This app is not an emergency channel.")}</p>
+          <a href="tel:112" className="mt-3 inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white">
+            <Icon name="call" className="h-[18px] w-[18px]" /> 112
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="max-w-md md:max-w-5xl mx-auto pb-8">
@@ -364,8 +392,8 @@ function ReportPageContent() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={tr(
-                "Contoh: asap putih tebal dari arah lahan gambut belakang kebun, sejak sekitar jam 9 pagi.",
-                "e.g. thick white smoke from the peatland behind the garden, since about 9 am."
+                "Jelaskan warna asap, arah, lokasi, dan sejak kapan terlihat.",
+                "Describe the smoke colour, direction, location, and when it first appeared."
               )}
               rows={4}
               className="w-full rounded-2xl border border-[var(--community-border)] bg-white p-3 text-sm text-slate-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
