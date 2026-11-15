@@ -49,6 +49,8 @@ __pycache__/
 .pytest_cache/
 .venv/
 
-# generated offline historical data store (rebuilt from local NASA FIRMS CSVs
-# via python-service/scripts/build_historical_store.py; ~20MB, not source)
-python-service/data/
+# Generated runtime/offline data. Only the two immutable production stores
+# required by the backend image are versioned; reports and raw downloads stay local.
+python-service/data/*
+!python-service/data/historical.sqlite.gz
+!python-service/data/admin_boundaries.sqlite

@@ -4,11 +4,12 @@ services:
   - type: web
     name: agnibhumi-api
     runtime: docker
+    region: singapore
     rootDir: python-service
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
     # 24h + 7d fit in ~1 GB; the 30-day window needs ~1.5 GB+ (see LIVE_WINDOWS below).
-    plan: standard
+    plan: 1c-2g
     envVars:
       - key: NASA_FIRMS_MAP_KEY
         sync: false            # paste your FIRMS MAP_KEY in the Render dashboard
@@ -16,6 +17,10 @@ services:
         value: "1"             # pre-process windows at startup so visitors never wait for a cold fetch
       - key: LIVE_WINDOWS
         value: "24h,7d,30d"    # use "24h,7d" on instances with < 2 GB RAM
+      - key: ENABLE_CITIZEN_REPORTS
+        value: "false"         # public mode must not accept real reports
+      - key: ENABLE_PUBLIC_REPORT_REVIEW
+        value: "false"         # no officer authentication in this deployment
       # Citizen reports and their photos are written at runtime. Keep them on the
       # persistent disk below so a redeploy or restart does not wipe them.
       - key: FIRE_REPORTS_DB_PATH
